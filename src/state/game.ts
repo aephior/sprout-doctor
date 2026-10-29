@@ -1,5 +1,6 @@
 // Состояние партии: грядки, ресурсы, день. Сохранение — localStorage (позже — backend).
-import { CLASSES, Crop, DiseaseClass, diseasesFor, healthyOf, isHealthy, Action } from '../data/diseases';
+import { CLASSES, Crop, DiseaseClass, healthyOf, isHealthy, Action } from '../data/diseases';
+import { Weather, rollWeather, skillOf, outbreaksFor, pickDisease, risk, tuning } from './director';
 
 export interface Card { file: string; cls: number }
 
@@ -29,8 +30,11 @@ export interface GameData {
   fungicide: number;
   harvest: number;             // собранный урожай (шт.)
   beds: Bed[];
-  stats: { scans: number; correctTreat: number; wrongTreat: number; cured: number; lost: number };
+  stats: { scans: number; correctTreat: number; wrongTreat: number; cured: number; lost: number; gradeSum: number; gradeN: number; aphids: number };
   licensed: boolean;
+  weather: Weather;
+  bossDone?: boolean;
+  totalDays: number;
 }
 
 export const DAYS_PER_SEASON = 5;
@@ -53,7 +57,8 @@ export class Game {
         cls: healthyOf(crop).id, card: '', watered: false, noWater: false, diagnosed: null, dead: false });
     }
     this.data = { version: 1, day: 1, season: 1, coins: 120, reputation: 50, fukuCharge: 6, fukuMax: 6,
-      fungicide: 4, harvest: 0, beds, stats: { scans: 0, correctTreat: 0, wrongTreat: 0, cured: 0, lost: 0 }, licensed: false };
+      fungicide: 4, harvest: 0, beds, stats: { scans: 0, correctTreat: 0, wrongTreat: 0, cured: 0, lost: 0, gradeSum: 0, gradeN: 0, aphids: 0 },
+      licensed: false, weather: rollWeather(1), totalDays: 1 };
     beds.forEach((b) => this.assignCard(b));
     // стартовая вспышка: 3 больные грядки
     this.infectRandom(3);
@@ -71,9 +76,9 @@ export class Game {
     const healthy = this.data.beds.filter((b) => !b.dead && b.crop && isHealthy(this.cls(b)));
     for (let i = 0; i < n && healthy.length; i++) {
       const b = healthy.splice(Math.floor(Math.random() * healthy.length), 1)[0];
-      const options = diseasesFor(b.crop!, this.data.season);
-      if (!options.length) continue;
-      b.cls = options[Math.floor(Math.random() * options.length)].id;
+      const c = pickDisease(b.crop!, this.data.season, this.data.weather);
+      if (!c) continue;
+      b.cls = c.id;
       this.assignCard(b);
     }
   }
@@ -82,6 +87,7 @@ export class Game {
   treat(b: Bed, seq: Action[], mult: number): { ok: boolean; msg: string } {
     const truth = this.cls(b);
     const s = this.data.stats;
+    if (seq.length) { s.gradeSum += mult; s.gradeN++; }
     if (seq.includes('spray')) {
       if (this.data.fungicide <= 0) return { ok: false, msg: 'Фунгицид закончился. Купите его в лавке Огавы.' };
       this.data.fungicide--;
@@ -140,14 +146,41 @@ export class Game {
       }
       b.watered = false; b.noWater = false; b.diagnosed = null;
     }
-    const acc = d.stats.correctTreat / Math.max(1, d.stats.correctTreat + d.stats.wrongTreat);
-    const outbreaks = 1 + (acc > 0.8 ? 1 : 0) + (d.season - 1);
-    this.infectRandom(outbreaks);
+    // распространение заразных болезней на соседние грядки
+    for (const b of d.beds) {
+      const c = this.cls(b);
+      if (b.dead || !b.crop || !c.spreads) continue;
+      for (const n of d.beds) {
+        if (n === b || n.dead || !n.crop || !isHealthy(this.cls(n)) || n.crop !== b.crop) continue;
+        if (Math.abs(n.tx - b.tx) + Math.abs(n.ty - b.ty) === 2 && Math.random() < risk(c, d.weather) * 0.5) {
+          n.cls = c.id; this.assignCard(n); notes.push(`${c.name} перешёл на грядку ${n.id + 1}.`);
+        }
+      }
+    }
+    d.weather = rollWeather(d.season);
+    this.infectRandom(outbreaksFor(d.season, this.skill()));
     d.fukuCharge = d.fukuMax;
-    d.day++;
+    d.day++; d.totalDays++;
     if (d.day > DAYS_PER_SEASON) notes.push('season-end');
     this.save();
     return notes;
+  }
+
+  skill() { return skillOf(this.data.stats); }
+  tuning() { return tuning(this.data.season, this.skill()); }
+
+  /** Переход к следующему сезону (полная версия). */
+  nextSeason() {
+    const d = this.data;
+    d.season = (d.season + 1) as 2 | 3; d.day = 1;
+    d.weather = rollWeather(d.season);
+    d.fukuCharge = d.fukuMax;
+    // новые посадки на погибших грядках, урожай сезона продолжает расти
+    for (const b of d.beds) {
+      if (b.dead || !b.crop) { b.dead = false; b.crop = (['tomato', 'potato', 'pepper'] as Crop[])[b.id % 3]; b.stage = 0; b.growth = 0; b.health = 100; b.cls = healthyOf(b.crop).id; this.assignCard(b); }
+    }
+    this.infectRandom(2 + d.season);
+    this.save();
   }
 
   lostRatio() { return this.data.beds.filter((b) => b.dead).length / this.data.beds.length; }
@@ -158,7 +191,12 @@ export class Game {
     try {
       const s = localStorage.getItem(SAVE_KEY);
       if (!s) return false;
-      this.data = JSON.parse(s); return true;
+      this.data = JSON.parse(s);
+      const st = this.data.stats as any;
+      st.gradeSum ??= 0; st.gradeN ??= 0; st.aphids ??= 0;
+      this.data.weather ??= rollWeather(this.data.season);
+      this.data.totalDays ??= this.data.day;
+      return true;
     } catch { return false; }
   }
 }

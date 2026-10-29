@@ -159,7 +159,24 @@ function sick(grid: Grid, spot: string, every: number, wilt: Record<string, stri
 const WILT = { v: 'f', G: 'F', z: 't' };          // жёлто-оливковые листья, плоды бледнеют
 const DYING = { v: 'F', G: 'N', z: 'N' };
 
+// ---------- Тля-ниндзя 14×12 ----------
+const APHID: Grid = [
+  '....k....k....',
+  '.....k..k.....',
+  '....kkkkkk....',
+  '...kvvvvvvk...',
+  '..kmmmmmmmmk..',
+  '..kvkwvvkwvk..',
+  '..kvvvvvvvvk..',
+  '...kvvvvvvk...',
+  '..kiiiiiiiik..',
+  '.kGkiiiiiikGk.',
+  '...kik..kik...',
+  '...kk....kk...',
+];
+
 export function registerSprites(scene: Phaser.Scene) {
+  addSheet(scene, 'aphid', [APHID]);
   addSheet(scene, 'aoi', AOI_FRAMES);
   addSheet(scene, 'fuku', FUKU_FRAMES);
   addSheet(scene, 'plant', [SPROUT, PLANT, sick(PLANT, 'p', 3, WILT), sick(PLANT, 'P', 2, DYING), sick(PLANT, 'N', 1, DYING)]);
@@ -256,6 +273,33 @@ function registerTiles(scene: Phaser.Scene) {
     for (const x0 of [2, 28]) for (let y = 8; y < 30; y++) { px(x0, y, '#6e6e6e'); px(x0 + 1, y, '#9a9a9a'); }
     for (let x = 6; x < 26; x++) { px(x, 22, '#8a5a3b'); px(x, 23, '#6a4329'); }
     for (let y = 0; y < 4; y++) for (let x = 12; x < 20; x++) px(x, y, '#f2c230');
+  });
+  // Хайкаби 64×64: шляпка гриба, светящееся ядро, щупальца
+  for (const [key, core, rim] of [['haikabi', '#e8d3a6', '#3fd0c9'], ['haikabi-rage', '#e8833a', '#ff4f9a']]) {
+    addPainted(scene, key, 64, 64, (px, r) => {
+      for (let t = 0; t < 7; t++) {           // щупальца
+        let x = 10 + t * 7.5;
+        for (let y = 30; y < 62; y++) {
+          x += Math.sin(y / 4 + t) * 0.7;
+          px(Math.round(x), y, '#1e1b2e'); px(Math.round(x) + 1, y, y % 6 < 3 ? '#6b4e8c' : '#4b3766'); px(Math.round(x) + 2, y, '#1e1b2e');
+        }
+      }
+      for (let y = 4; y < 36; y++) for (let x = 4; x < 60; x++) {   // шляпка
+        const d = Math.hypot((x - 32) / 28, (y - 30) / 26);
+        if (d < 1 && y < 34) px(x, y, d > 0.93 ? rim : (r() < 0.12 ? '#9a9a9a' : (y < 14 ? '#7d6a9a' : '#6b4e8c')));
+      }
+      for (let i = 0; i < 9; i++) { const x = 12 + Math.floor(r() * 40), y = 10 + Math.floor(r() * 16); px(x, y, '#e2cfa0'); px(x + 1, y, '#e2cfa0'); }
+      for (let y = 26; y < 38; y++) for (let x = 26; x < 38; x++) {     // ядро
+        const d = Math.hypot(x - 31.5, y - 31.5);
+        if (d < 6) px(x, y, d < 3 ? '#ffffff' : core);
+      }
+    }, key === 'haikabi' ? 13 : 13);
+  }
+  // Спорон 12×12
+  addPainted(scene, 'sporon', 12, 12, (px) => {
+    for (let y = 0; y < 7; y++) for (let x = 0; x < 12; x++) { const d = Math.hypot((x - 5.5) / 6, (y - 6) / 6); if (d < 1) px(x, y, d > 0.85 ? '#1e1b2e' : '#6b4e8c'); }
+    for (let y = 7; y < 12; y++) for (let x = 3; x < 9; x++) px(x, y, x === 3 || x === 8 || y === 11 ? '#1e1b2e' : '#9a9a9a');
+    px(4, 8, '#c8323c'); px(7, 8, '#c8323c');
   });
   // карточка-рамка для HUD: заливка панели
   addPainted(scene, 'pixel', 1, 1, (px) => px(0, 0, '#ffffff'));

@@ -19,10 +19,10 @@ export const GRADES: Record<Grade['label'], Grade> = {
 };
 const KEY_GRADE = GRADES.Good;   // режим без камеры
 
-type Cmd = 'scan' | 'view' | Action | 'none' | 'reset' | 'confirm' | 'harvest' | 'back';
+type Cmd = 'scan' | 'view' | Action | 'none' | 'reset' | 'confirm' | 'harvest' | 'back' | 'swipe';
 const KEYMAP: Record<string, Cmd> = {
   '1': 'scan', r: 'view', R: 'view', к: 'view', К: 'view', '2': 'water', '3': 'spray', '4': 'prune', '7': 'remove',
-  '0': 'none', Backspace: 'reset', Enter: 'confirm', '5': 'confirm', h: 'harvest', H: 'harvest', р: 'harvest', Р: 'harvest', Escape: 'back',
+  '6': 'swipe', '0': 'none', Backspace: 'reset', Enter: 'confirm', '5': 'confirm', h: 'harvest', H: 'harvest', р: 'harvest', Р: 'harvest', Escape: 'back',
 };
 
 /** Текст ритуала из дневника бабушки Хару. */
@@ -49,12 +49,15 @@ export class Procedure extends Phaser.Scene {
   hand: FrameInfo | null = null;
   updateCam?: () => void;
   gestureOn = false;
+  aphid: { sprite: Phaser.GameObjects.Sprite; until: number; bar: Phaser.GameObjects.Graphics; hop: Phaser.Time.TimerEvent } | null = null;
+  aphidRolled = false;
 
   constructor() { super('Procedure'); }
 
   init(data: { bedId: number }) {
     this.bed = game.data.beds[data.bedId];
     this.seq = []; this.grades = []; this.diag = null; this.view = 0; this.busy = false; this.treated = false;
+    this.aphid = null; this.aphidRolled = false;
   }
 
   create() {
@@ -85,6 +88,7 @@ export class Procedure extends Phaser.Scene {
   }
 
   async startGestures() {
+    gestures.rec.holdBonus = game.tuning().holdBonusMs;
     const ok = await gestures.start();
     if (!ok || !this.scene.isActive()) return;
     this.gestureOn = true;
@@ -100,7 +104,8 @@ export class Procedure extends Phaser.Scene {
 
   onGesture(e: GestureEvent) {
     const grade = GRADES[e.grade];
-    const map: Record<string, Cmd> = { scan: 'scan', water: 'water', spray: 'spray', prune: 'prune', remove: 'remove', confirm: 'confirm' };
+    const map: Record<string, Cmd> = { scan: 'scan', water: 'water', spray: 'spray', prune: 'prune', remove: 'remove', confirm: 'confirm', swipe: 'swipe' };
+    if (e.action === 'swipe') { this.command('swipe', grade); return; }
     const cmd = map[e.action];
     if (!cmd) return;
     if (cmd === 'remove' && game.data.season < 3) return;
@@ -110,6 +115,11 @@ export class Procedure extends Phaser.Scene {
   }
 
   update() {
+    if (this.aphid) {
+      const left = Math.max(0, this.aphid.until - this.time.now), win = game.tuning().aphidWindowMs;
+      this.aphid.bar.clear().fillStyle(C.ink, 0.9).fillRect(430, 286, 220, 8).fillStyle(left > win / 3 ? C.orange : C.magenta, 1).fillRect(431, 287, 218 * left / win, 6);
+      if (left <= 0) this.resolveAphid(false);
+    }
     if (!this.gestureOn) return;
     this.updateCam?.();
     this.ghost.clear();
@@ -139,6 +149,8 @@ export class Procedure extends Phaser.Scene {
   command(c: Cmd, grade: Grade = KEY_GRADE) {
     if (this.busy) return;
     if (c === 'back') return this.close();
+    if (this.aphid) { if (c === 'swipe') this.resolveAphid(true, grade); else this.say('Сначала прогоните тлю! Взмах ладонью (G6), клавиша 6 или щелчок по ней.', HEX.magentaDark); return; }
+    if (c === 'swipe') return;
     if (c === 'scan') return void this.scan(0);
     if (c === 'view') return void this.scan(this.diag ? this.view + 1 : 0);
     if (c === 'harvest') return this.harvest();
@@ -178,6 +190,48 @@ export class Procedure extends Phaser.Scene {
     this.fuku.play('fuku-idle');
     this.busy = false;
     events.emit('stats');
+    if (!this.aphidRolled && this.diag && !this.treated) {
+      this.aphidRolled = true;
+      if (Math.random() < game.tuning().aphidChance) this.time.delayedCall(700, () => this.spawnAphid());
+    }
+  }
+
+  // ---------- тля-ниндзя: реакция на время, жест G6 «взмах» ----------
+  spawnAphid() {
+    if (this.aphid || this.treated || !this.scene.isActive()) return;
+    const win = game.tuning().aphidWindowMs;
+    const pos = () => ({ x: 450 + Math.random() * 180, y: 70 + Math.random() * 180 });
+    const p = pos();
+    const sprite = this.add.sprite(p.x, p.y, 'aphid', 0).setScale(4).setDepth(60).setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.command('swipe'));
+    const hop = this.time.addEvent({ delay: 420, loop: true, callback: () => {
+      const q = pos();
+      this.tweens.add({ targets: sprite, x: q.x, y: q.y, duration: 160, ease: 'Quad.out' });
+      sprite.setFlipX(q.x < sprite.x);
+      if (this.bed.health > 0) { this.bed.health = Math.max(1, this.bed.health - 1); }
+    } });
+    const bar = this.add.graphics().setDepth(61);
+    this.aphid = { sprite, until: this.time.now + win, bar, hop };
+    this.cameras.main.shake(120, 0.004);
+    this.say('Тля-ниндзя на листе! Смахните её: взмах ладонью (G6), клавиша 6 или щелчок по ней.', HEX.magentaDark);
+  }
+
+  resolveAphid(ok: boolean, grade: Grade = KEY_GRADE) {
+    const a = this.aphid; if (!a) return;
+    this.aphid = null;
+    a.hop.remove(); a.bar.destroy();
+    if (ok) {
+      game.data.stats.aphids++;
+      this.ring(grade);
+      this.tweens.add({ targets: a.sprite, x: a.sprite.x + 500, angle: 720, alpha: 0, duration: 450, onComplete: () => a.sprite.destroy() });
+      this.say(`Тля улетела! ${grade.label}. Продолжаем лечение.`, HEX.greenDark);
+    } else {
+      a.sprite.destroy();
+      this.bed.health = Math.max(0, this.bed.health - 8);
+      this.cameras.main.shake(200, 0.008);
+      this.say('Тля успела погрызть листья: −8 здоровья. Продолжаем лечение.', HEX.magentaDark);
+    }
+    game.save();
   }
 
   confirm() {

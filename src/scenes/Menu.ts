@@ -1,4 +1,6 @@
 import { game } from '../state/game';
+import { loadRecords } from '../state/records';
+import { isLicensed } from '../state/license';
 import { text, HEX, C, paperPanel } from '../ui/ui';
 
 export class Menu extends Phaser.Scene {
@@ -28,6 +30,7 @@ export class Menu extends Phaser.Scene {
     const items: [string, () => void][] = [['Новая игра', () => { game.newGame(); game.save(); this.startGame(); }]];
     if (game.hasSave()) items.unshift(['Продолжить', () => { if (game.load()) this.startGame(); }]);
     items.push(['Ритуалы рук (камера)', () => this.scene.start('GestureSetup')]);
+    items.push(['Рекорды', () => this.records()]);
     items.push(['Как играть', () => this.help()]);
 
     const px = 40, py = H - 60 - items.length * 40;
@@ -43,15 +46,34 @@ export class Menu extends Phaser.Scene {
     this.input.keyboard!.on('keydown-ENTER', () => items[sel][1]());
     this.input.keyboard!.on('keydown-SPACE', () => items[sel][1]());
 
+    const full = isLicensed();
     const demo = this.add.graphics();
-    demo.fillStyle(C.magenta, 1).fillRect(W - 120, 20, 100, 30);
-    text(this, W - 70, 35, 'ДЕМО', 18, HEX.white).setOrigin(0.5);
-    text(this, W - 16, H - 16, 'v0.1 · прототип', 14, HEX.paper).setOrigin(1, 1);
+    demo.fillStyle(full ? C.teal : C.magenta, 1).fillRect(W - 170, 20, 150, 30);
+    text(this, W - 95, 35, full ? 'ПОЛНАЯ ВЕРСИЯ' : 'ДЕМО', 16, full ? HEX.ink : HEX.white).setOrigin(0.5);
+    text(this, W - 16, H - 16, 'v0.2 · бета', 14, HEX.paper).setOrigin(1, 1);
   }
 
   startGame() {
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => { this.scene.start('World'); this.scene.launch('Hud'); });
+  }
+
+  records() {
+    const rows = loadRecords();
+    const { width: W, height: H } = this.scale;
+    const box = this.add.container(0, 0);
+    const shade = this.add.rectangle(0, 0, W, H, 0x000000, 0.6).setOrigin(0).setInteractive();
+    const lines = rows.length ? rows.map((r, i) => `${String(i + 1).padStart(2)}. ${String(r.score).padStart(5)}  ${r.ending.padEnd(18)} ${r.accuracy}%  ${r.days} дн.  ${r.date}`)
+      : ['Пока пусто. Пройдите демо-сезон или всю игру.'];
+    box.add([shade, paperPanel(this, 140, 70, W - 280, H - 140),
+      text(this, 170, 92, 'Рекорды', 26),
+      text(this, 170, 134, '    Счёт  Финал              Точн.  Дни   Дата', 15, '#777'),
+      text(this, 170, 160, lines.join('\n'), 16, HEX.ink, { lineSpacing: 6 })]);
+    const close = text(this, W - 170, H - 100, '[ закрыть ]', 18, '#c8323c').setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    box.add(close);
+    const done = () => box.destroy();
+    close.on('pointerdown', done); shade.on('pointerdown', done);
+    this.input.keyboard!.once('keydown-ESC', done);
   }
 
   help() {

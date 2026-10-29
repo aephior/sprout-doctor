@@ -18,6 +18,7 @@ export class World extends Phaser.Scene {
   marker!: Phaser.GameObjects.Graphics;
   current: Interact | null = null;
   locked = false;
+  fx?: Phaser.FX.ColorMatrix;
 
   constructor() { super('World'); }
 
@@ -38,6 +39,7 @@ export class World extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setZoom(3).setBounds(0, 0, MW * T, MH * T).startFollow(this.aoi, true, 0.12, 0.12).setRoundPixels(true);
     cam.setBackgroundColor('#2f5f2a');
+    this.fx = cam.postFX?.addColorMatrix();
 
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E') as Record<string, Phaser.Input.Keyboard.Key>;
@@ -47,9 +49,31 @@ export class World extends Phaser.Scene {
 
     events.on('lock', this.lockHandler, this);
     events.on('refresh-beds', this.refreshBeds, this);
-    this.events.once('shutdown', () => { events.off('lock', this.lockHandler, this); events.off('refresh-beds', this.refreshBeds, this); });
+    events.on('season', this.refreshBeds, this);
+    events.on('boss', this.startBoss, this);
+    this.events.once('shutdown', () => {
+      events.off('lock', this.lockHandler, this); events.off('refresh-beds', this.refreshBeds, this);
+      events.off('season', this.refreshBeds, this); events.off('boss', this.startBoss, this);
+    });
     this.events.on('wake', () => { this.refreshBeds(); this.locked = false; });
     this.refreshBeds();
+  }
+
+  startBoss() {
+    this.locked = true;
+    this.cameras.main.fadeOut(600, 30, 20, 40);
+    this.cameras.main.once('camerafadeoutcomplete', () => { this.scene.sleep(); this.scene.launch('Boss'); });
+  }
+
+  /** Сезонная палитра и выцветание мира от болезни (визуальная механика «Хайкаби»). */
+  applySeasonLook() {
+    if (!this.fx) return;
+    const beds = game.data.beds, sick = beds.filter((b) => b.crop && !b.dead && !isHealthy(game.cls(b))).length + beds.filter((b) => b.dead).length;
+    const ratio = sick / beds.length, season = game.data.season;
+    this.fx.reset();
+    if (season === 2) this.fx.saturate(0.15, true).brightness(1.04, true);
+    if (season === 3) this.fx.hue(-12, true).brightness(0.95, true);
+    this.fx.saturate(-Math.min(0.85, ratio * (season === 3 ? 1.3 : 0.7)), true);
   }
 
   lockHandler(v: boolean) { this.locked = v; if (v) this.aoi.setVelocity(0); }
@@ -107,6 +131,7 @@ export class World extends Phaser.Scene {
   }
 
   refreshBeds() {
+    this.applySeasonLook();
     for (const b of game.data.beds) {
       const v = this.beds.get(b.id); if (!v) continue;
       v.soil.setTexture(b.watered ? 'soil-wet' : 'soil');

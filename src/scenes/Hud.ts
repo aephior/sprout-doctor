@@ -4,8 +4,11 @@ import { events } from '../state/events';
 import { text, HEX, C, paperPanel, bar } from '../ui/ui';
 import { CLASSES, CROP_NAME, isHealthy } from '../data/diseases';
 import { ritualText } from './Procedure';
+import { forecast as weatherForecast } from '../state/director';
+import { addRecord } from '../state/records';
+import { isLicensed, activate, generateKey, normalizeKey, PRICE } from '../state/license';
 
-const SEASONS = ['', 'Весна', 'Лето', 'Осень'];
+export const SEASONS = ['', 'Весна', 'Лето', 'Осень'];
 const PLACE_HINT: Record<string, string> = {
   bed: 'E — осмотреть грядку   ·   Tab — дневник', house: 'E — лечь спать (закончить день)', shop: 'E — лавка господина Огавы',
   vending: 'E — торговый автомат', busstop: 'E — автобусная остановка',
@@ -36,6 +39,7 @@ export class Hud extends Phaser.Scene {
     on('place', (k: string) => this.place(k));
     on('pause', () => this.pauseMenu());
     on('diary', () => this.diary());
+    this.input.keyboard!.on('keydown', (e: KeyboardEvent) => this.onKeyTyping(e));
 
     this.time.delayedCall(700, () => this.say(game.data.day === 1 && game.data.season === 1
       ? 'Аой-сан, я Фуку. На трёх грядках что-то не так: над ними летят споры. Подойдите к грядке и нажмите E. Tab — дневник бабушки с ритуалами.'
@@ -43,25 +47,23 @@ export class Hud extends Phaser.Scene {
   }
 
   forecast() {
-    const sick = game.data.beds.filter((b) => b.crop && !b.dead && game.cls(b).key !== 'healthy').length;
-    const lvl = sick >= 5 ? 'высокий' : sick >= 3 ? 'средний' : 'низкий';
-    return `Доброе утро! День ${game.data.day}. Риск болезней сегодня — ${lvl}. Заряд линзы восстановлен.`;
+    return `Доброе утро! День ${game.data.day}. ${weatherForecast(game.data.season, game.data.weather)} Заряд линзы восстановлен.`;
   }
 
   drawStats() {
     this.stats.removeAll(true);
     const d = game.data;
-    const p = paperPanel(this, 14, 14, 250, 92);
+    const p = paperPanel(this, 14, 14, 270, 100);
     const l1 = text(this, 26, 22, `${SEASONS[d.season]} · день ${d.day}/${DAYS_PER_SEASON}`, 20);
     const l2 = text(this, 26, 50, `Монеты: ${d.coins}   Урожай: ${d.harvest}`, 16);
-    const l3 = text(this, 26, 72, `Фунгицид: ${d.fungicide}`, 16);
-    const rep = text(this, 150, 72, 'Репутация', 14, '#555');
-    const rb = bar(this, 150, 90, 100, 8, d.reputation / 100, C.orange);
+    const l3 = text(this, 26, 72, `Фунгицид: ${d.fungicide} · влажность ${d.weather.humidity}%`, 15);
+    const rep = text(this, 150, 93, 'Реп.', 13, '#555');
+    const rb = bar(this, 186, 96, 86, 8, d.reputation / 100, C.orange);
     // заряд Фуку — точки
     const charge = this.add.graphics();
     for (let i = 0; i < d.fukuMax; i++) {
-      charge.fillStyle(C.ink, 1).fillRect(26 + i * 14, 92, 10, 8);
-      charge.fillStyle(i < d.fukuCharge ? C.teal : 0x55536e, 1).fillRect(27 + i * 14, 93, 8, 6);
+      charge.fillStyle(C.ink, 1).fillRect(26 + i * 12, 96, 9, 8);
+      charge.fillStyle(i < d.fukuCharge ? C.teal : 0x55536e, 1).fillRect(27 + i * 12, 97, 7, 6);
     }
     this.stats.add([p, l1, l2, l3, rep, rb, charge]);
   }
@@ -166,11 +168,90 @@ export class Hud extends Phaser.Scene {
       `Вылечено грядок: ${s.cured}, потеряно: ${s.lost}`,
       `Сканов Линзой: ${s.scans}`,
     ];
-    if (win) this.openModal('Весна позади!', ['Демо-сезон пройден. Лето и осень — в полной версии.', ...lines], [
-      ['1', 'В главное меню', () => this.toMenu()],
-    ]);
-    else this.openModal('Ферма не выстояла', ['Хайкаби оказалась сильнее. Попробуйте снова — внимательнее к диагнозам.', ...lines], [
+    const d = game.data;
+    if (win && d.season === 1 && !isLicensed()) {
+      if (!this.recorded) { addRecord(d, 'Демо пройдено', false); this.recorded = true; }
+      this.openModal('Весна позади! Демо пройдено', [
+        'Лето в теплице, осенняя эпидемия и бой с Хайкаби — в полной версии.',
+        `Полная версия — разовая покупка ${PRICE}, без внутриигровых покупок и рекламы.`, '', ...lines,
+      ], [
+        ['1', 'Ввести ключ полной версии', () => this.keyModal('')],
+        ['2', `Купить полную версию (${PRICE})`, () => this.storeModal()],
+        ['3', 'В главное меню', () => this.toMenu()],
+      ]);
+      return;
+    }
+    if (win && d.season < 3) {
+      const next = d.season === 1 ? 'Лето: теплица, влажность, тля-ниндзя. Новые болезни в дневнике.' : 'Осень: эпидемия Хайкаби. Мир выцветает, нужен ритуал удаления (7).';
+      this.openModal(`${SEASONS[d.season]} позади!`, [next, '', ...lines], [
+        ['1', 'Продолжить', () => { this.closeModal(); game.nextSeason(); events.emit('season'); this.drawStats(); this.say(this.forecast(), 7000); }],
+        ['2', 'Сохранить и выйти в меню', () => { game.nextSeason(); this.toMenu(); }],
+      ]);
+      return;
+    }
+    if (win && d.season === 3) {
+      this.openModal('Источник найден', ['Споры тянутся к заброшенной теплице в конце долины. Хайкаби ждёт.', '', ...lines], [
+        ['1', 'Войти в теплицу', () => { this.closeModal(); events.emit('boss'); }],
+      ]);
+      return;
+    }
+    if (!this.recorded) { addRecord(d, 'Поражение', false); this.recorded = true; }
+    this.openModal('Ферма не выстояла', ['Хайкаби оказалась сильнее. Попробуйте снова — внимательнее к диагнозам.', ...lines], [
       ['1', 'Начать заново', () => { game.newGame(); game.save(); this.toMenu(); }],
+    ]);
+  }
+
+  // ---------- полная версия ----------
+  keyEntry: { key: string; err: string } | null = null;
+  recorded = false;
+
+  keyModal(prefill: string) {
+    this.keyEntry = { key: normalizeKey(prefill), err: '' };
+    this.drawKeyModal();
+  }
+
+  drawKeyModal() {
+    const k = this.keyEntry!;
+    this.openModal('Активация полной версии', [
+      'Введите ключ (буквы и цифры, дефисы ставятся сами):',
+      `> ${k.key}${k.key.length < 19 ? '_' : ''}`,
+      k.err,
+    ], [
+      ['Enter', 'Активировать', () => {
+        if (activate(k.key)) {
+          this.keyEntry = null;
+          this.openModal('Полная версия активирована', ['Спасибо! Лето уже в пути.'], [
+            ['1', 'Продолжить игру', () => { this.closeModal(); game.data.licensed = true; game.nextSeason(); events.emit('season'); this.drawStats(); this.say(this.forecast(), 7000); }],
+          ]);
+        } else { k.err = 'Ключ не подходит. Проверьте символы (без 0/O и 1/I).'; this.drawKeyModal(); }
+      }],
+      ['Esc', 'Назад', () => { this.keyEntry = null; this.endScreen(true); }],
+    ]);
+  }
+
+  /** Ввод символов ключа (подключается один раз в create). */
+  onKeyTyping(e: KeyboardEvent) {
+    const k = this.keyEntry;
+    if (!k) return;
+    if (e.key === 'Backspace') k.key = normalizeKey(k.key.replace(/-$/, '').slice(0, -1));
+    else if (/^[a-zA-Z0-9]$/.test(e.key)) k.key = normalizeKey(k.key + e.key);
+    else return;
+    k.err = '';
+    this.drawKeyModal();
+  }
+
+  storeModal() {
+    this.openModal('Магазин · Sprout Doctor (имитация)', [
+      `Полная версия: ${PRICE}. Разовая покупка, все три сезона и финал.`,
+      'Это учебная имитация: деньги не списываются, магазин выдаёт тестовый ключ.',
+    ], [
+      ['1', 'Оплатить (тест)', () => {
+        const k = generateKey();
+        this.openModal('Покупка завершена', ['Ваш ключ полной версии:', k, 'Ключ подставлен в поле активации.'], [
+          ['1', 'Перейти к активации', () => this.keyModal(k)],
+        ]);
+      }],
+      ['Esc', 'Назад', () => this.endScreen(true)],
     ]);
   }
 
