@@ -11,6 +11,7 @@ let seq = 0;
 const pending = new Map<number, (d: any) => void>();
 
 import { asset } from '../assets';
+import { Net } from './engine';
 
 function call(msg: object, transfer: Transferable[] = []): Promise<any> {
   if (!worker) {
@@ -21,11 +22,21 @@ function call(msg: object, transfer: Transferable[] = []): Promise<any> {
   const id = ++seq;
   return new Promise((res, rej) => {
     pending.set(id, (d) => (d.ok ? res(d) : rej(new Error(d.error))));
-    worker!.postMessage({ id, model: asset('leaf_model.json'), weights: asset('leaf_weights.b64.txt'), ...msg }, transfer);
+    worker!.postMessage({ id, ...msg }, transfer);
   });
 }
 
-export function loadLeafModel(): Promise<void> { return call({ type: 'load' }).then(() => undefined); }
+let ready: Promise<void> | null = null;
+/** Страница загружает модель и передаёт её воркеру (один раз). */
+export function loadLeafModel(): Promise<void> {
+  if (!ready) {
+    ready = Net.fetchPayload(asset('leaf_model.json'), asset('leaf_weights.b64.txt'))
+      .then(({ spec, bin }) => call({ type: 'init', spec, bin }, [bin]))
+      .then(() => undefined);
+    ready.catch(() => { ready = null; });
+  }
+  return ready;
+}
 
 /**
  * view = 0 — исходный кадр; view > 0 — «другой ракурс»:
@@ -47,6 +58,7 @@ export async function diagnose(img: HTMLImageElement | HTMLCanvasElement, view =
   const px = ctx.getImageData(0, 0, 224, 224).data;
   const data = new Float32Array(3 * 224 * 224);
   for (let i = 0; i < 224 * 224; i++) for (let c = 0; c < 3; c++) data[c * 224 * 224 + i] = (px[i * 4 + c] / 255 - MEAN[c]) / STD[c];
+  await loadLeafModel();
   const { logits } = await call({ type: 'run', input: data }, [data.buffer]);
   const max = Math.max(...logits);
   const exps: number[] = Array.from(logits as Float32Array, (v) => Math.exp(v - max));

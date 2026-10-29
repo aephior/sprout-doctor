@@ -1,19 +1,21 @@
 // Web Worker: нейросеть «Линзы Фуку» считается в отдельном потоке, игра не замирает.
+// Модель и веса присылает основная страница (сообщение init), сам воркер ничего не скачивает.
 import { Net } from './engine';
 
 let net: Net | null = null;
-let loading: Promise<Net> | null = null;
 
-self.onmessage = async (e: MessageEvent) => {
-  const { id, type, input, model, weights } = e.data;
+self.onmessage = (e: MessageEvent) => {
+  const { id, type } = e.data;
   try {
-    if (!loading) loading = Net.load(model, weights);
-    net = await loading;
-    if (type === 'load') { (self as any).postMessage({ id, ok: true }); return; }
-    const out = net.run(input as Float32Array);
+    if (type === 'init') {
+      net = new Net(e.data.spec, e.data.bin);
+      (self as any).postMessage({ id, ok: true });
+      return;
+    }
+    if (!net) throw new Error('модель ещё не загружена');
+    const out = net.run(e.data.input as Float32Array);
     (self as any).postMessage({ id, ok: true, logits: out }, [out.buffer]);
   } catch (err) {
-    loading = null;
     (self as any).postMessage({ id, ok: false, error: String((err as Error).message || err) });
   }
 };

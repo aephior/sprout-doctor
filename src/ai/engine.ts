@@ -9,7 +9,7 @@ interface Op {
   nout?: number; nin?: number;
   w?: [number, number]; b?: [number, number];
 }
-interface ModelSpec { input: string; output: string; size: number; ops: Op[] }
+export interface ModelSpec { input: string; output: string; size: number; ops: Op[] }
 interface T { c: number; h: number; w: number; d: Float32Array }
 
 /** float16 → float32 */
@@ -32,6 +32,13 @@ export class Net {
   }
 
   static async load(jsonUrl: string, binUrl: string) {
+    const { spec, bin } = await Net.fetchPayload(jsonUrl, binUrl);
+    return new Net(spec, bin);
+  }
+
+  /** Загрузка описания модели и весов (на основной странице: в автономной версии поток-воркер
+   *  не может читать blob-адреса, созданные страницей, открытой через file://). */
+  static async fetchPayload(jsonUrl: string, binUrl: string): Promise<{ spec: ModelSpec; bin: ArrayBuffer }> {
     const [spec, bin] = await Promise.all([
       fetch(jsonUrl).then((r) => { if (!r.ok) throw new Error(`${jsonUrl}: ${r.status}`); return r.json(); }),
       fetch(binUrl).then(async (r) => {
@@ -43,7 +50,7 @@ export class Net {
         return out.buffer;
       }),
     ]);
-    return new Net(spec, bin);
+    return { spec, bin };
   }
 
   /** input: CHW float32 (3×224×224, уже нормализованный). Возвращает выход последнего слоя. */
