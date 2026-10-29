@@ -89,7 +89,7 @@ export class Evening extends Phaser.Scene {
     const leave = () => {
       if (leaving) return; leaving = true;
       this.cameras.main.fadeOut(700, 43, 42, 76);
-      this.cameras.main.once('camerafadeoutcomplete', () => { this.scene.stop(); this.done?.(); });
+      this.cameras.main.once('camerafadeoutcomplete', () => { const d = this.done; this.scene.stop(); d?.(); });
     };
     this.time.delayedCall(900, () => {
       this.input.keyboard!.once('keydown', leave);

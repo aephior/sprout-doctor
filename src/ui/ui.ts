@@ -2,7 +2,7 @@
 export const FONT = '"Pixelify Sans", "Courier New", monospace';
 export const C = {
   ink: 0x1e1b2e, paper: 0xf6e7c1, paperDark: 0xe2cfa0, wood: 0x8a5a3b, indigo: 0x2b2a4c,
-  teal: 0x3fd0c9, magenta: 0xff4f9a, orange: 0xe8833a, green: 0x4f8a3c, blight: 0x6b4e8c,
+  teal: 0x3fd0c9, magenta: 0xff4f9a, orange: 0xe8833a, green: 0x4f8a3c, blight: 0x6b4e8c, red: 0xc8323c,
 };
 export const HEX = {
   ink: '#1e1b2e', paper: '#f6e7c1', teal: '#3fd0c9', magenta: '#ff4f9a', orange: '#e8833a', white: '#f6f1e6', green: '#4f8a3c',

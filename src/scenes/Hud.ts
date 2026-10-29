@@ -40,6 +40,7 @@ export class Hud extends Phaser.Scene {
     on('place', (k: string) => this.place(k));
     on('pause', () => this.pauseMenu());
     on('diary', () => this.diary());
+    on('after-night', (n: string[]) => this.afterNight(n));
     this.input.keyboard!.on('keydown-M', () => this.say(sound.toggle() ? 'Звук включён (M).' : 'Звук выключен (M).', 1800));
     this.input.keyboard!.on('keydown', (e: KeyboardEvent) => this.onKeyTyping(e));
 
@@ -119,23 +120,9 @@ export class Hud extends Phaser.Scene {
   place(kind: string) {
     const d = game.data;
     if (kind === 'shop') {
-      const shop = () => this.openModal('Лавка господина Огавы', [
-        `«Хару тоже начинала с одной грядки». Урожай: ${d.harvest} шт. Монеты: ${d.coins}.`,
-      ], [
-        ['1', `Продать урожай (${d.harvest} × 15 монет)`, () => { if (d.harvest) sound.play('coin'); d.coins += d.harvest * 15; d.harvest = 0; game.save(); shop(); }],
-        ['2', 'Купить фунгицид (20 монет)', () => { if (d.coins >= 20) { d.coins -= 20; d.fungicide++; game.save(); } shop(); }],
-        ['3', `Улучшить заряд Фуку +1 (${40 + d.fukuMax * 10} монет)`, () => {
-          const cost = 40 + d.fukuMax * 10;
-          if (d.coins >= cost && d.fukuMax < 10) { d.coins -= cost; d.fukuMax++; d.fukuCharge++; game.save(); } shop();
-        }],
-        ['Esc', 'Уйти', () => this.closeModal()],
-      ]);
-      shop();
+      this.enterInterior('Shop');
     } else if (kind === 'house') {
-      this.openModal('Дом бабушки Хару', ['Закончить день? Ночью болезни развиваются, а заряд Фуку восстанавливается.'], [
-        ['1', 'Лечь спать', () => { this.closeModal(); this.night(); }],
-        ['Esc', 'Ещё не время', () => this.closeModal()],
-      ]);
+      this.night();
     } else if (kind === 'vending') {
       this.say('Торговый автомат гудит в сумерках. Холодный чай — 5 монет… может, в другой раз.');
     } else if (kind === 'busstop') {
@@ -143,11 +130,27 @@ export class Hud extends Phaser.Scene {
     }
   }
 
+  /** Переход в интерьер: мир спит, интерфейс скрыт. */
+  enterInterior(key: string, data?: object) {
+    events.emit('lock', true);
+    this.scene.sleep('World');
+    this.scene.setVisible(false);
+    this.scene.launch(key, data);
+  }
+
   night() {
     events.emit('lock', true);
     // сначала «Конец дня», затем ночь
     this.scene.setVisible(false);
-    this.scene.launch('Evening', { done: () => { this.scene.setVisible(true); this.nightFall(); } });
+    // вечер на веранде → дом → сон → утро
+    this.scene.launch('Evening', { done: () => this.enterInterior('Home') });
+  }
+
+  afterNight(notes: string[]) {
+    this.drawStats();
+    if (game.lostRatio() > 0.6 || game.data.reputation <= 0) { this.endScreen(false); return; }
+    if (notes.includes('season-end')) { this.endScreen(true); return; }
+    this.say(this.forecast(), 6500);
   }
 
   nightFall() {

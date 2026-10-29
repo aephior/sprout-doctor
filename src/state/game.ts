@@ -34,6 +34,7 @@ export interface GameData {
   licensed: boolean;
   weather: Weather;
   bossDone?: boolean;
+  fertilized?: boolean;
   totalDays: number;
 }
 
@@ -141,7 +142,7 @@ export class Game {
         b.health = Math.max(0, b.health - c.severity);
         if (b.health === 0) { b.dead = true; d.stats.lost++; notes.push(`Грядка ${b.id + 1}: растение погибло.`); }
       } else {
-        b.growth++;
+        b.growth += d.fertilized ? 2 : 1;
         if (b.stage < 2 && b.growth >= 2 + b.stage * 2) b.stage++;
       }
       b.watered = false; b.noWater = false; b.diagnosed = null;
@@ -157,6 +158,7 @@ export class Game {
         }
       }
     }
+    d.fertilized = false;
     d.weather = rollWeather(d.season);
     this.infectRandom(outbreaksFor(d.season, this.skill()));
     d.fukuCharge = d.fukuMax;
@@ -181,6 +183,17 @@ export class Game {
     }
     this.infectRandom(2 + d.season);
     this.save();
+  }
+
+  /** Семена из лавки: новые ростки на всех погибших грядках. */
+  replantDead(): number {
+    let n = 0;
+    for (const b of this.data.beds) if (b.dead) {
+      const crop = (['tomato', 'tomato', 'potato', 'pepper'] as Crop[])[b.id % 4];
+      Object.assign(b, { dead: false, crop, stage: 0, growth: 0, health: 100, cls: healthyOf(crop).id, watered: false, noWater: false });
+      this.assignCard(b); n++;
+    }
+    return n;
   }
 
   lostRatio() { return this.data.beds.filter((b) => b.dead).length / this.data.beds.length; }
