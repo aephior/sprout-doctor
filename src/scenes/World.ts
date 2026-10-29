@@ -42,7 +42,10 @@ export class World extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setZoom(3).setBounds(0, 0, MW * T, MH * T).startFollow(this.aoi, true, 0.12, 0.12).setRoundPixels(true);
     cam.setBackgroundColor('#2f5f2a');
-    this.fx = cam.postFX?.addColorMatrix();
+    // эффект выцветания доступен только с видеоускорением (WebGL); без него игра работает без эффекта
+    if (this.game.renderer.type === Phaser.WEBGL) {
+      try { this.fx = cam.postFX.addColorMatrix(); } catch { this.fx = undefined; }
+    }
 
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E') as Record<string, Phaser.Input.Keyboard.Key>;

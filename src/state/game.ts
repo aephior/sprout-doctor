@@ -192,6 +192,7 @@ export class Game {
       const s = localStorage.getItem(SAVE_KEY);
       if (!s) return false;
       this.data = JSON.parse(s);
+      if (!this.data || !Array.isArray(this.data.beds) || !this.data.stats) return false;
       const st = this.data.stats as any;
       st.gradeSum ??= 0; st.gradeN ??= 0; st.aphids ??= 0;
       this.data.weather ??= rollWeather(this.data.season);

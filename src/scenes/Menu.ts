@@ -32,7 +32,10 @@ export class Menu extends Phaser.Scene {
     text(this, W / 2, 162, 'Лечи урожай. Читай листья. Колдуй руками.', 18, HEX.paper, { stroke: HEX.ink, strokeThickness: 4 }).setOrigin(0.5);
 
     const items: [string, () => void][] = [['Новая игра', () => { game.newGame(); game.save(); this.startGame(); }]];
-    if (game.hasSave()) items.unshift(['Продолжить', () => { if (game.load()) this.startGame(); }]);
+    if (game.hasSave()) items.unshift(['Продолжить', () => {
+      if (game.load()) this.startGame();
+      else { game.newGame(); game.save(); this.startGame(); }   // сохранение повреждено — начинаем заново, а не зависаем
+    }]);
     items.push(['Ритуалы рук (камера)', () => this.scene.start('GestureSetup')]);
     items.push(['Рекорды', () => this.records()]);
     items.push(['Как играть', () => this.help()]);
