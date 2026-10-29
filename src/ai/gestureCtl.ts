@@ -43,7 +43,9 @@ class GestureController {
 
   stop() { tracker.stop(); this.unsub?.(); this.unsub = null; }
   /** Пауза между визитами на грядки: камера остаётся включённой, кадры не обрабатываются. */
-  pause() { tracker.pause(); this.rec.frame(null, 'Right', performance.now()); }
+  pause() { tracker.pause(); this.resetState(); }
+  /** Сброс истории кадров и удержания: жест, начатый раньше, отсчитывается заново. */
+  resetState() { this.rec.frame(null, 'Right', performance.now()); }
 
   private onFrame(f: HandFrame) {
     if (this.recording && f.landmarks) {

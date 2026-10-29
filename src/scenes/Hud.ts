@@ -1,4 +1,5 @@
 // Интерфейс поверх мира: показатели, подсказки, реплики Фуку, лавка, сон, пауза.
+import { sound } from '../audio/sound';
 import { game, DAYS_PER_SEASON } from '../state/game';
 import { events } from '../state/events';
 import { text, HEX, C, paperPanel, bar } from '../ui/ui';
@@ -39,6 +40,7 @@ export class Hud extends Phaser.Scene {
     on('place', (k: string) => this.place(k));
     on('pause', () => this.pauseMenu());
     on('diary', () => this.diary());
+    this.input.keyboard!.on('keydown-M', () => this.say(sound.toggle() ? 'Звук включён (M).' : 'Звук выключен (M).', 1800));
     this.input.keyboard!.on('keydown', (e: KeyboardEvent) => this.onKeyTyping(e));
 
     this.time.delayedCall(700, () => this.say(game.data.day === 1 && game.data.season === 1
@@ -120,7 +122,7 @@ export class Hud extends Phaser.Scene {
       const shop = () => this.openModal('Лавка господина Огавы', [
         `«Хару тоже начинала с одной грядки». Урожай: ${d.harvest} шт. Монеты: ${d.coins}.`,
       ], [
-        ['1', `Продать урожай (${d.harvest} × 15 монет)`, () => { d.coins += d.harvest * 15; d.harvest = 0; game.save(); shop(); }],
+        ['1', `Продать урожай (${d.harvest} × 15 монет)`, () => { if (d.harvest) sound.play('coin'); d.coins += d.harvest * 15; d.harvest = 0; game.save(); shop(); }],
         ['2', 'Купить фунгицид (20 монет)', () => { if (d.coins >= 20) { d.coins -= 20; d.fungicide++; game.save(); } shop(); }],
         ['3', `Улучшить заряд Фуку +1 (${40 + d.fukuMax * 10} монет)`, () => {
           const cost = 40 + d.fukuMax * 10;
@@ -143,6 +145,13 @@ export class Hud extends Phaser.Scene {
 
   night() {
     events.emit('lock', true);
+    // сначала «Конец дня», затем ночь
+    this.scene.setVisible(false);
+    this.scene.launch('Evening', { done: () => { this.scene.setVisible(true); this.nightFall(); } });
+  }
+
+  nightFall() {
+    sound.play('night');
     const shade = this.add.rectangle(0, 0, 960, 540, 0x2b2a4c, 0).setOrigin(0);
     const t = text(this, 480, 270, 'Ночь…', 32, HEX.paper).setOrigin(0.5).setAlpha(0);
     this.tweens.add({ targets: [shade], fillAlpha: 1, duration: 600 });
@@ -152,7 +161,7 @@ export class Hud extends Phaser.Scene {
       this.drawStats();
       this.time.delayedCall(700, () => {
         this.tweens.add({ targets: [shade, t], alpha: 0, duration: 600, onComplete: () => { shade.destroy(); t.destroy(); } });
-        events.emit('lock', false);
+        events.emit('lock', false); sound.setMood('day');
         if (game.lostRatio() > 0.6 || game.data.reputation <= 0) { this.endScreen(false); return; }
         if (notes.includes('season-end')) { this.endScreen(true); return; }
         const lost = notes.filter((n) => n !== 'season-end');

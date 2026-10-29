@@ -1,3 +1,4 @@
+import { sound } from '../audio/sound';
 import { game } from '../state/game';
 import { gestures } from '../ai/gestureCtl';
 import { loadRecords } from '../state/records';
@@ -8,6 +9,7 @@ export class Menu extends Phaser.Scene {
   constructor() { super('Menu'); }
 
   create() {
+    sound.setMood('menu');
     gestures.stop();   // в меню камера выключена
     const { width: W, height: H } = this.scale;
     // закатное небо
@@ -88,7 +90,7 @@ export class Menu extends Phaser.Scene {
       '',
       'WASD / стрелки — ходить по ферме',
       'E — осмотреть грядку, войти в дом, лавку',
-      'Esc — пауза / выход',
+      'Esc — пауза / выход   ·   M — звук вкл/выкл',
       '',
       'В «Процедурной»:',
       '1 — скан Линзой Фуку (тратит заряд)',

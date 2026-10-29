@@ -1,6 +1,7 @@
 // «Процедурная»: крупный план грядки. Скан Линзой Фуку → диагноз (нейросеть) → ритуал → результат.
 // Действия приходят из трёх источников: клавиши, кнопки мышью и (этап жестов) модуль «Ритуалы рук».
 // Все они вызывают applyAction(action, grade), поэтому игровая логика одна.
+import { sound } from '../audio/sound';
 import { game, Bed } from '../state/game';
 import { CLASSES, CROP_NAME, ACTION_NAME, Action, isHealthy, DiseaseClass } from '../data/diseases';
 import { diagnose, loadLeafModel, Diagnosis, viewTransform } from '../ai/leaf';
@@ -169,6 +170,7 @@ export class Procedure extends Phaser.Scene {
   applyAction(a: Action, grade: Grade) {
     if (this.treated || this.seq.length >= 3) return;
     this.seq.push(a); this.grades.push(grade);
+    sound.play(a); this.time.delayedCall(180, () => sound.play(grade.label === 'Perfect' ? 'perfect' : grade.label === 'Good' ? 'good' : 'miss'));
     this.ring(grade);
     this.redraw();
   }
@@ -178,7 +180,7 @@ export class Procedure extends Phaser.Scene {
     if (d.fukuCharge <= 0) { this.say('Заряд линзы на нуле. Он восстановится ночью — или купите улучшение у Огавы.', HEX.magentaDark); return; }
     this.busy = true;
     this.fuku.setFrame(2).anims.stop();
-    this.glitch();
+    this.glitch(); sound.setMood('scan'); sound.play('scan');
     try {
       const img = this.textures.get(`card:${this.bed.card}`).getSourceImage() as HTMLImageElement;
       const res = await diagnose(img, view);
@@ -217,7 +219,7 @@ export class Procedure extends Phaser.Scene {
     } });
     const bar = this.add.graphics().setDepth(61);
     this.aphid = { sprite, until: this.time.now + win, bar, hop };
-    this.cameras.main.shake(120, 0.004);
+    this.cameras.main.shake(120, 0.004); sound.play('aphid');
     this.say('Тля-ниндзя на листе! Смахните её: взмах ладонью (G6), клавиша 6 или щелчок по ней.', HEX.magentaDark);
   }
 
@@ -226,7 +228,7 @@ export class Procedure extends Phaser.Scene {
     this.aphid = null;
     a.hop.remove(); a.bar.destroy();
     if (ok) {
-      game.data.stats.aphids++;
+      game.data.stats.aphids++; sound.play('swat');
       this.ring(grade);
       this.tweens.add({ targets: a.sprite, x: a.sprite.x + 500, angle: 720, alpha: 0, duration: 450, onComplete: () => a.sprite.destroy() });
       this.say(`Тля улетела! ${grade.label}. Продолжаем лечение.`, HEX.greenDark);
@@ -246,7 +248,7 @@ export class Procedure extends Phaser.Scene {
     const mult = this.grades.length ? this.grades.reduce((s, g) => s + g.mult, 0) / this.grades.length : 1;
     const res = game.treat(this.bed, this.seq, mult);
     this.treated = true;
-    this.hitStop(res.ok);
+    this.hitStop(res.ok); sound.play(res.ok ? 'ok' : 'fail');
     this.say(`${res.ok ? '✓' : '✗'} ${res.msg} Нажмите «Назад» (Esc), чтобы вернуться на ферму.`, res.ok ? HEX.greenDark : HEX.magentaDark);
     game.save();
     events.emit('stats');
@@ -254,7 +256,7 @@ export class Procedure extends Phaser.Scene {
 
   harvest() {
     const n = game.harvestBed(this.bed);
-    if (n) { this.say(`Собрано ${n} шт. Продайте урожай в лавке Огавы.`, HEX.greenDark); game.save(); events.emit('stats'); }
+    if (n) { sound.play('coin'); this.say(`Собрано ${n} шт. Продайте урожай в лавке Огавы.`, HEX.greenDark); game.save(); events.emit('stats'); }
     else this.say('Урожай собирают только со здорового созревшего растения.', HEX.orangeDark);
   }
 
@@ -393,6 +395,7 @@ export class Procedure extends Phaser.Scene {
   }
 
   close() {
+    sound.setMood('day');
     this.cameras.main.fadeOut(200, 28, 26, 51);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.stop();

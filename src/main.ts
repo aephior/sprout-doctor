@@ -6,6 +6,8 @@ import { Hud } from './scenes/Hud';
 import { Procedure } from './scenes/Procedure';
 import { GestureSetup } from './scenes/GestureSetup';
 import { Boss } from './scenes/Boss';
+import { Evening } from './scenes/Evening';
+import { GestureTest } from './scenes/GestureTest';
 import { tracker } from './ai/hands';
 import { gestures } from './ai/gestureCtl';
 import { features, rulePose } from './ai/gestures';
@@ -24,7 +26,7 @@ const app = new Phaser.Game({
   backgroundColor: '#1c1a33',
   physics: { default: 'arcade', arcade: { debug: false } },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [Boot, Menu, World, Hud, Procedure, GestureSetup, Boss],
+  scene: [Boot, Menu, World, Hud, Procedure, GestureSetup, Boss, Evening, GestureTest],
 });
 
 // отладочный доступ для автотестов и отчёта по тестированию AI

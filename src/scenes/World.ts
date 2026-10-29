@@ -1,4 +1,5 @@
 // Мир фермы (вид сверху, клавиатура). Камера выключена — жесты только в «Процедурной».
+import { sound } from '../audio/sound';
 import { game, Bed } from '../state/game';
 import { isHealthy } from '../data/diseases';
 import { rng } from '../art/pixel';
@@ -18,11 +19,13 @@ export class World extends Phaser.Scene {
   marker!: Phaser.GameObjects.Graphics;
   current: Interact | null = null;
   locked = false;
+  lastStep = 0;
   fx?: Phaser.FX.ColorMatrix;
 
   constructor() { super('World'); }
 
   create() {
+    sound.setMood('day');
     this.cameras.main.fadeIn(400);
     this.solids = this.physics.add.staticGroup();
     this.buildMap();
@@ -188,6 +191,7 @@ export class World extends Phaser.Scene {
     const sp = 72, n = vx && vy ? Math.SQRT1_2 : 1;
     this.aoi.setVelocity(vx * sp * n, vy * sp * n);
     if (vx || vy) {
+      if (this.time.now - this.lastStep > 300) { this.lastStep = this.time.now; sound.play('step'); }
       if (vx) { this.facing = 'side'; this.aoi.setFlipX(vx < 0); this.aoi.anims.play('aoi-side', true); }
       else if (vy < 0) { this.facing = 'up'; this.aoi.setFlipX(false); this.aoi.anims.play('aoi-up', true); }
       else { this.facing = 'down'; this.aoi.setFlipX(false); this.aoi.anims.play('aoi-down', true); }

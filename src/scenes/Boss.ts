@@ -2,6 +2,7 @@
 // Споры глушат Линзу Фуку — диагноз недоступен, ритуалы выполняются по подсказке и по памяти.
 // Фаза 1: обрезка → спрей. Фаза 2: смахнуть трёх Споронов (G6) → спрей. Фаза 3 (ярость): повторить
 // последовательность из трёх жестов, которую Фуку показывает 3 секунды. Ошибка — перемотка к началу фазы.
+import { sound } from '../audio/sound';
 import { game } from '../state/game';
 import { ACTION_NAME, Action } from '../data/diseases';
 import { events } from '../state/events';
@@ -61,7 +62,7 @@ export class Boss extends Phaser.Scene {
     this.tweens.add({ targets: this.fuku, y: 128, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.ui = this.add.container(0, 0).setDepth(20);
     this.ghost = this.add.graphics().setDepth(30);
-    this.cameras.main.fadeIn(800, 30, 20, 40);
+    this.cameras.main.fadeIn(800, 30, 20, 40); sound.setMood('boss'); sound.play('boss');
 
     this.input.keyboard!.on('keydown', (e: KeyboardEvent) => { const a = KEYS[e.key]; if (a) this.input2(a, GRADES.Good); });
     if (gestures.wanted && gestures.possible) void this.startGestures();
@@ -121,6 +122,7 @@ export class Boss extends Phaser.Scene {
     if (a === 'swipe' && this.phase === 2) {
       const sp = this.sporons.shift();
       if (!sp) return;
+      sound.play('swat');
       this.tweens.add({ targets: sp.s, x: sp.s.x + (Math.random() < 0.5 ? -600 : 600), angle: 540, alpha: 0, duration: 400, onComplete: () => sp.s.destroy() });
       this.hit(grade);
       if (this.pendingSporons > 0) this.time.delayedCall(500, () => this.spawnSporon());
@@ -132,6 +134,7 @@ export class Boss extends Phaser.Scene {
   }
 
   hit(grade: Grade) {
+    sound.play(grade.label === 'Perfect' ? 'perfect' : grade.label === 'Good' ? 'good' : 'miss');
     this.step++; this.grades.push(grade.mult);
     this.bossHp = Math.max(0, this.bossHp - (100 / 9) * (0.6 + 0.4 * grade.mult));
     this.boss.setTintFill(grade.color);
@@ -150,6 +153,7 @@ export class Boss extends Phaser.Scene {
 
   /** Перемотка в духе Katana Zero: ошибка не конец игры, фаза начинается заново. */
   rewind(reason: string) {
+    sound.play('rewind');
     this.locked = true; this.rewinds++;
     this.hp = Math.max(0, this.hp - 20);
     this.sporons.forEach((sp) => sp.s.destroy()); this.sporons = [];
@@ -171,6 +175,7 @@ export class Boss extends Phaser.Scene {
   }
 
   victory() {
+    sound.setMood('evening'); sound.play('win');
     this.done = true;
     const d = game.data;
     d.bossDone = true;

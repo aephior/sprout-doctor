@@ -135,7 +135,8 @@ export class GestureSetup extends Phaser.Scene {
     btn(24, gestures.active ? 'Выключить камеру' : 'Включить камеру', () => (gestures.active ? this.disable() : void this.enable()), gestures.possible);
     btn(240, 'Сбросить калибровку', () => { gestures.resetCalibration(); this.redraw(); }, gestures.calibrated);
     btn(480, 'Скачать датасет', () => this.download(), gestures.rec.knn.samples.length > 0 && !!window.__SD_STANDALONE);
-    btn(700, 'Назад (Esc)', () => this.back());
+    btn(700, 'Тест жестов', () => this.scene.start('GestureTest'), gestures.possible);
+    btn(850, 'Назад', () => this.back());
     if (this.status) add(text(this, 480, 50, this.status, 14, HEX.orange).setOrigin(0.5));
   }
 
