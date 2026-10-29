@@ -7,26 +7,33 @@ export interface Diagnosis { top: { id: number; p: number }[]; ms: number }
 const MEAN = [0.485, 0.456, 0.406];
 const STD = [0.229, 0.224, 0.225];
 let worker: Worker | null = null;
+let ready: Promise<void> | null = null;
 let seq = 0;
 const pending = new Map<number, (d: any) => void>();
 
 import { asset } from '../assets';
 import { Net } from './engine';
 
-function call(msg: object, transfer: Transferable[] = []): Promise<any> {
+function resetWorker(reason: string) {
+  worker?.terminate(); worker = null; ready = null;
+  pending.forEach((f) => f({ ok: false, error: reason })); pending.clear();
+}
+
+function call(msg: object, transfer: Transferable[] = [], timeoutMs = 20000): Promise<any> {
   if (!worker) {
     worker = new Worker(asset('leaf-worker.js'));
     worker.onmessage = (e) => { const f = pending.get(e.data.id); pending.delete(e.data.id); f?.(e.data); };
-    worker.onerror = (e) => { pending.forEach((f) => f({ ok: false, error: e.message || 'worker error' })); pending.clear(); };
+    worker.onerror = (e) => resetWorker(e.message || 'ошибка потока нейросети');
   }
   const id = ++seq;
   return new Promise((res, rej) => {
-    pending.set(id, (d) => (d.ok ? res(d) : rej(new Error(d.error))));
+    // сторож: если поток не ответил, перезапускаем его — игра не должна зависать
+    const timer = setTimeout(() => resetWorker('нейросеть не ответила вовремя, попробуйте ещё раз'), timeoutMs);
+    pending.set(id, (d) => { clearTimeout(timer); d.ok ? res(d) : rej(new Error(d.error)); });
     worker!.postMessage({ id, ...msg }, transfer);
   });
 }
 
-let ready: Promise<void> | null = null;
 /** Страница загружает модель и передаёт её воркеру (один раз). */
 export function loadLeafModel(): Promise<void> {
   if (!ready) {

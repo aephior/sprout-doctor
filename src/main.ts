@@ -29,3 +29,17 @@ const app = new Phaser.Game({
 
 // отладочный доступ для автотестов и отчёта по тестированию AI
 (window as any).__SD_DEBUG = { app, game, events, tracker, gestures, features, rulePose };
+
+// Ошибки показываются на экране, чтобы их можно было сообщить разработчику
+function showError(msg: string) {
+  let el = document.getElementById('sd-error');
+  if (!el) {
+    el = document.createElement('div'); el.id = 'sd-error';
+    el.style.cssText = 'position:fixed;left:8px;bottom:8px;max-width:70vw;padding:6px 10px;background:#2b2a4c;color:#ff4f9a;font:12px monospace;border:1px solid #ff4f9a;z-index:9;white-space:pre-wrap';
+    el.onclick = () => el!.remove();
+    document.body.appendChild(el);
+  }
+  el.textContent = 'Ошибка (щелчок — скрыть): ' + msg.slice(0, 300);
+}
+window.addEventListener('error', (e) => showError(`${e.message} @ ${e.filename?.split('/').pop()}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => showError(String((e.reason && e.reason.stack) || e.reason)));

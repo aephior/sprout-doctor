@@ -40,6 +40,7 @@ export class Boss extends Phaser.Scene {
   constructor() { super('Boss'); }
 
   create() {
+    this.updateCam = undefined; this.hand = null; this.msg = ''; this.showSeq = true; this.locked = true;
     this.phase = 1; this.hp = 100; this.bossHp = 100; this.step = 0; this.rewinds = 0; this.sporons = []; this.done = false; this.grades = [];
     const g = this.add.graphics();
     [0x1a1530, 0x241c3d, 0x30244a, 0x3b2b52].forEach((c, i) => g.fillStyle(c, 1).fillRect(0, i * 135, 960, 136));
@@ -73,7 +74,7 @@ export class Boss extends Phaser.Scene {
     if (!(await gestures.start()) || !this.scene.isActive()) return;
     this.updateCam = cameraTexture(this, 'cam-boss', tracker.video, 176, 132);
     const off = gestures.listen({ frame: (i) => { this.hand = i; }, gesture: (e) => this.onGesture(e) });
-    this.events.once('shutdown', () => { off(); gestures.stop(); });
+    this.events.once('shutdown', () => { off(); this.updateCam = undefined; gestures.pause(); });
   }
 
   onGesture(e: GestureEvent) {

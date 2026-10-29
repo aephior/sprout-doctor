@@ -1,4 +1,5 @@
 import { game } from '../state/game';
+import { gestures } from '../ai/gestureCtl';
 import { loadRecords } from '../state/records';
 import { isLicensed } from '../state/license';
 import { text, HEX, C, paperPanel } from '../ui/ui';
@@ -7,6 +8,7 @@ export class Menu extends Phaser.Scene {
   constructor() { super('Menu'); }
 
   create() {
+    gestures.stop();   // в меню камера выключена
     const { width: W, height: H } = this.scale;
     // закатное небо
     const g = this.add.graphics();

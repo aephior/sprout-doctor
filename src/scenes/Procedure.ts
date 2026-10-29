@@ -58,6 +58,8 @@ export class Procedure extends Phaser.Scene {
     this.bed = game.data.beds[data.bedId];
     this.seq = []; this.grades = []; this.diag = null; this.view = 0; this.busy = false; this.treated = false;
     this.aphid = null; this.aphidRolled = false;
+    // сцена переиспользуется для каждой грядки — сбрасываем всё, что осталось от прошлого визита
+    this.gestureOn = false; this.updateCam = undefined; this.hand = null; this.gestureStatus = undefined; this.msg = '';
   }
 
   create() {
@@ -97,7 +99,7 @@ export class Procedure extends Phaser.Scene {
       frame: (i) => { this.hand = i; },
       gesture: (e) => this.onGesture(e),
     });
-    this.events.once('shutdown', () => { off(); gestures.stop(); });
+    this.events.once('shutdown', () => { off(); this.gestureOn = false; this.updateCam = undefined; gestures.pause(); });
     this.time.addEvent({ delay: 250, loop: true, callback: () => this.drawGestureStatus() });
     this.redraw();
   }
@@ -138,7 +140,10 @@ export class Procedure extends Phaser.Scene {
   gestureStatus?: Phaser.GameObjects.Text;
   drawGestureStatus() {
     const i = this.hand;
-    const s = i ? `Поза: ${POSE_NAME[i.pose]} · ${Math.round(i.conf * 100)}%` : 'Покажите руку в камеру';
+    const stale = !this.hand || (tracker.last.t && performance.now() - tracker.last.t > 2000);
+    const s = !gestures.active ? 'Камера запускается…'
+      : stale && gestures.fps === 0 ? 'Камера не присылает кадры — выйдите (Esc) и войдите снова'
+      : i?.landmarks ? `Поза: ${POSE_NAME[i.pose]} · ${Math.round(i.conf * 100)}% · ${gestures.fps} к/с` : `Покажите руку в камеру · ${gestures.fps} к/с`;
     if (!this.gestureStatus) this.gestureStatus = text(this, 24, 372, '', 14, HEX.teal).setDepth(41);
     this.gestureStatus.setText(s);
   }

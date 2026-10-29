@@ -23,6 +23,7 @@ export class GestureSetup extends Phaser.Scene {
   constructor() { super('GestureSetup'); }
 
   create() {
+    this.updateCam = undefined; this.info = null; this.lastEvent = null; this.status = ''; this.recPose = null;
     this.add.rectangle(0, 0, 960, 540, 0x1c1a33).setOrigin(0);
     this.ui = this.add.container(0, 0);
     this.ghost = this.add.graphics().setDepth(10);
@@ -30,7 +31,7 @@ export class GestureSetup extends Phaser.Scene {
       frame: (i) => { this.info = i; },
       gesture: (e) => { this.lastEvent = e; this.flash(e); },
     });
-    this.events.once('shutdown', () => { this.off?.(); if (!gestures.wanted) gestures.stop(); });
+    this.events.once('shutdown', () => { this.off?.(); this.updateCam = undefined; gestures.record(null); gestures.stop(); });
     this.input.keyboard!.on('keydown', (e: KeyboardEvent) => {
       if (e.key === 'Escape') this.back();
       const n = Number(e.key);

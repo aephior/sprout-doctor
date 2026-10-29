@@ -25,48 +25,68 @@ export class HandTracker {
   private hands: any = null;
   private stream: MediaStream | null = null;
   private running = false;
-  private busy = false;
+  private paused = false;
+  private busySince = 0;          // момент начала обработки кадра (0 — свободно)
+  private gen = 0;                // поколение цикла: старый цикл завершается сам
+  private starting: Promise<void> | null = null;
   last: HandFrame = { landmarks: null, handed: 'Right', t: 0 };
   fps = 0;
   private listeners = new Set<(f: HandFrame) => void>();
 
   onFrame(f: (fr: HandFrame) => void) { this.listeners.add(f); return () => this.listeners.delete(f); }
 
-  async start() {
-    if (this.running) return;
+  /** Запуск камеры. Повторные вызовы во время запуска ждут тот же запуск. */
+  start(): Promise<void> {
+    if (this.running) { this.paused = false; return Promise.resolve(); }
+    if (!this.starting) this.starting = this.doStart().finally(() => { this.starting = null; });
+    return this.starting;
+  }
+
+  private async doStart() {
     await loadScript();
     if (!this.hands) {
       this.hands = new Hands({ locateFile: (f: string) => asset('mediapipe/' + f) });
       this.hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5, selfieMode: false });
-      this.hands.onResults((r: any) => {
-        const lm = r.multiHandLandmarks?.[0] ?? null;
-        // MediaPipe называет руку как на неотзеркаленном изображении
-        const label = r.multiHandedness?.[0]?.label === 'Left' ? 'Left' : 'Right';
-        this.last = { landmarks: lm, handed: label, t: performance.now() };
-        this.listeners.forEach((f) => f(this.last));
-      });
+      this.hands.onResults((r: any) => this.onResults(r));
       await this.hands.initialize();
     }
     this.stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
     this.video.srcObject = this.stream;
     this.video.muted = true; this.video.playsInline = true;
     await this.video.play();
-    this.running = true;
+    this.running = true; this.paused = false; this.busySince = 0;
+    const gen = ++this.gen;
     let frames = 0, t0 = performance.now();
-    const loop = async () => {
-      if (!this.running) return;
-      if (!this.busy && this.video.readyState >= 2) {
-        this.busy = true;
-        try { await this.hands.send({ image: this.video }); } catch { /* пропуск кадра */ }
-        this.busy = false;
-        frames++;
-        const now = performance.now();
-        if (now - t0 > 1000) { this.fps = Math.round(frames * 1000 / (now - t0)); frames = 0; t0 = now; }
+    const loop = () => {
+      if (gen !== this.gen || !this.running) return;          // цикл устарел — выходим
+      const now = performance.now();
+      if (this.busySince && now - this.busySince > 1500) this.busySince = 0;   // сторож: кадр «завис»
+      if (!this.paused && !this.busySince && this.video.readyState >= 2) {
+        this.busySince = now;
+        Promise.resolve().then(() => this.hands.send({ image: this.video })).catch(() => { /* пропуск кадра */ })
+          .finally(() => {
+            if (gen !== this.gen) return;
+            this.busySince = 0; frames++;
+            const t = performance.now();
+            if (t - t0 > 1000) { this.fps = Math.round(frames * 1000 / (t - t0)); frames = 0; t0 = t; }
+          });
       }
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
   }
+
+  private onResults(r: any) {
+    if (this.paused) return;
+    const lm = r.multiHandLandmarks?.[0] ?? null;
+    // MediaPipe называет руку как на неотзеркаленном изображении
+    const label = r.multiHandedness?.[0]?.label === 'Left' ? 'Left' : 'Right';
+    this.last = { landmarks: lm, handed: label, t: performance.now() };
+    this.listeners.forEach((f) => { try { f(this.last); } catch (e) { console.error(e); } });
+  }
+
+  /** Пауза без выключения камеры: кадры не обрабатываются (между визитами на грядки). */
+  pause() { this.paused = true; this.last = { landmarks: null, handed: 'Right', t: 0 }; this.fps = 0; }
 
   /** Распознавание на одном изображении (для тестов и отчёта). */
   async detectImage(img: HTMLImageElement | HTMLCanvasElement): Promise<HandFrame> {
@@ -77,19 +97,22 @@ export class HandTracker {
       await this.hands.initialize();
     }
     return new Promise((res) => {
-      this.hands.onResults((r: any) => res({ landmarks: r.multiHandLandmarks?.[0] ?? null, handed: r.multiHandedness?.[0]?.label === 'Left' ? 'Left' : 'Right', t: performance.now() }));
+      this.hands.onResults((r: any) => {
+        this.hands.onResults((rr: any) => this.onResults(rr));
+        res({ landmarks: r.multiHandLandmarks?.[0] ?? null, handed: r.multiHandedness?.[0]?.label === 'Left' ? 'Left' : 'Right', t: performance.now() });
+      });
       this.hands.send({ image: img });
     });
   }
 
   stop() {
-    this.running = false;
+    this.running = false; this.paused = false; this.gen++; this.busySince = 0;
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = null;
     this.last = { landmarks: null, handed: 'Right', t: 0 };
   }
 
-  get active() { return this.running; }
+  get active() { return this.running && !this.paused; }
 }
 
 export const tracker = new HandTracker();
