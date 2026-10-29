@@ -43,6 +43,7 @@ export class World extends Phaser.Scene {
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E') as Record<string, Phaser.Input.Keyboard.Key>;
     kb.on('keydown-E', () => this.interact());
     kb.on('keydown-ESC', () => { if (!this.locked) events.emit('pause'); });
+    kb.on('keydown-TAB', (e: KeyboardEvent) => { e.preventDefault(); if (!this.locked) events.emit('diary'); });
 
     events.on('lock', this.lockHandler, this);
     events.on('refresh-beds', this.refreshBeds, this);

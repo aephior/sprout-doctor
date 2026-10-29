@@ -4,6 +4,13 @@ import { Menu } from './scenes/Menu';
 import { World } from './scenes/World';
 import { Hud } from './scenes/Hud';
 import { Procedure } from './scenes/Procedure';
+import { GestureSetup } from './scenes/GestureSetup';
+import { tracker } from './ai/hands';
+import { gestures } from './ai/gestureCtl';
+import { features, rulePose } from './ai/gestures';
+
+// отладочный доступ для автотестов и отчёта по тестированию AI
+(window as any).__SD_DEBUG = { tracker, gestures, features, rulePose };
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -14,5 +21,5 @@ new Phaser.Game({
   backgroundColor: '#1c1a33',
   physics: { default: 'arcade', arcade: { debug: false } },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [Boot, Menu, World, Hud, Procedure],
+  scene: [Boot, Menu, World, Hud, Procedure, GestureSetup],
 });

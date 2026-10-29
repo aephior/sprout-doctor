@@ -5,9 +5,9 @@ let net: Net | null = null;
 let loading: Promise<Net> | null = null;
 
 self.onmessage = async (e: MessageEvent) => {
-  const { id, type, input, base } = e.data;
+  const { id, type, input, model, weights } = e.data;
   try {
-    if (!loading) loading = Net.load(base + 'leaf_model.json', base + 'leaf_weights.b64.txt');
+    if (!loading) loading = Net.load(model, weights);
     net = await loading;
     if (type === 'load') { (self as any).postMessage({ id, ok: true }); return; }
     const out = net.run(input as Float32Array);

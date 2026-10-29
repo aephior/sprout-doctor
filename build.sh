@@ -9,6 +9,7 @@ bun build src/ai/leaf.worker.ts --outfile dist/leaf-worker.js --target browser -
 cp index.html dist/
 cp vendor/phaser/dist/phaser.min.js dist/vendor/
 cp -r public/* dist/
+mkdir -p dist/mediapipe && cp vendor/mediapipe-hands/*.js vendor/mediapipe-hands/*.wasm vendor/mediapipe-hands/*.data vendor/mediapipe-hands/*.tflite vendor/mediapipe-hands/*.binarypb dist/mediapipe/
 python3 -c "import base64;open('dist/leaf_weights.b64.txt','w').write(base64.b64encode(open('dist/leaf_weights.bin','rb').read()).decode())" && rm dist/leaf_weights.bin
 # Вариант для публикации (страница без <html>/<head>/<body> — их добавляет хостинг)
 python3 - <<'PY'
@@ -23,4 +24,5 @@ for f in ['vendor/phaser.min.js', 'game.js']:
     body = body.replace(f'<script src="{f}"></script>', '<script>' + code + '</script>')
 open('dist/artifact.html', 'w').write(head.strip() + '\n' + body.strip() + '\n')
 PY
+python3 build_standalone.py
 echo "built: $(du -sh dist | cut -f1), $(find dist -type f | wc -l) files"

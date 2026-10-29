@@ -1,6 +1,7 @@
 import { registerSprites } from '../art/sprites';
 import { game, Card } from '../state/game';
 import { text, HEX } from '../ui/ui';
+import { asset } from '../assets';
 
 export class Boot extends Phaser.Scene {
   constructor() { super('Boot'); }
@@ -8,10 +9,10 @@ export class Boot extends Phaser.Scene {
   preload() {
     const label = text(this, 480, 270, 'Загрузка…', 20, HEX.paper).setOrigin(0.5);
     this.load.on('progress', (v: number) => label.setText(`Загрузка… ${Math.round(v * 100)}%`));
-    this.load.json('cards', 'cards/cards.json');
-    this.load.json('classes', 'classes.json');
+    this.load.json('cards', asset('cards/cards.json'));
+    this.load.json('classes', asset('classes.json'));
     this.load.on('filecomplete-json-cards', (_k: string, _t: string, data: Card[]) => {
-      data.forEach((c) => this.load.image(`card:${c.file}`, `cards/${c.file}`));
+      data.forEach((c) => this.load.image(`card:${c.file}`, asset(`cards/${c.file}`)));
     });
   }
 

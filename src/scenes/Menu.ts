@@ -27,10 +27,11 @@ export class Menu extends Phaser.Scene {
 
     const items: [string, () => void][] = [['Новая игра', () => { game.newGame(); game.save(); this.startGame(); }]];
     if (game.hasSave()) items.unshift(['Продолжить', () => { if (game.load()) this.startGame(); }]);
+    items.push(['Ритуалы рук (камера)', () => this.scene.start('GestureSetup')]);
     items.push(['Как играть', () => this.help()]);
 
     const px = 40, py = H - 60 - items.length * 40;
-    paperPanel(this, px, py - 16, 250, items.length * 40 + 24);
+    paperPanel(this, px, py - 16, 300, items.length * 40 + 24);
     let sel = 0;
     const labels = items.map(([t], i) => text(this, px + 20, py + i * 40, t, 24, HEX.ink).setInteractive({ useHandCursor: true })
       .on('pointerover', () => { sel = i; draw(); }).on('pointerdown', () => items[i][1]()));

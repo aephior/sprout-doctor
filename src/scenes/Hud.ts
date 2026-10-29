@@ -2,10 +2,12 @@
 import { game, DAYS_PER_SEASON } from '../state/game';
 import { events } from '../state/events';
 import { text, HEX, C, paperPanel, bar } from '../ui/ui';
+import { CLASSES, CROP_NAME, isHealthy } from '../data/diseases';
+import { ritualText } from './Procedure';
 
 const SEASONS = ['', 'Весна', 'Лето', 'Осень'];
 const PLACE_HINT: Record<string, string> = {
-  bed: 'E — осмотреть грядку', house: 'E — лечь спать (закончить день)', shop: 'E — лавка господина Огавы',
+  bed: 'E — осмотреть грядку   ·   Tab — дневник', house: 'E — лечь спать (закончить день)', shop: 'E — лавка господина Огавы',
   vending: 'E — торговый автомат', busstop: 'E — автобусная остановка',
 };
 
@@ -33,9 +35,10 @@ export class Hud extends Phaser.Scene {
     on('stats', () => this.drawStats());
     on('place', (k: string) => this.place(k));
     on('pause', () => this.pauseMenu());
+    on('diary', () => this.diary());
 
     this.time.delayedCall(700, () => this.say(game.data.day === 1 && game.data.season === 1
-      ? 'Аой-сан, я Фуку. Бабушка Хару оставила мне её записи. На трёх грядках что-то не так — подойдите и нажмите E.'
+      ? 'Аой-сан, я Фуку. На трёх грядках что-то не так: над ними летят споры. Подойдите к грядке и нажмите E. Tab — дневник бабушки с ритуалами.'
       : this.forecast()));
   }
 
@@ -80,17 +83,18 @@ export class Hud extends Phaser.Scene {
   openModal(title: string, lines: string[], options: [string, string, () => void][]) {
     this.closeModal();
     events.emit('lock', true);
-    const W = 520, H = 120 + lines.length * 24 + options.length * 34;
-    const x = 480 - W / 2, y = 270 - H / 2;
-    const c = this.add.container(0, 0);
+    const W = 660, c = this.add.container(0, 0);
+    // сначала измеряем текст, затем рисуем панель по высоте содержимого
+    const body = lines.map((s) => text(this, 0, 0, s || ' ', 16, '#3a3550', { wordWrap: { width: W - 48 } }));
+    const opts = options.map(([key, label, fn]) => text(this, 0, 0, `[${key}] ${label}`, 18, '#c8323c').setInteractive({ useHandCursor: true }).on('pointerdown', fn));
+    const H = 70 + body.reduce((h, t) => h + t.height + 6, 0) + 16 + opts.length * 34;
+    const x = 480 - W / 2, y = Math.max(16, 270 - H / 2);
     const shade = this.add.rectangle(0, 0, 960, 540, 0x000000, 0.45).setOrigin(0).setInteractive();
     c.add([shade, paperPanel(this, x, y, W, H), text(this, x + 24, y + 18, title, 24)]);
-    lines.forEach((s, i) => c.add(text(this, x + 24, y + 58 + i * 24, s, 16, '#3a3550', { wordWrap: { width: W - 48 } })));
-    const oy = y + 70 + lines.length * 24;
-    options.forEach(([key, label, fn], i) => {
-      const t = text(this, x + 24, oy + i * 34, `[${key}] ${label}`, 18, '#c8323c').setInteractive({ useHandCursor: true }).on('pointerdown', fn);
-      c.add(t);
-    });
+    let cy = y + 58;
+    body.forEach((t) => { t.setPosition(x + 24, cy); cy += t.height + 6; c.add(t); });
+    cy += 12;
+    opts.forEach((t) => { t.setPosition(x + 24, cy); cy += 34; c.add(t); });
     this.modal = c;
     const kb = this.input.keyboard!;
     const handler = (e: KeyboardEvent) => {
@@ -168,6 +172,24 @@ export class Hud extends Phaser.Scene {
     else this.openModal('Ферма не выстояла', ['Хайкаби оказалась сильнее. Попробуйте снова — внимательнее к диагнозам.', ...lines], [
       ['1', 'Начать заново', () => { game.newGame(); game.save(); this.toMenu(); }],
     ]);
+  }
+
+  diary() {
+    const d = game.data;
+    const seen = new Map<string, { name: string; crops: string[]; ritual: string }>();
+    for (const c of CLASSES) {
+      if (isHealthy(c) || c.season > d.season) continue;
+      const e = seen.get(c.key) ?? { name: c.name, crops: [], ritual: ritualText(c) };
+      e.crops.push(CROP_NAME[c.crop]); seen.set(c.key, e);
+    }
+    const lines = [...seen.values()].map((e) => `${e.name} (${e.crops.join(', ')}) → ${e.ritual}`);
+    this.openModal('Дневник бабушки Хару', [
+      'Порядок: подойти к грядке (E) → скан (1) → ритуал по дневнику → подтвердить (Enter).',
+      'Нейросеть Фуку может ошибаться: при уверенности ниже 60% сделайте другой ракурс (R).',
+      '',
+      ...lines,
+      'Здоровое растение не лечат: кнопка «Не лечить» (0).',
+    ], [['Esc', 'Закрыть', () => this.closeModal()]]);
   }
 
   pauseMenu() {

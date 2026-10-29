@@ -36,7 +36,7 @@ export class Net {
       fetch(jsonUrl).then((r) => { if (!r.ok) throw new Error(`${jsonUrl}: ${r.status}`); return r.json(); }),
       fetch(binUrl).then(async (r) => {
         if (!r.ok) throw new Error(`${binUrl}: ${r.status}`);
-        if (!binUrl.endsWith('.txt')) return r.arrayBuffer();
+        if (!binUrl.endsWith('.txt') && !binUrl.startsWith('blob:')) return r.arrayBuffer();
         // веса в base64 (хостинг артефактов не раздаёт .bin)
         const b64 = (await r.text()).trim(), bin = atob(b64), out = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);

@@ -10,18 +10,18 @@ let worker: Worker | null = null;
 let seq = 0;
 const pending = new Map<number, (d: any) => void>();
 
-function base() { return new URL('.', location.href).href; }
+import { asset } from '../assets';
 
 function call(msg: object, transfer: Transferable[] = []): Promise<any> {
   if (!worker) {
-    worker = new Worker(base() + 'leaf-worker.js');
+    worker = new Worker(asset('leaf-worker.js'));
     worker.onmessage = (e) => { const f = pending.get(e.data.id); pending.delete(e.data.id); f?.(e.data); };
     worker.onerror = (e) => { pending.forEach((f) => f({ ok: false, error: e.message || 'worker error' })); pending.clear(); };
   }
   const id = ++seq;
   return new Promise((res, rej) => {
     pending.set(id, (d) => (d.ok ? res(d) : rej(new Error(d.error))));
-    worker!.postMessage({ id, base: base(), ...msg }, transfer);
+    worker!.postMessage({ id, model: asset('leaf_model.json'), weights: asset('leaf_weights.b64.txt'), ...msg }, transfer);
   });
 }
 
