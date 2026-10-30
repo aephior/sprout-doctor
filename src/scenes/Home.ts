@@ -19,7 +19,10 @@ export class Home extends Phaser.Scene {
   state: 'idle' | 'sleeping' | 'morning' = 'idle';
   notes: string[] = [];
 
+  auto = false;
   constructor() { super('Home'); }
+
+  init(data: { auto?: boolean }) { this.auto = !!data?.auto; }
 
   create() {
     paintHome(this);
@@ -42,7 +45,12 @@ export class Home extends Phaser.Scene {
     this.menu();
     this.input.keyboard!.on('keydown', (e: KeyboardEvent) => this.key(e));
     this.cameras.main.fadeIn(500, 0, 0, 0);
+    if (this.auto) this.time.delayedCall(600, () => this.sleep());
+    events.on('diary-closed', this.diaryClosed, this);
+    this.events.once('shutdown', () => events.off('diary-closed', this.diaryClosed, this));
   }
+
+  diaryClosed() { this.input.keyboard!.enabled = true; this.menu(); }
 
   key(e: KeyboardEvent) {
     if (this.state === 'idle') {
@@ -73,9 +81,9 @@ export class Home extends Phaser.Scene {
   }
 
   diary() {
-    const d = game.data, seen = new Map<string, string>();
-    for (const c of CLASSES) if (!isHealthy(c) && c.season <= d.season && !seen.has(c.key)) seen.set(c.key, `${c.name} → ${ritualText(c)}`);
-    this.card(['«Растение не умеет жаловаться. Оно показывает — листьями.» — Хару', '', ...seen.values()], [['2', 'Закрыть дневник', () => this.menu()]], 24, 560);
+    this.ui.removeAll(true);
+    this.input.keyboard!.enabled = false;
+    this.scene.launch('Diary', { returnTo: 'Home' });
   }
 
   sleep() {

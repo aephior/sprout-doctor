@@ -5,13 +5,15 @@ import { events } from '../state/events';
 import { text, HEX, C, paperPanel, bar } from '../ui/ui';
 import { CLASSES, CROP_NAME, isHealthy } from '../data/diseases';
 import { ritualText } from './Procedure';
+import { clockText } from '../world/life';
 import { forecast as weatherForecast } from '../state/director';
 import { addRecord } from '../state/records';
 import { isLicensed, activate, generateKey, normalizeKey, PRICE } from '../state/license';
 
 export const SEASONS = ['', 'Весна', 'Лето', 'Осень'];
 const PLACE_HINT: Record<string, string> = {
-  bed: 'E — осмотреть грядку   ·   Tab — дневник', house: 'E — лечь спать (закончить день)', shop: 'E — лавка господина Огавы',
+  bed: 'E — осмотреть грядку   ·   Tab — дневник',
+  mochi: 'E — погладить Моти', fisher: 'E — поговорить с рыбаком', house: 'E — лечь спать (закончить день)', shop: 'E — лавка господина Огавы',
   vending: 'E — торговый автомат', busstop: 'E — автобусная остановка',
 };
 
@@ -39,7 +41,9 @@ export class Hud extends Phaser.Scene {
     on('stats', () => this.drawStats());
     on('place', (k: string) => this.place(k));
     on('pause', () => this.pauseMenu());
-    on('diary', () => this.diary());
+    on('diary', () => this.enterInterior('Diary', { returnTo: 'World' }));
+    on('midnight', () => { this.say('Аой-сан, уже полночь… Глаза слипаются. Пора домой.', 3000); this.time.delayedCall(1800, () => this.night(true)); });
+    on('fisher', () => this.fisherTalk());
     on('after-night', (n: string[]) => this.afterNight(n));
     this.input.keyboard!.on('keydown-M', () => this.say(sound.toggle() ? 'Звук включён (M).' : 'Звук выключен (M).', 1800));
     this.input.keyboard!.on('keydown', (e: KeyboardEvent) => this.onKeyTyping(e));
@@ -57,9 +61,9 @@ export class Hud extends Phaser.Scene {
     this.stats.removeAll(true);
     const d = game.data;
     const p = paperPanel(this, 14, 14, 270, 100);
-    const l1 = text(this, 26, 22, `${SEASONS[d.season]} · день ${d.day}/${DAYS_PER_SEASON}`, 20);
+    const l1 = text(this, 26, 22, `${SEASONS[d.season]} · ${d.day}/${DAYS_PER_SEASON} · ${clockText()}`, 20);
     const l2 = text(this, 26, 50, `Монеты: ${d.coins}   Урожай: ${d.harvest}`, 16);
-    const l3 = text(this, 26, 72, `Фунгицид: ${d.fungicide} · влажность ${d.weather.humidity}%`, 15);
+    const l3 = text(this, 26, 72, `Фунгицид: ${d.fungicide} · ${d.rain ? 'дождь' : 'влажн.'} ${d.weather.humidity}%`, 15);
     const rep = text(this, 150, 93, 'Реп.', 13, '#555');
     const rb = bar(this, 186, 96, 86, 8, d.reputation / 100, C.orange);
     // заряд Фуку — точки
@@ -132,17 +136,31 @@ export class Hud extends Phaser.Scene {
 
   /** Переход в интерьер: мир спит, интерфейс скрыт. */
   enterInterior(key: string, data?: object) {
+    if (this.modal) this.closeModal();
     events.emit('lock', true);
     this.scene.sleep('World');
     this.scene.setVisible(false);
     this.scene.launch(key, data);
   }
 
-  night() {
+  fisherIdx = 0;
+  fisherTalk() {
+    const lines = [
+      'Рыбак: «Клюёт плохо. Зато вечер хороший». Он не отрывает взгляда от поплавка.',
+      'Рыбак: «Хару тоже приходила сюда. Говорила, что вода лечит голову лучше любого чая».',
+      'Рыбак: «В тумане плесень любит теплицы. Ты держи их открытыми, дочка».',
+      'Рыбак: «Автобус опять опоздал. Здесь всё опаздывает — и это хорошо».',
+      'Рыбак молча протягивает термос. Чай пахнет дымом и яблоками.',
+    ];
+    this.say(lines[this.fisherIdx++ % lines.length], 6000);
+  }
+
+  night(auto = false) {
     events.emit('lock', true);
     // сначала «Конец дня», затем ночь
     this.scene.setVisible(false);
     // вечер на веранде → дом → сон → утро
+    if (auto) { this.enterInterior('Home', { auto: true }); return; }
     this.scene.launch('Evening', { done: () => this.enterInterior('Home') });
   }
 

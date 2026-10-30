@@ -1,0 +1,110 @@
+// Дневник бабушки Хару: раскрытая книга. Слева — оглавление болезней (открытые страницы и «???»),
+// справа — страница: фото листа, симптомы словами Хару, ритуал лечения. Страница открывается
+// при первом успешном лечении болезни; все 7 страниц — достижение «Полный дневник».
+import { game, PAGES } from '../state/game';
+import { CLASSES, CROP_NAME, isHealthy } from '../data/diseases';
+import { events } from '../state/events';
+import { text, C } from '../ui/ui';
+import { ritualText } from './Procedure';
+import { sound } from '../audio/sound';
+
+const KEYS = Object.keys(PAGES);
+
+export class Diary extends Phaser.Scene {
+  returnTo: 'World' | 'Home' = 'World';
+  sel = 0;
+  page!: Phaser.GameObjects.Container;
+  list!: Phaser.GameObjects.Container;
+
+  constructor() { super('Diary'); }
+  init(data: { returnTo?: 'World' | 'Home'; open?: string }) {
+    this.returnTo = data?.returnTo ?? 'World';
+    this.sel = data?.open ? Math.max(0, KEYS.indexOf(data.open)) : Math.max(0, KEYS.findIndex((k) => game.data.pages.includes(k)));
+  }
+
+  create() {
+    const g = this.add.graphics();
+    g.fillStyle(0x000000, 0.6).fillRect(0, 0, 960, 540);
+    // обложка и две страницы
+    g.fillStyle(0x5a2a2a, 1).fillRoundedRect(50, 30, 860, 480, 10);
+    g.fillStyle(0x8e2230, 1).fillRoundedRect(56, 36, 848, 468, 8);
+    g.fillStyle(0xf6e7c1, 1).fillRect(76, 50, 400, 440).fillRect(484, 50, 400, 440);
+    g.fillStyle(0xe2cfa0, 1).fillRect(468, 50, 8, 440).fillRect(484, 50, 8, 440);
+    g.fillStyle(0xc9ab74, 1).fillRect(476, 46, 8, 448);
+    for (let y = 120; y < 480; y += 26) { g.fillStyle(0xd9c79e, 1).fillRect(96, y, 360, 1); }
+    g.fillStyle(0xc8323c, 1).fillRect(860, 30, 14, 70).fillTriangle(860, 100, 874, 100, 867, 92);   // закладка
+    this.list = this.add.container(0, 0);
+    this.page = this.add.container(0, 0);
+    text(this, 276, 66, 'Дневник Хару', 24, '#5a2a2a').setOrigin(0.5, 0);
+    text(this, 276, 96, `Страниц: ${game.data.pages.length} из ${KEYS.length}`, 14, '#8a6a4a').setOrigin(0.5, 0);
+    text(this, 480, 520, '↑↓ — листать · Esc — закрыть', 13, '#c9ab74').setOrigin(0.5);
+    this.input.keyboard!.on('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Tab') { e.preventDefault(); this.close(); }
+      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') this.go(-1);
+      if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') this.go(1);
+    });
+    this.drawList(); this.drawPage();
+    this.cameras.main.fadeIn(250, 0, 0, 0);
+    sound.play('page');
+  }
+
+  go(d: number) { this.sel = (this.sel + d + KEYS.length) % KEYS.length; sound.play('page'); this.drawList(); this.drawPage(); }
+
+  drawList() {
+    this.list.removeAll(true);
+    KEYS.forEach((k, i) => {
+      const open = game.data.pages.includes(k), c = CLASSES.find((x) => x.key === k)!;
+      const y = 130 + i * 48, sel = i === this.sel;
+      if (sel) { const h = this.add.graphics(); h.fillStyle(0xf2d39a, 1).fillRect(92, y - 6, 368, 40); this.list.add(h); }
+      this.list.add(text(this, 104, y, open ? c.name : '? ? ?', 18, open ? '#3a2a1a' : '#b8a888'));
+      this.list.add(text(this, 104, y + 21, open ? CLASSES.filter((x) => x.key === k).map((x) => CROP_NAME[x.crop]).join(', ') : 'ещё не встречалась', 12, '#8a6a4a'));
+      if (open) this.list.add(text(this, 444, y + 8, '✓', 18, '#2e6b2a').setOrigin(1, 0));
+      const z = this.add.zone(92, y - 6, 368, 40).setOrigin(0).setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.sel = i; sound.play('page'); this.drawList(); this.drawPage(); });
+      this.list.add(z);
+    });
+  }
+
+  drawPage() {
+    this.page.removeAll(true);
+    const k = KEYS[this.sel], open = game.data.pages.includes(k);
+    const cls = CLASSES.filter((x) => x.key === k && !isHealthy(x));
+    const add = (o: Phaser.GameObjects.GameObject) => this.page.add(o);
+    if (!open) {
+      const g = this.add.graphics(); g.fillStyle(0xe2cfa0, 1).fillRect(584, 90, 200, 200); g.lineStyle(2, 0xc9ab74, 1).strokeRect(584, 90, 200, 200);
+      add(g);
+      add(text(this, 684, 190, '?', 72, '#c9ab74').setOrigin(0.5));
+      add(text(this, 684, 320, 'Страница пока пуста.', 18, '#8a6a4a').setOrigin(0.5));
+      add(text(this, 684, 350, 'Вылечите эту болезнь хотя бы раз —\nи бабушкина запись проявится.', 14, '#8a6a4a', { align: 'center' }).setOrigin(0.5, 0));
+      return;
+    }
+    // фото листа, приклеенное «скотчем»
+    const card = game.cards.find((c) => cls.some((x) => x.id === c.cls));
+    const ph = this.add.graphics(); ph.fillStyle(0xffffff, 1).fillRect(592, 70, 184, 184); ph.fillStyle(0xf2e8c8, 0.85).fillRect(566, 62, 50, 16).fillRect(752, 62, 50, 16);
+    add(ph);
+    if (card) add(this.add.image(684, 162, `card:${card.file}`).setDisplaySize(172, 172).setAngle(-1.5));
+    const c = cls[0];
+    add(text(this, 684, 268, c.name, 22, '#3a2a1a').setOrigin(0.5, 0));
+    add(text(this, 684, 296, cls.map((x) => CROP_NAME[x.crop]).join(' · '), 13, '#8a6a4a').setOrigin(0.5, 0));
+    add(text(this, 508, 322, `«${PAGES[k]}»`, 15, '#4a3a2a', { wordWrap: { width: 352 }, lineSpacing: 4, fontStyle: 'italic' }));
+    const g2 = this.add.graphics(); g2.fillStyle(0x8e2230, 0.12).fillRect(504, 436, 360, 40); add(g2);
+    add(text(this, 516, 444, `Ритуал: ${ritualText(c)}`, 15, '#8e2230', { wordWrap: { width: 340 } }));
+    add(text(this, 864, 412, '— Хару', 14, '#8a6a4a').setOrigin(1, 0));
+    // засушенный цветок в углу
+    const f = this.add.graphics();
+    f.fillStyle(C.green, 1).fillRect(840, 260, 2, 30);
+    [[841, 258], [835, 262], [847, 262], [841, 266]].forEach(([x, y]) => f.fillStyle(0xf2a7b8, 1).fillCircle(x, y, 4));
+    add(f);
+  }
+
+  close() {
+    sound.play('page');
+    this.cameras.main.fadeOut(200, 0, 0, 0);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.stop();
+      if (this.returnTo === 'Home') { events.emit('diary-closed'); return; }
+      this.scene.wake('World'); this.scene.setVisible(true, 'Hud');
+      events.emit('lock', false);
+    });
+  }
+}
+

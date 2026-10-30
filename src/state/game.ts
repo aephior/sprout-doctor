@@ -36,7 +36,23 @@ export interface GameData {
   bossDone?: boolean;
   fertilized?: boolean;
   totalDays: number;
+  minutes: number;             // время суток в минутах (6:00 = 360)
+  rain: boolean;               // дождь сегодня
+  pages: string[];             // открытые страницы дневника Хару (ключи болезней)
+  mochiDay: number;            // день, когда Моти уже принесла подарок
 }
+
+export const DAY_START = 6 * 60, DAY_END = 24 * 60;
+/** Страницы дневника бабушки Хару: открываются при первом успешном лечении болезни. */
+export const PAGES: Record<string, string> = {
+  early_blight: 'Кольца, как на срезе дерева, и жёлтая кайма. Начинается с нижних листьев. Спрей — и не мочи листву вечером.',
+  late_blight: 'Бурые пятна, будто лист обожгли. Приходит вместе с туманом. Обрезать, потом опрыснуть — и не медлить ни дня.',
+  bacterial_spot: 'Мелкие тёмные точки с жёлтым ободком. Больные листья — долой. Ножницы потом протри.',
+  leaf_mold: 'Сверху жёлтые пятна, снизу оливковый пушок. Растению нужен воздух, а не вода.',
+  septoria: 'Много маленьких кружков: тёмный край, светлая серединка. Обрезать и опрыснуть.',
+  spider_mites: 'Лист в мелкую крапинку, тонкая паутинка. Клещ любит сушь — дай растению напиться.',
+  ylcv: 'Лист курчавится и желтеет по краю. Это не вылечить. Убери растение, пока не заболели соседи.',
+};
 
 export const DAYS_PER_SEASON = 5;
 const SAVE_KEY = 'sprout-doctor-save-v1';
@@ -59,7 +75,7 @@ export class Game {
     }
     this.data = { version: 1, day: 1, season: 1, coins: 120, reputation: 50, fukuCharge: 6, fukuMax: 6,
       fungicide: 4, harvest: 0, beds, stats: { scans: 0, correctTreat: 0, wrongTreat: 0, cured: 0, lost: 0, gradeSum: 0, gradeN: 0, aphids: 0 },
-      licensed: false, weather: rollWeather(1), totalDays: 1 };
+      licensed: false, weather: rollWeather(1), totalDays: 1, minutes: DAY_START, rain: false, pages: [], mochiDay: 0 };
     beds.forEach((b) => this.assignCard(b));
     // стартовая вспышка: 3 больные грядки
     this.infectRandom(3);
@@ -104,7 +120,7 @@ export class Game {
     }
     if (same) {
       if (truth.key === 'ylcv') {
-        b.dead = true; b.crop = null; s.correctTreat++;
+        b.dead = true; b.crop = null; s.correctTreat++; this.unlockPage(truth.key);
         this.data.reputation = Math.min(100, this.data.reputation + 3);
         return { ok: true, msg: 'Вирус не лечится — растение удалено, соседи в безопасности.' };
       }
@@ -113,7 +129,7 @@ export class Game {
       if (truth.noWaterAfter) b.noWater = true;
       s.correctTreat++;
       if (mult >= 0.7) {
-        s.cured++; b.cls = healthyOf(b.crop!).id; this.assignCard(b);
+        s.cured++; this.unlockPage(truth.key); b.cls = healthyOf(b.crop!).id; this.assignCard(b);
         this.data.reputation = Math.min(100, this.data.reputation + 2);
         return { ok: true, msg: `Лечение сработало! +${heal} здоровья, болезнь отступила.` };
       }
@@ -123,6 +139,15 @@ export class Game {
     this.data.reputation = Math.max(0, this.data.reputation - 3);
     return { ok: false, msg: 'Лечение не подействовало. −10 здоровья, −3 репутации.' };
   }
+
+  newPage: string | null = null;
+  unlockPage(key: string) {
+    if (!PAGES[key] || this.data.pages.includes(key)) return;
+    this.data.pages.push(key); this.newPage = key;
+    if (this.data.pages.length === Object.keys(PAGES).length) this.data.reputation = Math.min(100, this.data.reputation + 10);
+  }
+
+  addMinutes(m: number) { this.data.minutes = Math.min(DAY_END, this.data.minutes + m); }
 
   harvestBed(b: Bed): number {
     if (!b.crop || b.stage < 2 || !isHealthy(this.cls(b))) return 0;
@@ -160,6 +185,10 @@ export class Game {
     }
     d.fertilized = false;
     d.weather = rollWeather(d.season);
+    d.minutes = DAY_START;
+    // дождь: вероятность по сезону и влажности; дождь сам поливает грядки
+    d.rain = Math.random() < [0, 0.22, 0.3, 0.38][d.season] + (d.weather.humidity - 65) / 200;
+    if (d.rain) { d.weather.humidity = Math.min(95, d.weather.humidity + 10); d.beds.forEach((b) => { if (b.crop && !b.dead && !b.noWater) b.watered = true; }); notes.push('Ночью шёл дождь — грядки политы.'); }
     this.infectRandom(outbreaksFor(d.season, this.skill()));
     d.fukuCharge = d.fukuMax;
     d.day++; d.totalDays++;
@@ -210,6 +239,7 @@ export class Game {
       st.gradeSum ??= 0; st.gradeN ??= 0; st.aphids ??= 0;
       this.data.weather ??= rollWeather(this.data.season);
       this.data.totalDays ??= this.data.day;
+      this.data.minutes ??= DAY_START; this.data.rain ??= false; this.data.pages ??= []; this.data.mochiDay ??= 0;
       return true;
     } catch { return false; }
   }

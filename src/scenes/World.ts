@@ -4,10 +4,11 @@ import { game, Bed } from '../state/game';
 import { isHealthy } from '../data/diseases';
 import { rng } from '../art/pixel';
 import { events } from '../state/events';
+import { FarmLife } from '../world/life';
 
 const T = 16, MW = 30, MH = 20;
 
-type Interact = { kind: 'bed'; bed: Bed } | { kind: 'house' } | { kind: 'shop' } | { kind: 'busstop' } | { kind: 'vending' };
+type Interact = { kind: 'bed'; bed: Bed } | { kind: 'mochi' } | { kind: 'fisher' } | { kind: 'house' } | { kind: 'shop' } | { kind: 'busstop' } | { kind: 'vending' };
 
 export class World extends Phaser.Scene {
   aoi!: Phaser.Physics.Arcade.Sprite;
@@ -21,6 +22,7 @@ export class World extends Phaser.Scene {
   locked = false;
   lastStep = 0;
   fx?: Phaser.FX.ColorMatrix;
+  life!: FarmLife;
 
   constructor() { super('World'); }
 
@@ -35,9 +37,10 @@ export class World extends Phaser.Scene {
     this.aoi.setCollideWorldBounds(true);
     this.physics.world.setBounds(0, 0, MW * T, MH * T);
     this.physics.add.collider(this.aoi, this.solids);
-    this.fuku = this.add.sprite(this.aoi.x + 14, this.aoi.y - 30, 'fuku', 0).play('fuku-idle').setDepth(10000);
+    this.fuku = this.add.sprite(this.aoi.x + 14, this.aoi.y - 30, 'fuku', 0).play('fuku-idle').setDepth(8500);
+    this.life = new FarmLife(this, this.aoi);
 
-    this.marker = this.add.graphics().setDepth(9999);
+    this.marker = this.add.graphics().setDepth(9600);
 
     const cam = this.cameras.main;
     cam.setZoom(3).setBounds(0, 0, MW * T, MH * T).startFollow(this.aoi, true, 0.12, 0.12).setRoundPixels(true);
@@ -61,7 +64,7 @@ export class World extends Phaser.Scene {
       events.off('lock', this.lockHandler, this); events.off('refresh-beds', this.refreshBeds, this);
       events.off('season', this.refreshBeds, this); events.off('boss', this.startBoss, this);
     });
-    this.events.on('wake', () => { this.refreshBeds(); this.locked = false; });
+    this.events.on('wake', () => { this.refreshBeds(); this.life.apply(); this.locked = false; });
     this.refreshBeds();
   }
 
@@ -161,6 +164,8 @@ export class World extends Phaser.Scene {
     }
     if (best) return { kind: 'bed', bed: best };
     const near = (x: number, y: number, rad = 18) => Math.hypot(x - this.aoi.x, y - this.aoi.y) < rad;
+    if (this.life.nearMochi(this.aoi.x, this.aoi.y)) return { kind: 'mochi' };
+    if (this.life.fisher.visible && near(22, 214, 36)) return { kind: 'fisher' };
     if (near(2 * T + 32, 58)) return { kind: 'house' };
     if (near(20 * T + 24, 46)) return { kind: 'shop' };
     if (near(26 * T + 8, 1 * T + 32)) return { kind: 'vending' };
@@ -178,7 +183,9 @@ export class World extends Phaser.Scene {
       this.aoi.setVelocity(0);
       this.scene.sleep();
       this.scene.launch('Procedure', { bedId: it.bed.id });
-    } else events.emit('place', it.kind);
+    } else if (it.kind === 'mochi') events.emit('toast', this.life.petMochi());
+    else if (it.kind === 'fisher') events.emit('fisher');
+    else events.emit('place', it.kind);
   }
 
   update(_t: number, dt: number) {
@@ -188,13 +195,14 @@ export class World extends Phaser.Scene {
     this.fuku.y += (ty - this.fuku.y) * Math.min(1, dt / 220);
 
     if (this.locked) { this.aoi.setVelocity(0); this.aoi.anims.stop(); return; }
+    this.life.update(dt, !!(this.keys.A.isDown || this.keys.D.isDown || this.keys.W.isDown || this.keys.S.isDown || this.keys.LEFT.isDown || this.keys.RIGHT.isDown || this.keys.UP.isDown || this.keys.DOWN.isDown));
     const k = this.keys;
     const vx = (k.A.isDown || k.LEFT.isDown ? -1 : 0) + (k.D.isDown || k.RIGHT.isDown ? 1 : 0);
     const vy = (k.W.isDown || k.UP.isDown ? -1 : 0) + (k.S.isDown || k.DOWN.isDown ? 1 : 0);
     const sp = 72, n = vx && vy ? Math.SQRT1_2 : 1;
     this.aoi.setVelocity(vx * sp * n, vy * sp * n);
     if (vx || vy) {
-      if (this.time.now - this.lastStep > 300) { this.lastStep = this.time.now; sound.play('step'); }
+      if (this.time.now - this.lastStep > 300) { this.lastStep = this.time.now; sound.play('step'); this.life.footstep(); }
       if (vx) { this.facing = 'side'; this.aoi.setFlipX(vx < 0); this.aoi.anims.play('aoi-side', true); }
       else if (vy < 0) { this.facing = 'up'; this.aoi.setFlipX(false); this.aoi.anims.play('aoi-up', true); }
       else { this.facing = 'down'; this.aoi.setFlipX(false); this.aoi.anims.play('aoi-down', true); }

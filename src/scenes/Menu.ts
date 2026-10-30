@@ -9,7 +9,7 @@ export class Menu extends Phaser.Scene {
   constructor() { super('Menu'); }
 
   create() {
-    sound.setMood('menu');
+    sound.setMood('menu'); sound.setAmbient({ rain: false, night: false, morning: false });
     gestures.stop();   // в меню камера выключена
     const { width: W, height: H } = this.scale;
     // закатное небо
@@ -57,7 +57,7 @@ export class Menu extends Phaser.Scene {
     const demo = this.add.graphics();
     demo.fillStyle(full ? C.teal : C.magenta, 1).fillRect(W - 170, 20, 150, 30);
     text(this, W - 95, 35, full ? 'ПОЛНАЯ ВЕРСИЯ' : 'ДЕМО', 16, full ? HEX.ink : HEX.white).setOrigin(0.5);
-    text(this, W - 16, H - 16, 'v0.4 · бета', 14, HEX.paper).setOrigin(1, 1);
+    text(this, W - 16, H - 16, 'v0.5 · бета', 14, HEX.paper).setOrigin(1, 1);
   }
 
   startGame() {

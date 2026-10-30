@@ -122,8 +122,48 @@ class Sound {
   private snare(t: number, vol: number) { this.noise(t, 0.16, vol, 1800, 'bandpass'); }
   private hat(t: number, vol: number) { this.noise(t, 0.04, vol, 7000, 'highpass'); }
 
+  // ---------- окружение: дождь, сверчки ночью, птицы утром ----------
+  private amb = { rain: false, night: false, morning: false };
+  private rainSrc: AudioBufferSourceNode | null = null;
+  private rainGain: GainNode | null = null;
+  private ambTimer: number | null = null;
+
+  setAmbient(a: { rain: boolean; night: boolean; morning: boolean }) {
+    this.amb = a;
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    if (a.rain && !this.rainSrc) {
+      const len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1400; f.Q.value = 0.4;
+      this.rainGain = ctx.createGain(); this.rainGain.gain.value = 0;
+      src.connect(f).connect(this.rainGain).connect(this.sfx); src.start();
+      this.rainGain.gain.setTargetAtTime(0.18, ctx.currentTime, 1);
+      this.rainSrc = src;
+      this.music.gain.setTargetAtTime(0.2, ctx.currentTime, 1);
+    } else if (!a.rain && this.rainSrc) {
+      const src = this.rainSrc; this.rainGain!.gain.setTargetAtTime(0, ctx.currentTime, 0.6);
+      setTimeout(() => src.stop(), 2500); this.rainSrc = null;
+      this.music.gain.setTargetAtTime(0.32, ctx.currentTime, 1);
+    }
+    if (!this.ambTimer) this.ambTimer = window.setInterval(() => this.ambTick(), 700);
+  }
+
+  private ambTick() {
+    if (!this.ctx || !this.enabled || this.ctx.state !== 'running') return;
+    const t = this.ctx.currentTime, S = this.sfx;
+    if (this.amb.night && Math.random() < 0.7) for (let i = 0; i < 3; i++) this.tone('sine', 4200 + Math.random() * 300, t + i * 0.07, 0.04, 0.025, 8000, 0.003, S);
+    if (this.amb.morning && Math.random() < 0.35) {
+      const o = this.ctx.createOscillator(), g = this.ctx.createGain(), f0 = 2200 + Math.random() * 1200;
+      o.type = 'sine'; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 1.4, t + 0.08); o.frequency.exponentialRampToValueAtTime(f0 * 0.9, t + 0.16);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.03, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+      o.connect(g).connect(S); o.start(t); o.stop(t + 0.25);
+    }
+  }
+
   // ---------- эффекты ----------
-  play(name: 'scan' | 'water' | 'spray' | 'prune' | 'remove' | 'confirm' | 'perfect' | 'good' | 'miss' | 'ok' | 'fail' | 'aphid' | 'swat' | 'rewind' | 'step' | 'click' | 'coin' | 'night' | 'boss' | 'win') {
+  play(name: 'meow' | 'bus' | 'page' | 'scan' | 'water' | 'spray' | 'prune' | 'remove' | 'confirm' | 'perfect' | 'good' | 'miss' | 'ok' | 'fail' | 'aphid' | 'swat' | 'rewind' | 'step' | 'click' | 'coin' | 'night' | 'boss' | 'win') {
     if (!this.ctx || !this.enabled) return;
     const t = this.ctx.currentTime, S = this.sfx;
     const up = (a: number, b: number, dur: number, type: OscillatorType = 'square', vol = 0.2) => {
@@ -152,6 +192,9 @@ class Sound {
       case 'coin': this.tone('square', 988, t, 0.08, 0.1, 5000, 0.002, S); this.tone('square', 1319, t + 0.07, 0.2, 0.1, 5000, 0.002, S); break;
       case 'night': [12, 7, 3, 0].forEach((s, i) => this.tone('sine', hz(s, 330), t + i * 0.18, 0.8, 0.1, 2000, 0.05, S)); break;
       case 'boss': up(90, 40, 1.4, 'sawtooth', 0.3); this.noise(t, 1.2, 0.15, 300, 'lowpass', S); break;
+      case 'meow': up(700, 1100, 0.12, 'triangle', 0.12); this.tone('triangle', 900, t + 0.12, 0.25, 0.1, 3000, 0.02, S); break;
+      case 'bus': [0, 4].forEach((sm, i) => this.tone('sine', hz(sm, 880), t + i * 0.25, 0.5, 0.12, 4000, 0.005, S)); this.noise(t, 0.8, 0.06, 300, 'lowpass', S); break;
+      case 'page': this.noise(t, 0.25, 0.12, 2500, 'bandpass', S); [0, 7, 12].forEach((sm, i) => this.tone('triangle', hz(sm, 660), t + 0.15 + i * 0.08, 0.3, 0.1, 5000, 0.005, S)); break;
       case 'win': [0, 4, 7, 12, 16, 19, 24].forEach((s, i) => this.tone('triangle', hz(s, 392), t + i * 0.09, 0.5, 0.13, 5000, 0.01, S)); break;
     }
   }

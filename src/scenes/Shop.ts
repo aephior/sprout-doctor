@@ -139,6 +139,7 @@ export class Shop extends Phaser.Scene {
   }
 
   leave() {
+    game.addMinutes(15);
     sound.play('click');
     this.speak('Заходи ещё! И передай привет Фуку.', 3);
     this.input.keyboard!.removeAllListeners();

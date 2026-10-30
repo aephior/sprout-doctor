@@ -251,6 +251,7 @@ export class Procedure extends Phaser.Scene {
     this.treated = true;
     this.hitStop(res.ok); sound.play(res.ok ? 'ok' : 'fail');
     if (res.ok) this.garden.heal(); else this.garden.fail();
+    if (game.newPage) { const k = game.newPage; game.newPage = null; this.time.delayedCall(900, () => this.pageUnlocked(k)); }
     this.say(`${res.ok ? '✓' : '✗'} ${res.msg} «На ферму» — Esc.`, res.ok ? HEX.greenDark : HEX.magentaDark);
     game.save();
     events.emit('stats');
@@ -260,6 +261,17 @@ export class Procedure extends Phaser.Scene {
     const n = game.harvestBed(this.bed);
     if (n) { this.garden.harvest(n); sound.play('coin'); this.say(`Собрано ${n} шт. Продайте урожай в лавке Огавы.`, HEX.greenDark); game.save(); events.emit('stats'); }
     else this.say('Урожай собирают только со здорового созревшего растения.', HEX.orangeDark);
+  }
+
+  /** Новая страница дневника: листок вылетает и раскрывается. */
+  pageUnlocked(key: string) {
+    sound.play('page');
+    const c = CLASSES.find((x) => x.key === key)!;
+    const card = this.add.container(200, 330).setDepth(80).setScale(0.2).setAlpha(0);
+    const g = this.add.graphics(); g.fillStyle(C.ink, 1).fillRect(-124, -44, 248, 88).fillStyle(0xf6e7c1, 1).fillRect(-120, -40, 240, 80).fillStyle(0x8e2230, 1).fillRect(-120, -40, 240, 18);
+    card.add([g, text(this, 0, -31, 'НОВАЯ СТРАНИЦА ДНЕВНИКА', 12, HEX.paper).setOrigin(0.5), text(this, 0, -2, c.name, 18).setOrigin(0.5), text(this, 0, 22, `Записей: ${game.data.pages.length}/7 · Tab — открыть`, 12, '#8a6a4a').setOrigin(0.5)]);
+    this.tweens.add({ targets: card, scale: 1, alpha: 1, angle: { from: -12, to: 0 }, duration: 450, ease: 'Back.out' });
+    this.tweens.add({ targets: card, alpha: 0, y: 300, delay: 3200, duration: 400, onComplete: () => card.destroy() });
   }
 
   // ---------- эффекты ----------
@@ -399,6 +411,7 @@ export class Procedure extends Phaser.Scene {
   close() {
     if (this.closing) return;
     this.closing = true;
+    game.addMinutes(this.treated ? 25 : 10);   // лечение занимает время
     sound.setMood('day');
     this.cameras.main.fadeOut(200, 28, 26, 51);
     this.cameras.main.once('camerafadeoutcomplete', () => {
