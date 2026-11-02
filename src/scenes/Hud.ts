@@ -1,11 +1,9 @@
 // Интерфейс поверх мира: показатели, подсказки, реплики Фуку, лавка, сон, пауза.
 import { sound } from '../audio/sound';
 import { game, DAYS_PER_SEASON } from '../state/game';
-import { events } from '../state/events';
+import { events, ui } from '../state/events';
 import { text, HEX, C, paperPanel, bar } from '../ui/ui';
-import { CLASSES, CROP_NAME, isHealthy } from '../data/diseases';
-import { ritualText } from './Procedure';
-import { clockText } from '../world/life';
+import { clockText, hourNow } from '../world/life';
 import { forecast as weatherForecast } from '../state/director';
 import { addRecord } from '../state/records';
 import { isLicensed, activate, generateKey, normalizeKey, PRICE } from '../state/license';
@@ -13,7 +11,7 @@ import { isLicensed, activate, generateKey, normalizeKey, PRICE } from '../state
 export const SEASONS = ['', 'Весна', 'Лето', 'Осень'];
 const PLACE_HINT: Record<string, string> = {
   bed: 'E — осмотреть грядку   ·   Tab — дневник',
-  mochi: 'E — погладить Моти', villager: 'E — поговорить', fisher: 'E — поговорить с рыбаком', house: 'E — лечь спать (закончить день)', shop: 'E — лавка господина Огавы',
+  mochi: 'E — погладить Моти', villager: 'E — поговорить', fisher: 'E — поговорить с рыбаком', house: 'E — зайти домой', shop: 'E — лавка господина Огавы',
   vending: 'E — торговый автомат', busstop: 'E — автобусная остановка',
 };
 
@@ -29,6 +27,9 @@ export class Hud extends Phaser.Scene {
   constructor() { super('Hud'); }
 
   create() {
+    // общий обработчик клавиш регистрируется первым: Esc/пауза, M, ввод ключа — в одном месте
+    this.input.keyboard!.on('keydown', (e: KeyboardEvent) => this.onKey(e));
+    ui.modal = false; this.modal = null; this.keyEntry = null;
     this.stats = this.add.container(0, 0);
     this.hintBg = this.add.graphics();
     this.hint = text(this, 480, 512, '', 18, HEX.paper, { stroke: HEX.ink, strokeThickness: 4 }).setOrigin(0.5);
@@ -36,21 +37,37 @@ export class Hud extends Phaser.Scene {
     this.drawStats();
 
     const on = (e: string, f: (...a: any[]) => void) => { events.on(e, f, this); this.events.once('shutdown', () => events.off(e, f, this)); };
-    on('hint', (it: { kind: string } | null) => this.hint.setText(it && !this.modal ? PLACE_HINT[it.kind] : ''));
+    on('hint', (it: { kind: string } | null) => this.hint.setText(it && !this.modal ? (it.kind === 'house' && hourNow() >= 18 ? 'E — домой, спать (закончить день)' : PLACE_HINT[it.kind]) : ''));
     on('toast', (s: string) => this.say(s));
     on('stats', () => this.drawStats());
     on('place', (k: string) => this.place(k));
-    on('pause', () => this.pauseMenu());
     on('diary', () => this.enterInterior('Diary', { returnTo: 'World' }));
     on('midnight', () => { this.say('Аой-сан, уже полночь… Глаза слипаются. Пора домой.', 3000); this.time.delayedCall(1800, () => this.night(true)); });
     on('fisher', () => this.fisherTalk());
     on('after-night', (n: string[]) => this.afterNight(n));
-    this.input.keyboard!.on('keydown-M', () => this.say(sound.toggle() ? 'Звук включён (M).' : 'Звук выключен (M).', 1800));
-    this.input.keyboard!.on('keydown', (e: KeyboardEvent) => this.onKeyTyping(e));
 
+    // демо уже пройдено, а ключа нет — сразу экран демо (дальше весны играть нельзя)
+    if (game.data.demoEnded && !isLicensed()) { this.time.delayedCall(400, () => this.endScreen(true)); return; }
     this.time.delayedCall(700, () => this.say(game.data.day === 1 && game.data.season === 1
-      ? 'Аой-сан, я Фуку. На трёх грядках что-то не так: над ними летят споры. Подойдите к грядке и нажмите E. Tab — дневник бабушки с ритуалами.'
+      ? 'Аой-сан, я Фуку. На трёх грядках что-то не так: над ними летят споры. Подойдите к грядке и нажмите E. Tab — дневник бабушки: записи появляются, когда Линза находит болезнь.'
       : this.forecast()));
+  }
+
+  keyTs = -1;
+  modalTs = -2;
+  /** Единственная точка обработки «глобальных» клавиш интерфейса. */
+  onKey(e: KeyboardEvent) {
+    this.keyTs = e.timeStamp;
+    if (this.keyEntry) { this.onKeyTyping(e); return; }          // в поле ключа горячие клавиши не работают
+    if (this.modal) return;                                       // клавиши модалки обрабатывает сама модалка
+    if (e.key === 'Escape' && this.worldActive()) { this.pauseMenu(); return; }
+    if ((e.key === 'm' || e.key === 'M' || e.key === 'ь' || e.key === 'Ь') && this.scene.isVisible()) this.say(sound.toggle() ? 'Звук включён (M).' : 'Звук выключен (M).', 1800);
+  }
+
+  /** Мир на экране и управляем (не интерьер, не процедурная, не бой). */
+  worldActive() {
+    const w = this.scene.get('World') as Phaser.Scene & { locked?: boolean };
+    return this.scene.isVisible() && this.scene.isActive('World') && !this.scene.isSleeping('World') && !w.locked;
   }
 
   forecast() {
@@ -61,7 +78,7 @@ export class Hud extends Phaser.Scene {
     this.stats.removeAll(true);
     const d = game.data;
     const p = paperPanel(this, 14, 14, 270, 100);
-    const l1 = text(this, 26, 22, `${SEASONS[d.season]} · ${d.day}/${DAYS_PER_SEASON} · ${clockText()}`, 20);
+    const l1 = text(this, 26, 22, `${SEASONS[d.season]} · ${Math.min(d.day, DAYS_PER_SEASON)}/${DAYS_PER_SEASON} · ${clockText()}`, 20);
     const l2 = text(this, 26, 50, `Монеты: ${d.coins}   Урожай: ${d.harvest}`, 16);
     const l3 = text(this, 26, 72, `Фунгицид: ${d.fungicide} · ${d.rain ? 'дождь' : 'влажн.'} ${d.weather.humidity}%`, 15);
     const rep = text(this, 150, 93, 'Реп.', 13, '#555');
@@ -89,9 +106,10 @@ export class Hud extends Phaser.Scene {
   }
 
   // ---------- модальные окна ----------
-  openModal(title: string, lines: string[], options: [string, string, () => void][]) {
+  openModal(title: string, lines: string[], options: [string, string, () => void][]): Phaser.GameObjects.Text[] {
     this.closeModal();
-    events.emit('lock', true);
+    ui.modal = true; this.hint.setText('');
+    this.modalTs = this.keyTs;   // клавиша, открывшая окно, в этом окне не срабатывает
     const W = 660, c = this.add.container(0, 0);
     // сначала измеряем текст, затем рисуем панель по высоте содержимого
     const body = lines.map((s) => text(this, 0, 0, s || ' ', 16, '#3a3550', { wordWrap: { width: W - 48 } }));
@@ -107,26 +125,31 @@ export class Hud extends Phaser.Scene {
     this.modal = c;
     const kb = this.input.keyboard!;
     const handler = (e: KeyboardEvent) => {
+      if (e.timeStamp === this.modalTs || this.modal !== c) return;
       const opt = options.find(([k]) => k.toLowerCase() === e.key.toLowerCase() || (k === 'Esc' && e.key === 'Escape'));
       if (opt) opt[2]();
     };
     kb.on('keydown', handler);
     c.once('destroy', () => kb.off('keydown', handler));
+    return body;
   }
 
   closeModal() {
     if (!this.modal) return;
-    this.modal.destroy(); this.modal = null;
-    this.time.delayedCall(50, () => events.emit('lock', false));
+    this.modal.destroy(); this.modal = null; this.keyTexts = null;
+    ui.modal = false; ui.closedAt = performance.now();
     this.drawStats();
   }
 
   place(kind: string) {
     const d = game.data;
     if (kind === 'shop') {
-      this.enterInterior('Shop');
+      const h = hourNow();
+      if (h < 8) this.say('Лавка закрыта. Огава откроет в 8:00.');
+      else if (h >= 19) this.say('Лавка уже закрыта — Огава работает с 8:00 до 19:00.');
+      else this.enterInterior('Shop');
     } else if (kind === 'house') {
-      this.night();
+      if (hourNow() >= 18) this.night(); else this.enterInterior('Home', { early: true });
     } else if (kind === 'vending') {
       this.say('Торговый автомат гудит в сумерках. Холодный чай — 5 монет… может, в другой раз.');
     } else if (kind === 'busstop') {
@@ -138,6 +161,7 @@ export class Hud extends Phaser.Scene {
   enterInterior(key: string, data?: object) {
     if (this.modal) this.closeModal();
     events.emit('lock', true);
+    this.hint.setText('');
     this.scene.sleep('World');
     this.scene.setVisible(false);
     this.scene.launch(key, data);
@@ -171,26 +195,6 @@ export class Hud extends Phaser.Scene {
     this.say(this.forecast(), 6500);
   }
 
-  nightFall() {
-    sound.play('night');
-    const shade = this.add.rectangle(0, 0, 960, 540, 0x2b2a4c, 0).setOrigin(0);
-    const t = text(this, 480, 270, 'Ночь…', 32, HEX.paper).setOrigin(0.5).setAlpha(0);
-    this.tweens.add({ targets: [shade], fillAlpha: 1, duration: 600 });
-    this.tweens.add({ targets: [t], alpha: 1, duration: 600, onComplete: () => {
-      const notes = game.endDay();
-      events.emit('refresh-beds');
-      this.drawStats();
-      this.time.delayedCall(700, () => {
-        this.tweens.add({ targets: [shade, t], alpha: 0, duration: 600, onComplete: () => { shade.destroy(); t.destroy(); } });
-        events.emit('lock', false); sound.setMood('day');
-        if (game.lostRatio() > 0.6 || game.data.reputation <= 0) { this.endScreen(false); return; }
-        if (notes.includes('season-end')) { this.endScreen(true); return; }
-        const lost = notes.filter((n) => n !== 'season-end');
-        this.say(lost.length ? `${lost.join(' ')} ${this.forecast()}` : this.forecast(), 6500);
-      });
-    } });
-  }
-
   endScreen(win: boolean) {
     const s = game.data.stats;
     const lines = [
@@ -200,6 +204,7 @@ export class Hud extends Phaser.Scene {
     ];
     const d = game.data;
     if (win && d.season === 1 && !isLicensed()) {
+      if (!d.demoEnded) { d.demoEnded = true; game.save(); }
       if (!this.recorded) { addRecord(d, 'Демо пройдено', false); this.recorded = true; }
       this.openModal('Весна позади! Демо пройдено', [
         'Лето в теплице, осенняя эпидемия и бой с Хайкаби — в полной версии.',
@@ -226,7 +231,8 @@ export class Hud extends Phaser.Scene {
       return;
     }
     if (!this.recorded) { addRecord(d, 'Поражение', false); this.recorded = true; }
-    this.openModal('Ферма не выстояла', ['Хайкаби оказалась сильнее. Попробуйте снова — внимательнее к диагнозам.', ...lines], [
+    const why = d.season === 3 ? 'Хайкаби оказалась сильнее.' : 'Болезни захватили огород: больше половины грядок погибло или репутация упала до нуля.';
+    this.openModal('Ферма не выстояла', [`${why} Попробуйте снова — внимательнее к диагнозам.`, ...lines], [
       ['1', 'Начать заново', () => { game.newGame(); game.save(); this.toMenu(); }],
     ]);
   }
@@ -240,20 +246,23 @@ export class Hud extends Phaser.Scene {
     this.drawKeyModal();
   }
 
+  keyTexts: Phaser.GameObjects.Text[] | null = null;
   drawKeyModal() {
     const k = this.keyEntry!;
-    this.openModal('Активация полной версии', [
+    const field = `> ${k.key}${k.key.length < 19 ? '_' : ''}`;
+    if (this.keyTexts && this.modal) { this.keyTexts[1].setText(field); this.keyTexts[2].setText(k.err || ' '); return; }   // перерисовка без переоткрытия окна
+    this.keyTexts = this.openModal('Активация полной версии', [
       'Введите ключ (буквы и цифры, дефисы ставятся сами):',
-      `> ${k.key}${k.key.length < 19 ? '_' : ''}`,
-      k.err,
+      field,
+      k.err || ' ',
     ], [
       ['Enter', 'Активировать', () => {
         if (activate(k.key)) {
-          this.keyEntry = null;
+          this.keyEntry = null; game.data.demoEnded = false;
           this.openModal('Полная версия активирована', ['Спасибо! Лето уже в пути.'], [
             ['1', 'Продолжить игру', () => { this.closeModal(); game.data.licensed = true; game.nextSeason(); events.emit('season'); this.drawStats(); this.say(this.forecast(), 7000); }],
           ]);
-        } else { k.err = 'Ключ не подходит. Проверьте символы (без 0/O и 1/I).'; this.drawKeyModal(); }
+        } else { k.err = 'Ключ не подходит. Проверьте символы.'; this.drawKeyModal(); }
       }],
       ['Esc', 'Назад', () => { this.keyEntry = null; this.endScreen(true); }],
     ]);
@@ -263,8 +272,9 @@ export class Hud extends Phaser.Scene {
   onKeyTyping(e: KeyboardEvent) {
     const k = this.keyEntry;
     if (!k) return;
+    if (e.key === 'Escape' || e.key === 'Enter') return;   // обрабатывает модалка
     if (e.key === 'Backspace') k.key = normalizeKey(k.key.replace(/-$/, '').slice(0, -1));
-    else if (/^[a-zA-Z0-9]$/.test(e.key)) k.key = normalizeKey(k.key + e.key);
+    else if (/^[A-HJ-NP-Za-hj-np-z2-9]$/.test(e.key) && k.key.length < 19) k.key = normalizeKey(k.key + e.key);   // алфавит ключа: без 0/O, 1/I
     else return;
     k.err = '';
     this.drawKeyModal();
@@ -283,24 +293,6 @@ export class Hud extends Phaser.Scene {
       }],
       ['Esc', 'Назад', () => this.endScreen(true)],
     ]);
-  }
-
-  diary() {
-    const d = game.data;
-    const seen = new Map<string, { name: string; crops: string[]; ritual: string }>();
-    for (const c of CLASSES) {
-      if (isHealthy(c) || c.season > d.season) continue;
-      const e = seen.get(c.key) ?? { name: c.name, crops: [], ritual: ritualText(c) };
-      e.crops.push(CROP_NAME[c.crop]); seen.set(c.key, e);
-    }
-    const lines = [...seen.values()].map((e) => `${e.name} (${e.crops.join(', ')}) → ${e.ritual}`);
-    this.openModal('Дневник бабушки Хару', [
-      'Порядок: подойти к грядке (E) → скан (1) → ритуал по дневнику → подтвердить (Enter).',
-      'Нейросеть Фуку может ошибаться: при уверенности ниже 60% сделайте другой ракурс (R).',
-      '',
-      ...lines,
-      'Здоровое растение не лечат: кнопка «Не лечить» (0).',
-    ], [['Esc', 'Закрыть', () => this.closeModal()]]);
   }
 
   pauseMenu() {

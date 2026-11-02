@@ -5,10 +5,11 @@ import { events } from '../state/events';
 import { text, HEX, C } from '../ui/ui';
 import { sound } from '../audio/sound';
 import { makeGlow } from '../art/interiors';
+import { hourNow } from '../world/life';
 
 const S = 3;   // сетка раскладки меню (исторически 320×180 ×3)
 // Огава стоит за прилавком (прилавок из фона рисуется поверх него); правый край портретов совпадает
-const OG_S = 1.0, OG_X = 470 + 165 / 2, OG_Y = 452;
+const OG_S = 1.0, OG_X = 470 + 165 / 2, OG_Y = 400;
 const OGAWA: Record<number, string> = { 0: 'g-ogawa_neutral', 2: 'g-ogawa_talk', 3: 'g-ogawa_happy' };
 
 interface Item { key: string; name: string; price: () => number | null; note: () => string; buy: () => string | null }
@@ -27,7 +28,9 @@ export class Shop extends Phaser.Scene {
 
   create() {
     sound.setMood('evening'); makeGlow(this);
-    this.add.image(0, 0, 'g-shop_bg').setOrigin(0).setScale(2);
+    // за окном — небо по времени суток: до 17:00 день, потом закат
+    const bgKey = hourNow() < 17 ? 'g-shop_bg_day' : 'g-shop_bg';
+    this.add.image(0, 0, bgKey).setOrigin(0).setScale(2);
     // тёплый свет красного фонаря
     const glow = this.add.image(486, 165, 'glow').setScale(3.4).setAlpha(0.5).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffb070);
     this.tweens.add({ targets: glow, alpha: 0.36, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
@@ -35,7 +38,7 @@ export class Shop extends Phaser.Scene {
     this.ogawa = this.add.sprite(OG_X, OG_Y, 'g-ogawa_neutral').setOrigin(1, 1).setScale(OG_S).setTint(0xffe8cc);
     this.tweens.add({ targets: this.ogawa, y: OG_Y - 2, duration: 1700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     // прилавок из того же фона — поверх Огавы, чтобы он стоял за ним
-    this.add.image(0, 0, 'g-shop_bg').setOrigin(0).setScale(2).setCrop(168, 176, 230, 50);
+    this.add.image(0, 0, bgKey).setOrigin(0).setScale(2).setCrop(168, 176, 230, 50);
     // тень под прилавком и тёплый свет на лице
     // кошка Моти дремлет на табурете (она нарисована в фоне) — её можно погладить
     const mochi = this.add.zone(140, 365, 100, 60).setOrigin(0).setInteractive({ useHandCursor: true });
@@ -76,8 +79,8 @@ export class Shop extends Phaser.Scene {
       if (e.key === 'Escape') return this.leave();
       const i = this.items.findIndex((it) => it.key === e.key);
       if (i >= 0) { this.sel = i; this.buy(i); }
-      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { this.sel = (this.sel + this.items.length - 1) % this.items.length; sound.play('click'); this.drawMenu(); }
-      if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { this.sel = (this.sel + 1) % this.items.length; sound.play('click'); this.drawMenu(); }
+      if (e.key === 'ArrowUp' || e.code === 'KeyW') { this.sel = (this.sel + this.items.length - 1) % this.items.length; sound.play('click'); this.drawMenu(); }
+      if (e.key === 'ArrowDown' || e.code === 'KeyS') { this.sel = (this.sel + 1) % this.items.length; sound.play('click'); this.drawMenu(); }
       if (e.key === 'Enter' || e.key === ' ') this.buy(this.sel);
     });
 

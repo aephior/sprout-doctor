@@ -3,7 +3,6 @@
 import { game } from '../state/game';
 import { events } from '../state/events';
 import { makeGlow } from '../art/interiors';
-import { Painter } from '../art/paint';
 import { text, HEX, paperPanel } from '../ui/ui';
 import { sound } from '../audio/sound';
 import { CLASSES, CROP_NAME, isHealthy } from '../data/diseases';
@@ -23,15 +22,17 @@ export class Home extends Phaser.Scene {
   notes: string[] = [];
 
   auto = false;
+  early = false;
   constructor() { super('Home'); }
 
-  init(data: { auto?: boolean }) { this.auto = !!data?.auto; }
+  init(data: { auto?: boolean; early?: boolean }) { this.auto = !!data?.auto; this.early = !!data?.early; }
 
   create() {
     makeGlow(this);
     this.state = 'idle'; this.notes = [];
     sound.setMood('evening');
-    this.add.image(0, 0, 'g-home_bg').setOrigin(0).setScale(2);
+    // днём за окном светлое небо и солнце, вечером/ночью — луна
+    this.add.image(0, 0, this.early ? 'g-home_bg_day' : 'g-home_bg').setOrigin(0).setScale(2);
     // Фуку на зарядке на полке
     const fuku = this.add.sprite(728, 214, 'fuku', 1).setOrigin(0.5, 1).setScale(0.42);
     this.tweens.add({ targets: fuku, y: fuku.y - 3, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
@@ -40,14 +41,15 @@ export class Home extends Phaser.Scene {
     // Аой в домашнем (вид спереди — первый кадр листа)
     const tex = this.textures.get('g-aoi_home');
     if (!tex.has('front')) tex.add('front', 0, 0, 0, Math.floor(tex.getSourceImage().width / 4), tex.getSourceImage().height);
-    this.aoi = this.add.sprite(606, 492, 'g-aoi_home', 'front').setOrigin(0.5, 1).setScale(1.5);
-    this.tweens.add({ targets: this.aoi, scaleY: 1.515, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.aoi = this.add.sprite(548, 500, 'g-aoi_home', 'front').setOrigin(0.5, 1).setScale(1.4);
+    this.tweens.add({ targets: this.aoi, scaleY: 1.415, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     // свет: бумажный фонарь под потолком и лампа-андон у футона
     this.glow = this.add.image(548, 150, 'glow').setScale(5.5).setAlpha(0.55).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffc880);
     this.tweens.add({ targets: this.glow, alpha: 0.45, scale: 5.3, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     const andon = this.add.image(910, 345, 'glow').setScale(3.2).setAlpha(0.5).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffd27a);
     this.tweens.add({ targets: andon, alpha: 0.4, duration: 1200, yoyo: true, repeat: -1 });
     this.lamps = [this.glow, andon];
+    if (this.early) this.lamps.forEach((l) => { this.tweens.killTweensOf(l); l.setAlpha(0.18); });   // днём лампы почти не видны
     // пар над чашкой на столике
     this.add.particles(724, 388, 'pixel', { speedY: { min: -14, max: -8 }, speedX: { min: -3, max: 3 }, lifespan: 1600, frequency: 260, scale: { start: 3, end: 0 }, alpha: { start: 0.5, end: 0 }, tint: 0xffffff });
     // затемнение для ночи
@@ -67,7 +69,7 @@ export class Home extends Phaser.Scene {
     if (this.state === 'idle') {
       if (e.key === '1' || e.key === 'Enter') this.sleep();
       else if (e.key === '2') this.diary();
-      else if (e.key === 'Escape') this.leave(false);
+      else if (e.key === 'Escape' && !this.auto) this.leave(false);   // полночь: сон обязателен
     } else if (this.state === 'morning' && (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape' || e.key === '1')) this.leave(true);
   }
 
@@ -84,11 +86,13 @@ export class Home extends Phaser.Scene {
 
   menu() {
     const d = game.data;
-    this.card([`Дом бабушки Хару. ${['', 'Весна', 'Лето', 'Осень'][d.season]}, день ${d.day}.`, 'Тихо тикают часы. Чай ещё тёплый.'], [
-      ['1', 'Лечь спать', () => this.sleep()],
+    const opts: [string, string, () => void][] = [
+      ['1', this.early ? 'Вздремнуть до утра (день закончится)' : 'Лечь спать', () => this.sleep()],
       ['2', 'Перечитать дневник Хару', () => this.diary()],
-      ['Esc', 'Ещё не время — вернуться во двор', () => this.leave(false)],
-    ]);
+    ];
+    if (!this.auto) opts.push(['Esc', 'Ещё не время — вернуться во двор', () => this.leave(false)]);
+    this.card([`Дом бабушки Хару. ${['', 'Весна', 'Лето', 'Осень'][d.season]}, день ${Math.min(d.day, 5)}.`,
+      this.auto ? 'Уже полночь — глаза слипаются.' : this.early ? 'Ещё светло. Можно вздремнуть до утра — но тогда день закончится.' : 'Тихо тикают часы. Чай ещё тёплый.'], opts);
   }
 
   diary() {
@@ -134,14 +138,8 @@ export class Home extends Phaser.Scene {
   morning() {
     this.state = 'morning';
     const d = game.data;
-    // утро: в окне рассвет вместо луны, лучи сквозь сёдзи
-    const win = new Painter(125, 180, 5);
-    win.bands(0, 0, 125, 180, ['#f6e7c1', '#f2d39a', '#f2b45a', '#f2a7b8']);
-    win.ellipse(60, 46, 16, 16, '#fff6dc');
-    if (this.textures.exists('home-morning')) this.textures.remove('home-morning');
-    win.toTexture(this, 'home-morning');
-    const w = this.add.image(315, 120, 'home-morning').setOrigin(0).setAlpha(0).setDepth(4);
-    w.setBlendMode(Phaser.BlendModes.SCREEN);
+    // утро: за окном светлеет (дневной вариант комнаты проявляется), лучи сквозь сёдзи
+    const w = this.add.image(0, 0, 'g-home_bg_day').setOrigin(0).setScale(2).setAlpha(0).setDepth(4).setCrop(150, 55, 75, 100);
     const rays = this.add.graphics().setDepth(7).setAlpha(0).setBlendMode(Phaser.BlendModes.ADD);
     rays.fillStyle(0xffd27a, 0.16);
     for (let i = 0; i < 3; i++) rays.fillPoints([{ x: 320 + i * 42, y: 124 }, { x: 352 + i * 42, y: 124 }, { x: 520 + i * 70, y: 540 }, { x: 440 + i * 70, y: 540 }], true);

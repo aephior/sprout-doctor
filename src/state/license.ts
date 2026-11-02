@@ -5,7 +5,7 @@
 const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // без 0/O и 1/I, чтобы ключ не путали при вводе
 const SALT = 'kiri-no-sato';
 const KEY = 'sd-license';
-export const PRICE = '2 490 ₸';
+export const PRICE = '2 490 тенге';
 
 function fnv(s: string): number {
   let h = 0x811c9dc5;

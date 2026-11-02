@@ -13,6 +13,7 @@ const pending = new Map<number, (d: any) => void>();
 
 import { asset } from '../assets';
 import { Net } from './engine';
+import { CLASSES, Crop } from '../data/diseases';
 
 function resetWorker(reason: string) {
   worker?.terminate(); worker = null; ready = null;
@@ -49,7 +50,7 @@ export function loadLeafModel(): Promise<void> {
  * view = 0 — исходный кадр; view > 0 — «другой ракурс»:
  * тот же лист с другим кадрированием/отражением (test-time augmentation).
  */
-export async function diagnose(img: HTMLImageElement | HTMLCanvasElement, view = 0): Promise<Diagnosis> {
+export async function diagnose(img: HTMLImageElement | HTMLCanvasElement, view = 0, crop?: Crop): Promise<Diagnosis> {
   const t0 = performance.now();
   const cv = document.createElement('canvas');
   cv.width = 224; cv.height = 224;
@@ -57,7 +58,8 @@ export async function diagnose(img: HTMLImageElement | HTMLCanvasElement, view =
   const w = (img as HTMLImageElement).naturalWidth || img.width, h = (img as HTMLImageElement).naturalHeight || img.height;
   if (view === 0) ctx.drawImage(img, 0, 0, 224, 224);
   else {
-    const crop = [0.84, 0.8, 0.88][view % 3], cw = w * crop, ch = h * crop;
+    // мягкое кадрирование: лист остаётся почти целиком (сильный кроп отрезал симптомы и ухудшал точность)
+    const k = [0.94, 0.92, 0.96][view % 3], cw = w * k, ch = h * k;
     const ox = [0, w - cw, (w - cw) / 2][view % 3], oy = [h - ch, 0, (h - ch) / 2][(view + 1) % 3];
     if (view % 2 === 1) { ctx.translate(224, 0); ctx.scale(-1, 1); }
     ctx.drawImage(img, ox, oy, cw, ch, 0, 0, 224, 224);
@@ -67,10 +69,12 @@ export async function diagnose(img: HTMLImageElement | HTMLCanvasElement, view =
   for (let i = 0; i < 224 * 224; i++) for (let c = 0; c < 3; c++) data[c * 224 * 224 + i] = (px[i * 4 + c] / 255 - MEAN[c]) / STD[c];
   await loadLeafModel();
   const { logits } = await call({ type: 'run', input: data }, [data.buffer]);
-  const max = Math.max(...logits);
-  const exps: number[] = Array.from(logits as Float32Array, (v) => Math.exp(v - max));
+  // культура грядки известна: классы других культур исключаются (−∞ до softmax)
+  const masked = Array.from(logits as Float32Array, (v, id) => (crop && CLASSES[id].crop !== crop ? -Infinity : v));
+  const max = Math.max(...masked);
+  const exps: number[] = masked.map((v) => (v === -Infinity ? 0 : Math.exp(v - max)));
   const sum = exps.reduce((a, b) => a + b, 0);
-  const probs = exps.map((e, id) => ({ id, p: e / sum })).sort((a, b) => b.p - a.p);
+  const probs = exps.map((e, id) => ({ id, p: e / sum })).filter((x) => !crop || CLASSES[x.id].crop === crop).sort((a, b) => b.p - a.p);
   return { top: probs.slice(0, 3), ms: performance.now() - t0 };
 }
 

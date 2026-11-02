@@ -2,108 +2,6 @@
 // Финальные спрайты 32×48 заменят их без изменения кода: ключи текстур остаются теми же.
 import { addSheet, addPainted, Grid } from './pixel';
 
-// ---------- Аой 16×24 ----------
-const HEAD_FRONT: Grid = [
-  '....kkkkkkkk....',
-  '...khhhhhhhhk...',
-  '...kgghhhhggk...',
-  '...krrrrrrrrk...',
-  '.kkhhhhhhhhhhkk.',
-  'khhhhhhhhhhhhhHk',
-  '.kkbbbbbbbbbbkk.',
-  '..kbssssssssbk..',
-  '..kbskssssksbk..',
-  '..kbssssssssbk..',
-  '..kbbsssSssbbk..',
-];
-const HEAD_BACK: Grid = [
-  '....kkkkkkkk....',
-  '...khhhhhhhhk...',
-  '...khhhhhhhhk...',
-  '...krrrrrrrrk...',
-  '.kkhhhhhhhhhhkk.',
-  'khhhhhhhhhhhhhHk',
-  '.kkbbbbbbbbbbkk.',
-  '..kbbbbbbbbbbk..',
-  '..kbbbbbbbbbbk..',
-  '..kbbbbbbbbbbk..',
-  '...kbbbbbbbbk...',
-];
-const BODY_FRONT: Grid = [
-  '...kbkwwwwkbk...',
-  '..kyyywoowyyyk..',
-  '.kyyyyooooyyyyk.',
-  '.kyYyooooooyYyk.',
-  '.kyYkooooookYyk.',
-  '.ksYkooooookYsk.',
-  '..kkkooooookkk..',
-];
-const BODY_BACK: Grid = [
-  '...kkyyyyyykk...',
-  '..kyyyyyyyyyyk..',
-  '.kyyyyyyyyyyyyk.',
-  '.kyYyyyyyyyyYyk.',
-  '.kyYkyyyyyykYyk.',
-  '.ksYkooooookYsk.',
-  '..kkkooooookkk..',
-];
-const LEGS_STAND: Grid = [
-  '....kookkook....',
-  '....kOOk.kOOk...',
-  '....kRRk.kRRk...',
-  '...kRRRk.kRRRk..',
-  '...kkkkk.kkkkk..',
-  '................',
-];
-const LEGS_STEP_A: Grid = [
-  '....kookkook....',
-  '....kOOk.kOOk...',
-  '....kRRk.kOOk...',
-  '...kRRRk.kRRk...',
-  '...kkkkk.kRRRk..',
-  '.........kkkkk..',
-];
-const LEGS_STEP_B: Grid = [
-  '....kookkook....',
-  '....kOOk.kOOk...',
-  '....kOOk.kRRk...',
-  '....kRRk.kRRRk..',
-  '...kRRRk.kkkkk..',
-  '...kkkkk........',
-];
-const SIDE: Grid = [
-  '.....kkkkkkkk...',
-  '....khhhhhhhhk..',
-  '....khhhhhhggk..',
-  '....krrrrrrrrk..',
-  '..kkhhhhhhhhhhkk',
-  '.khhhhhhhhhhhhhk',
-  '..kkbbbbbbbbkk..',
-  '...kbbbbbsssk...',
-  '...kbbbbbsksk...',
-  '...kbbbbssssk...',
-  '...kbbbbbssk....',
-  '....kbkwwk......',
-  '...kyyyyyyk.....',
-  '...kyyyyyyyk....',
-  '...kyYyyyysk....',
-  '...kyYyoooyk....',
-  '...kyYkooook....',
-  '....kkooook.....',
-];
-const SIDE_LEGS: Grid[] = [
-  ['.....koook......', '.....kOOk.......', '.....kRRk.......', '.....kRRRk......', '.....kkkkk......', '................'],
-  ['....koooook.....', '...kOOk.kOOk....', '...kRRk.kRRk....', '..kRRRk.kRRRk...', '..kkkkk.kkkkk...', '................'],
-];
-
-const aoi = (head: Grid, body: Grid, legs: Grid) => [...head, ...body, ...legs];
-// Кадры: 0-2 вниз, 3-5 вверх, 6-7 вбок (вправо; влево — flipX)
-const AOI_FRAMES: Grid[] = [
-  aoi(HEAD_FRONT, BODY_FRONT, LEGS_STAND), aoi(HEAD_FRONT, BODY_FRONT, LEGS_STEP_A), aoi(HEAD_FRONT, BODY_FRONT, LEGS_STEP_B),
-  aoi(HEAD_BACK, BODY_BACK, LEGS_STAND), aoi(HEAD_BACK, BODY_BACK, LEGS_STEP_A), aoi(HEAD_BACK, BODY_BACK, LEGS_STEP_B),
-  [...SIDE, ...SIDE_LEGS[0]], [...SIDE, ...SIDE_LEGS[1]],
-];
-
 // ---------- Фуку 14×14 (бумажный фонарь-дрон) ----------
 const FUKU = (lens: string, prop: string): Grid => [
   `${prop}${prop}${prop}${prop}......${prop}${prop}${prop}${prop}`,
@@ -124,68 +22,10 @@ const FUKU = (lens: string, prop: string): Grid => [
 // 0-1 ожидание (пропеллеры мигают), 2 скан, 3 тревога
 const FUKU_FRAMES: Grid[] = [FUKU('i', 'c'), FUKU('i', '.'), FUKU('g', 'c'), FUKU('r', 'r')];
 
-// ---------- Растения 16×16 ----------
-const PLANT: Grid = [
-  '................',
-  '......kk........',
-  '.....kGGk.kk....',
-  '....kGvGkkGGk...',
-  '...kGvvvGGvGk...',
-  '..kGGvvvvvGGk...',
-  '..kGvGvzzvvvGk..',
-  '...kGvzzzvGGk...',
-  '....kGvzzvGk....',
-  '...kGGvvvvvGk...',
-  '..kGvGGkkvGGk...',
-  '...kkk.kTk.kk...',
-  '.......kTk......',
-  '.......kTk......',
-  '................',
-  '................',
-];
-const SPROUT: Grid = [
-  '................', '................', '................', '................', '................',
-  '................', '................', '......kk.kk.....', '.....kvGkGvk....', '......kGGGk.....',
-  '.......kTk......', '.......kTk......', '.......kTk......', '................', '................', '................',
-];
-/** Больное растение: листья желтеют/буреют, появляются пятна болезни. */
-function sick(grid: Grid, spot: string, every: number, wilt: Record<string, string> = {}): Grid {
-  let n = 0;
-  return grid.map((row) => row.replace(/[vGz]/g, (ch) => {
-    if (ch === 'z') return wilt.z ?? ch;
-    return ++n % every === 0 ? spot : (wilt[ch] ?? ch);
-  }));
-}
-const WILT = { v: 'f', G: 'F', z: 't' };          // жёлто-оливковые листья, плоды бледнеют
-const DYING = { v: 'F', G: 'N', z: 'N' };
-
-// ---------- Тля-ниндзя 14×12 ----------
-const APHID: Grid = [
-  '....k....k....',
-  '.....k..k.....',
-  '....kkkkkk....',
-  '...kvvvvvvk...',
-  '..kmmmmmmmmk..',
-  '..kvkwvvkwvk..',
-  '..kvvvvvvvvk..',
-  '...kvvvvvvk...',
-  '..kiiiiiiiik..',
-  '.kGkiiiiiikGk.',
-  '...kik..kik...',
-  '...kk....kk...',
-];
-
 export function registerSprites(scene: Phaser.Scene) {
-  addSheet(scene, 'aphid', [APHID]);
-  addSheet(scene, 'aoi', AOI_FRAMES);
-  addSheet(scene, 'fuku', FUKU_FRAMES);
-  addSheet(scene, 'plant', [SPROUT, PLANT, sick(PLANT, 'p', 3, WILT), sick(PLANT, 'P', 2, DYING), sick(PLANT, 'N', 1, DYING)]);
-  // кадры растения: 0 росток, 1 здоровое, 2 больное, 3 тяжело больное, 4 погибшее
+  addSheet(scene, 'fuku', FUKU_FRAMES);   // заглушка, если картинка Фуку не загрузилась
 
   const a = scene.anims;
-  a.create({ key: 'aoi-down', frames: a.generateFrameNumbers('aoi', { frames: [1, 0, 2, 0] }), frameRate: 8, repeat: -1 });
-  a.create({ key: 'aoi-up', frames: a.generateFrameNumbers('aoi', { frames: [4, 3, 5, 3] }), frameRate: 8, repeat: -1 });
-  a.create({ key: 'aoi-side', frames: a.generateFrameNumbers('aoi', { frames: [6, 7] }), frameRate: 7, repeat: -1 });
   a.create({ key: 'fuku-idle', frames: a.generateFrameNumbers('fuku', { frames: [0, 1] }), frameRate: 4, repeat: -1 });
   // персонажи фермы (16×20): кадр = строка*4 + столбец; столбцы: вниз, вверх, влево, вправо
   for (const k of ['aoi-na', 'ogawa-na', 'fisher-na', 'villager2-na', 'villager16-na', 'villager25-na', 'villager12-na']) {
@@ -283,27 +123,6 @@ function registerTiles(scene: Phaser.Scene) {
     for (let x = 6; x < 26; x++) { px(x, 22, '#8a5a3b'); px(x, 23, '#6a4329'); }
     for (let y = 0; y < 4; y++) for (let x = 12; x < 20; x++) px(x, y, '#f2c230');
   });
-  // Хайкаби 64×64: шляпка гриба, светящееся ядро, щупальца
-  for (const [key, core, rim] of [['haikabi', '#e8d3a6', '#3fd0c9'], ['haikabi-rage', '#e8833a', '#ff4f9a']]) {
-    addPainted(scene, key, 64, 64, (px, r) => {
-      for (let t = 0; t < 7; t++) {           // щупальца
-        let x = 10 + t * 7.5;
-        for (let y = 30; y < 62; y++) {
-          x += Math.sin(y / 4 + t) * 0.7;
-          px(Math.round(x), y, '#1e1b2e'); px(Math.round(x) + 1, y, y % 6 < 3 ? '#6b4e8c' : '#4b3766'); px(Math.round(x) + 2, y, '#1e1b2e');
-        }
-      }
-      for (let y = 4; y < 36; y++) for (let x = 4; x < 60; x++) {   // шляпка
-        const d = Math.hypot((x - 32) / 28, (y - 30) / 26);
-        if (d < 1 && y < 34) px(x, y, d > 0.93 ? rim : (r() < 0.12 ? '#9a9a9a' : (y < 14 ? '#7d6a9a' : '#6b4e8c')));
-      }
-      for (let i = 0; i < 9; i++) { const x = 12 + Math.floor(r() * 40), y = 10 + Math.floor(r() * 16); px(x, y, '#e2cfa0'); px(x + 1, y, '#e2cfa0'); }
-      for (let y = 26; y < 38; y++) for (let x = 26; x < 38; x++) {     // ядро
-        const d = Math.hypot(x - 31.5, y - 31.5);
-        if (d < 6) px(x, y, d < 3 ? '#ffffff' : core);
-      }
-    }, key === 'haikabi' ? 13 : 13);
-  }
   // Спорон 12×12
   addPainted(scene, 'sporon', 12, 12, (px) => {
     for (let y = 0; y < 7; y++) for (let x = 0; x < 12; x++) { const d = Math.hypot((x - 5.5) / 6, (y - 6) / 6); if (d < 1) px(x, y, d > 0.85 ? '#1e1b2e' : '#6b4e8c'); }

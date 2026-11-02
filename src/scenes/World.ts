@@ -2,7 +2,7 @@
 import { sound } from '../audio/sound';
 import { game, Bed } from '../state/game';
 import { isHealthy } from '../data/diseases';
-import { events } from '../state/events';
+import { events, uiBlocks } from '../state/events';
 import { FarmLife } from '../world/life';
 import { LAYOUT } from '../world/layout';
 
@@ -58,8 +58,8 @@ export class World extends Phaser.Scene {
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E') as Record<string, Phaser.Input.Keyboard.Key>;
     kb.on('keydown-E', () => this.interact());
-    kb.on('keydown-ESC', () => { if (!this.locked) events.emit('pause'); });
-    kb.on('keydown-TAB', (e: KeyboardEvent) => { e.preventDefault(); if (!this.locked) events.emit('diary'); });
+    // Esc (пауза) обрабатывает Hud — в одном месте, чтобы клавиша не открывала и не закрывала окно одновременно
+    kb.on('keydown-TAB', (e: KeyboardEvent) => { e.preventDefault(); if (!this.frozen()) events.emit('diary'); });
 
     events.on('lock', this.lockHandler, this);
     events.on('refresh-beds', this.refreshBeds, this);
@@ -89,6 +89,9 @@ export class World extends Phaser.Scene {
     if (season === 3) this.fx.hue(-12, true).brightness(0.95, true);
     this.fx.saturate(-Math.min(0.85, ratio * (season === 3 ? 1.3 : 0.7)), true);
   }
+
+  /** Мир стоит: интерьер/процедурная (locked) или модальное окно Hud. */
+  frozen() { return this.locked || uiBlocks(); }
 
   lockHandler(v: boolean) { this.locked = v; if (v) this.aoi.setVelocity(0); }
 
@@ -120,8 +123,8 @@ export class World extends Phaser.Scene {
       const soil = this.add.image(x, y, 'bed-wet').setOrigin(0).setDepth(-5).setAlpha(0.9);
       const plant = this.add.sprite(x + 8, y + 16, 'crops', 1).setOrigin(0.5, 1).setDepth(y + 16);
       const spores = this.add.particles(x + 8, y + 2, 'pixel', {
-        speed: { min: 3, max: 10 }, angle: { min: 230, max: 310 }, lifespan: 1800, frequency: 140, quantity: 1,
-        scale: { start: 1.4, end: 0.4 }, alpha: { start: 0.9, end: 0 }, tint: [0x6b4e8c, 0x9a9a9a, 0xff4f9a],
+        speed: { min: 3, max: 9 }, angle: { min: 240, max: 300 }, lifespan: 1700, frequency: 110, quantity: 1,
+        scale: { start: 2.4, end: 0.8 }, alpha: { start: 1, end: 0 }, tint: [0x8a5cc0, 0xb070e0, 0xff4f9a],
       }).setDepth(y + 20);
       this.beds.set(b.id, { plant, soil, spores });
     }
@@ -167,11 +170,12 @@ export class World extends Phaser.Scene {
   }
 
   interact() {
-    if (this.locked || !this.current) return;
+    if (this.frozen() || !this.current) return;
     const it = this.current;
     if (it.kind === 'bed') {
       if (!it.bed.crop && !it.bed.dead) { events.emit('toast', 'Пустая грядка. Семена можно купить у Огавы.'); return; }
-      if (it.bed.dead) { events.emit('toast', 'Растение погибло. Грядку нужно расчистить (скоро).'); return; }
+      if (it.bed.dead && !it.bed.crop) { events.emit('toast', 'Грядка пуста — растение удалено, соседи в безопасности. Новые семена — в лавке Огавы.'); return; }
+      if (it.bed.dead) { events.emit('toast', 'Растение погибло. Новые семена — в лавке Огавы.'); return; }
       this.locked = true;
       this.aoi.setVelocity(0);
       this.scene.sleep();
@@ -188,7 +192,7 @@ export class World extends Phaser.Scene {
     this.fuku.x += (tx - this.fuku.x) * Math.min(1, dt / 220);
     this.fuku.y += (ty - this.fuku.y) * Math.min(1, dt / 220);
 
-    if (this.locked) { this.aoi.setVelocity(0); this.aoi.anims.stop(); return; }
+    if (this.frozen()) { this.aoi.setVelocity(0); this.aoi.anims.stop(); return; }
     this.life.update(dt, !!(this.keys.A.isDown || this.keys.D.isDown || this.keys.W.isDown || this.keys.S.isDown || this.keys.LEFT.isDown || this.keys.RIGHT.isDown || this.keys.UP.isDown || this.keys.DOWN.isDown));
     const k = this.keys;
     const vx = (k.A.isDown || k.LEFT.isDown ? -1 : 0) + (k.D.isDown || k.RIGHT.isDown ? 1 : 0);

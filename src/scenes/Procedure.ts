@@ -21,17 +21,18 @@ export const GRADES: Record<Grade['label'], Grade> = {
 };
 const KEY_GRADE = GRADES.Good;   // режим без камеры
 
-type Cmd = 'scan' | 'view' | Action | 'none' | 'reset' | 'confirm' | 'harvest' | 'back' | 'swipe';
+type Cmd = 'scan' | 'view' | Action | 'none' | 'reset' | 'confirm' | 'harvest' | 'back' | 'swipe' | 'diary';
 const KEYMAP: Record<string, Cmd> = {
   '1': 'scan', r: 'view', R: 'view', к: 'view', К: 'view', '2': 'water', '3': 'spray', '4': 'prune', '7': 'remove',
   '6': 'swipe', '0': 'none', Backspace: 'reset', Enter: 'confirm', '5': 'confirm', h: 'harvest', H: 'harvest', р: 'harvest', Р: 'harvest', Escape: 'back',
+  Tab: 'diary',
 };
 
 /** Текст ритуала из дневника бабушки Хару. */
 export function ritualText(c: DiseaseClass) {
   if (isHealthy(c)) return 'не лечить (0)';
   const keys: Record<Action, string> = { water: '2', spray: '3', prune: '4', remove: '7' };
-  return c.cure.map((a) => `${ACTION_NAME[a]} (${keys[a]})`).join(' → ') + (c.noWaterAfter ? ', без полива' : '');
+  return c.cure.map((a) => `${ACTION_NAME[a]} (${keys[a]})`).join(' › ') + (c.noWaterAfter ? ', без полива' : '');
 }
 
 export class Procedure extends Phaser.Scene {
@@ -59,6 +60,10 @@ export class Procedure extends Phaser.Scene {
   init(data: { bedId: number }) {
     this.bed = game.data.beds[data.bedId];
     this.seq = []; this.grades = []; this.diag = null; this.view = 0; this.busy = false; this.treated = false;
+    // скан этого дня хранится на грядке: повторный вход показывает его без траты заряда
+    const st = this.bed.scanToday;
+    if (st) { this.diag = { top: st.top, ms: st.ms }; this.view = st.view; }
+    this.treated = this.bed.treatedDay === game.data.totalDays;
     this.aphid = null; this.aphidRolled = false; this.closing = false;
     // сцена переиспользуется для каждой грядки — сбрасываем всё, что осталось от прошлого визита
     this.gestureOn = false; this.updateCam = undefined; this.hand = null; this.gestureStatus = undefined; this.msg = '';
@@ -75,11 +80,11 @@ export class Procedure extends Phaser.Scene {
 
     this.ui = this.add.container(0, 0).setDepth(25);
     this.cameras.main.fadeIn(250, 28, 26, 51);
-    this.input.keyboard!.on('keydown', (e: KeyboardEvent) => { const c = KEYMAP[e.key]; if (c) this.command(c); });
+    this.input.keyboard!.on('keydown', (e: KeyboardEvent) => { const c = KEYMAP[e.key]; if (c) { if (c === 'diary') e.preventDefault(); this.command(c); } });
     loadLeafModel().catch(() => { /* ошибка покажется при скане */ });
-    this.say(this.bed.diagnosed === null
-      ? 'Шаг 1. Нажмите «Скан» (клавиша 1) — я посмотрю на лист через линзу.'
-      : 'Этот лист уже сканировали сегодня. Можно сделать новый скан.');
+    this.say(this.treated ? 'Сегодня эту грядку уже лечили. Приходите завтра — посмотрим, как она.'
+      : this.diag ? 'Этот лист уже сканировали сегодня — результат перед вами. Новый ракурс (R) потратит заряд.'
+      : 'Шаг 1. Нажмите «Скан» (клавиша 1) — я посмотрю на лист через линзу.');
     events.emit('procedure-open', this);
     this.events.once('shutdown', () => events.emit('procedure-close'));
 
@@ -109,10 +114,8 @@ export class Procedure extends Phaser.Scene {
     if (e.action === 'swipe') { this.command('swipe', grade); return; }
     const cmd = map[e.action];
     if (!cmd) return;
-    if (cmd === 'remove' && game.data.season < 3) return;
-    if (cmd === 'confirm' && !this.seq.length && this.diag) { this.command('none'); return; }   // большой палец без ритуала = «не лечить»
-    if (['water', 'spray', 'prune', 'remove'].includes(cmd) && !this.diag) { this.say('Сначала скан: покажите щепотку (G1).', HEX.orangeDark); return; }
-    this.command(cmd, grade);
+    if (cmd === 'confirm' && !this.seq.length && this.diag) { this.command('none', grade); return; }   // большой палец без ритуала = «не лечить»
+    this.command(cmd, grade);   // проверка доступности — общая, в command() → canDo()
   }
 
   update() {
@@ -149,16 +152,41 @@ export class Procedure extends Phaser.Scene {
 
   say(s: string, color = HEX.ink) { this.msg = s; this.msgColor = color; this.redraw(); }
 
+  /** Доступна ли команда сейчас — одна проверка для кнопок, клавиш и жестов. Возвращает подсказку, если нет. */
+  canDo(c: Cmd): true | string {
+    const d = game.data, b = this.bed, scanned = !!this.diag;
+    const sick = b.crop && !isHealthy(game.cls(b));
+    switch (c) {
+      case 'back': case 'diary': return true;
+      case 'scan': return this.bed.scanToday || d.fukuCharge > 0 ? true : 'Заряд линзы на нуле. Он восстановится ночью — или купите улучшение у Огавы.';
+      case 'view': return !scanned ? 'Сначала обычный скан (1).' : d.fukuCharge > 0 ? true : 'Заряд линзы на нуле — другой ракурс не сделать.';
+      case 'harvest': return b.stage === 2 && !sick && !b.dead ? true : 'Урожай собирают только со здорового созревшего растения.';
+      case 'swipe': return this.aphid ? true : 'Смахивать некого.';
+    }
+    if (this.treated) return 'Сегодня эту грядку уже лечили. Завтра будет новый день.';
+    if (!scanned) return 'Сначала скан (1): без диагноза лечить вслепую рискованно.';
+    switch (c) {
+      case 'spray': if (d.fungicide <= 0) return 'Нет фунгицида — купите у Огавы.'; break;
+      case 'remove': if (d.season < 3) return 'Удалять растения придётся только осенью — сейчас лечим.'; break;
+      case 'reset': return this.seq.length ? true : 'Ритуал пока пуст.';
+      case 'confirm': return this.seq.length ? true : 'Ритуал пуст. Соберите действия или выберите «Не лечить» (0).';
+    }
+    if (['water', 'spray', 'prune', 'remove'].includes(c) && this.seq.length >= 3) return 'В ритуале не больше трёх действий.';
+    return true;
+  }
+
   /** Единая точка входа для клавиш, кнопок и жестов. */
   command(c: Cmd, grade: Grade = KEY_GRADE) {
     if (c === 'back') return this.close();   // выход работает всегда, даже во время скана
     if (this.busy) return;
     if (this.aphid) { if (c === 'swipe') this.resolveAphid(true, grade); else this.say('Сначала прогоните тлю! Взмах ладонью (G6), клавиша 6 или щелчок по ней.', HEX.magentaDark); return; }
     if (c === 'swipe') return;
+    if (c === 'diary') return this.openDiary();
+    const ok = this.canDo(c);
+    if (ok !== true) { this.say(ok, HEX.orangeDark); sound.play('miss'); return; }
     if (c === 'scan') return void this.scan(0);
-    if (c === 'view') return void this.scan(this.diag ? this.view + 1 : 0);
+    if (c === 'view') return void this.scan(this.view + 1);
     if (c === 'harvest') return this.harvest();
-    if (this.treated) return;
     if (c === 'reset') { this.seq = []; this.grades = []; this.redraw(); return; }
     if (c === 'none') { this.seq = []; this.grades = []; this.confirm(); return; }
     if (c === 'confirm') { this.confirm(); return; }
@@ -175,23 +203,42 @@ export class Procedure extends Phaser.Scene {
     this.redraw();
   }
 
+  /** Дневник поверх процедурной (Tab); Esc в дневнике возвращает сюда. */
+  openDiary() {
+    this.input.keyboard!.enabled = false;
+    this.scene.pause();
+    this.scene.launch('Diary', { returnTo: 'Procedure' });
+  }
+
   async scan(view: number) {
     const d = game.data;
+    // скан этого ракурса уже был сегодня — показываем без траты заряда
+    const st = this.bed.scanToday;
+    if (st && view === st.view) {
+      this.diag = { top: st.top, ms: st.ms }; this.view = st.view;
+      this.say('Этот лист уже сканировали сегодня — результат перед вами.', HEX.greenDark);
+      return;
+    }
     if (d.fukuCharge <= 0) { this.say('Заряд линзы на нуле. Он восстановится ночью — или купите улучшение у Огавы.', HEX.magentaDark); return; }
     this.busy = true;
     this.fuku.setFrame(2).anims.stop();
     this.glitch(); sound.setMood('scan'); sound.play('scan');
     try {
       const img = this.textures.get(`card:${this.bed.card}`).getSourceImage() as HTMLImageElement;
-      const [res] = await Promise.all([diagnose(img, view), this.garden.scan()]);
+      const [res] = await Promise.all([diagnose(img, view, this.bed.crop ?? undefined), this.garden.scan()]);
       if (!this.scene.isActive() || this.closing) return;   // игрок ушёл с грядки — результат не нужен
       d.fukuCharge--; d.stats.scans++;
       this.diag = res; this.view = view;
       this.bed.diagnosed = res.top[0].id;
+      this.bed.scanToday = { top: res.top, ms: res.ms, view };
       const top = res.top[0], c = CLASSES[top.id], pct = Math.round(top.p * 100);
+      // первая встреча с болезнью открывает страницу дневника Хару
+      if (!isHealthy(c) && top.p >= 0.6) game.unlockPage(c.key);
+      const where = d.season === 1 ? 'Ритуал из дневника — в розовой рамке.' : 'Ритуал — в дневнике Хару (Tab).';
       if (top.p < 0.6) this.say(`Уверенность низкая — ${pct}%. Похоже на «${c.name}», но я не уверен. Сделайте другой ракурс (R).`, HEX.orangeDark);
       else if (isHealthy(c)) this.say(`Диагноз: здоров (${pct}%). Лечить не нужно — «Не лечить» (0).`, HEX.greenDark);
-      else this.say(`Диагноз: «${c.name}» (${pct}%). Ритуал из дневника — в розовой рамке. Соберите его и «Подтвердите».`, HEX.greenDark);
+      else this.say(`Диагноз: «${c.name}» (${pct}%). ${where} Соберите его и «Подтвердите».`, HEX.greenDark);
+      if (game.newPage) { const k = game.newPage; game.newPage = null; this.time.delayedCall(700, () => this.pageUnlocked(k)); }
     } catch (err) {
       this.say(`Линза не отвечает: ${(err as Error).message}`, HEX.magentaDark);
     }
@@ -216,7 +263,7 @@ export class Procedure extends Phaser.Scene {
       const q = pos();
       this.tweens.add({ targets: sprite, x: q.x, y: q.y, duration: 160, ease: 'Quad.out' });
       sprite.setFlipX(q.x < sprite.x);
-      if (this.bed.health > 0) { this.bed.health = Math.max(1, this.bed.health - 1); }
+      if (this.bed.health > 1) { this.bed.health = Math.max(1, this.bed.health - 1); this.redraw(); }
     } });
     const bar = this.add.graphics().setDepth(61);
     this.aphid = { sprite, until: this.time.now + win, bar, hop };
@@ -248,11 +295,12 @@ export class Procedure extends Phaser.Scene {
     if (this.seq.includes('water') && this.bed.noWater) { this.say('Сегодня поливать нельзя: после спрея от кладоспориоза нужна сухость.', HEX.magentaDark); return; }
     const mult = this.grades.length ? this.grades.reduce((s, g) => s + g.mult, 0) / this.grades.length : 1;
     const res = game.treat(this.bed, this.seq, mult);
+    if (res.blocked) { this.say(res.msg, HEX.magentaDark); sound.play('miss'); return; }   // ресурс кончился — ритуал не начат
     this.treated = true;
     this.hitStop(res.ok); sound.play(res.ok ? 'ok' : 'fail');
     if (res.ok) this.garden.heal(); else this.garden.fail();
     if (game.newPage) { const k = game.newPage; game.newPage = null; this.time.delayedCall(900, () => this.pageUnlocked(k)); }
-    this.say(`${res.ok ? '✓' : '✗'} ${res.msg} «На ферму» — Esc.`, res.ok ? HEX.greenDark : HEX.magentaDark);
+    this.say(`${res.ok ? 'Успех.' : 'Неудача.'} ${res.msg} «На ферму» — Esc.`, res.ok ? HEX.greenDark : HEX.magentaDark);
     game.save();
     events.emit('stats');
   }
@@ -379,31 +427,33 @@ export class Procedure extends Phaser.Scene {
 
     // ритуал + подсказка из дневника
     add(neonPanel(this, 400, 290, 540, 62, C.magenta));
-    const seqText = this.seq.length ? this.seq.map((a, i) => `${ACTION_NAME[a]} [${this.grades[i].label}]`).join(' → ') : '— выберите действия ниже —';
+    const seqText = this.seq.length ? this.seq.map((a, i) => `${ACTION_NAME[a]} [${this.grades[i].label}]`).join(' › ') : '— выберите действия ниже —';
     add(text(this, 414, 297, `РИТУАЛ: ${seqText}`, 16, HEX.white, { wordWrap: { width: 512 } }));
     const top = this.diag ? CLASSES[this.diag.top[0].id] : null;
-    add(text(this, 414, 327, top ? `Дневник Хару: «${top.name}» → ${ritualText(top)}` : 'Дневник Хару: ритуал подскажет диагноз', 14, HEX.orange));
+    // весной (обучение) ритуал подсказывается здесь; летом и осенью — только в дневнике (Tab)
+    const hint = !top ? 'Дневник Хару: ритуал подскажет диагноз' : game.data.season === 1 ? `Дневник Хару: «${top.name}» › ${ritualText(top)}` : `«${top.name}» — ритуал в дневнике Хару (Tab)`;
+    add(text(this, 414, 327, hint, 14, HEX.orange));
 
     // кнопки
-    const can = !this.treated, scanned = !!this.diag;
-    this.button(400, 360, 104, '1', 'Скан', 'scan', !scanned || this.treated ? true : true);
-    this.button(510, 360, 140, 'R', 'Др. ракурс', 'view', scanned);
-    this.button(656, 360, 92, '2', 'Полив', 'water', can && scanned);
-    this.button(754, 360, 90, '3', 'Спрей', 'spray', can && scanned);
-    this.button(850, 360, 90, '4', 'Обрезка', 'prune', can && scanned);
-    this.button(400, 396, 126, '7', 'Удалить', 'remove', can && scanned && game.data.season >= 3);
-    this.button(532, 396, 132, '0', 'Не лечить', 'none', can && scanned);
-    this.button(670, 396, 92, 'Bk', 'Сброс', 'reset', can && this.seq.length > 0);
-    this.button(768, 396, 172, 'Enter', 'Подтвердить', 'confirm', can && this.seq.length > 0, true);
-    this.button(400, 432, 150, 'H', 'Урожай', 'harvest', b.stage === 2 && !sick);
+    const on = (c: Cmd) => this.canDo(c) === true;
+    this.button(400, 360, 104, '1', 'Скан', 'scan', on('scan'));
+    this.button(510, 360, 140, 'R', 'Др. ракурс', 'view', on('view'));
+    this.button(656, 360, 92, '2', 'Полив', 'water', on('water'));
+    this.button(754, 360, 90, '3', 'Спрей', 'spray', on('spray'));
+    this.button(850, 360, 90, '4', 'Обрезка', 'prune', on('prune'));
+    this.button(400, 396, 126, '7', 'Удалить', 'remove', on('remove'));
+    this.button(532, 396, 132, '0', 'Не лечить', 'none', on('none'));
+    this.button(670, 396, 92, 'Bk', 'Сброс', 'reset', on('reset'));
+    this.button(768, 396, 172, 'Enter', 'Подтвердить', 'confirm', on('confirm'), true);
+    this.button(400, 432, 150, 'H', 'Урожай', 'harvest', on('harvest'));
     this.button(556, 432, 160, 'Esc', 'На ферму', 'back');
 
     if (this.gestureOn) {
       const pv = this.add.graphics().setDepth(30); pv.fillStyle(C.ink, 1).fillRect(244, 132, 128, 98).lineStyle(2, C.teal, 1).strokeRect(245, 133, 126, 96);
       add(pv);
       if (this.textures.exists('cam-proc')) add(this.add.image(248, 136, 'cam-proc').setOrigin(0).setDepth(31));
-      add(text(this, 722, 438, 'G1 скан · G2 полив · G3 спрей\nG4 обрезка · G5 подтвердить', 12, '#b9b7d9', { lineSpacing: 2 }));
-    } else add(text(this, 722, 438, gestures.possible ? 'Без камеры: действие = Good ×0,7\nЖесты: меню «Ритуалы рук»' : 'Веб-версия: клавиши и мышь\nЖесты — в версии для ПК', 12, '#8a88b0', { lineSpacing: 2 }));
+      add(text(this, 724, 434, 'G1 скан · G2 полив · G3 спрей\nG4 обрезка · G5 подтвердить', 11, '#b9b7d9', { lineSpacing: 0 }));
+    } else add(text(this, 724, 434, gestures.possible ? 'Клавиши: оценка Good ×0,7\nЖесты — меню «Ритуалы рук»' : 'Веб-версия: клавиши и мышь\nЖесты — в версии для ПК', 11, '#8a88b0', { lineSpacing: 0 }));
   }
 
   closing = false;

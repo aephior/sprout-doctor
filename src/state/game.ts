@@ -17,6 +17,8 @@ export interface Bed {
   noWater: boolean;            // запрет полива (кладоспориоз)
   diagnosed: number | null;    // что показала Линза (top-1)
   dead: boolean;
+  scanToday?: { top: { id: number; p: number }[]; ms: number; view: number } | null;   // скан этого дня (повторный вход — без траты заряда)
+  treatedDay?: number;         // день последнего подтверждённого лечения (одно лечение на грядку в день)
 }
 
 export interface GameData {
@@ -40,10 +42,12 @@ export interface GameData {
   rain: boolean;               // дождь сегодня
   pages: string[];             // открытые страницы дневника Хару (ключи болезней)
   mochiDay: number;            // день, когда Моти уже принесла подарок
+  demoEnded?: boolean;         // демо-весна пройдена (без ключа дальше играть нельзя)
+  completed?: boolean;         // финал пройден — «Продолжить» в меню не показывается
 }
 
 export const DAY_START = 6 * 60, DAY_END = 24 * 60;
-/** Страницы дневника бабушки Хару: открываются при первом успешном лечении болезни. */
+/** Страницы дневника бабушки Хару: открываются, когда Линза впервые находит болезнь (или при первом лечении). */
 export const PAGES: Record<string, string> = {
   early_blight: 'Кольца, как на срезе дерева, и жёлтая кайма. Начинается с нижних листьев. Спрей — и не мочи листву вечером.',
   late_blight: 'Бурые пятна, будто лист обожгли. Приходит вместе с туманом. Обрезать, потом опрыснуть — и не медлить ни дня.',
@@ -56,6 +60,8 @@ export const PAGES: Record<string, string> = {
 
 export const DAYS_PER_SEASON = 5;
 const SAVE_KEY = 'sprout-doctor-save-v1';
+/** Культура грядки — по столбцу (одно правило для новой игры, семян и новых сезонов). */
+export const cropOfBed = (b: { tx: number }): Crop => (['tomato', 'tomato', 'potato', 'pepper'] as Crop[])[Math.max(0, Math.min(3, (b.tx - 9) / 2))];
 
 export class Game {
   data!: GameData;
@@ -69,7 +75,7 @@ export class Game {
     const crops: Crop[] = ['tomato', 'tomato', 'potato', 'pepper'];
     let id = 0;
     for (let row = 0; row < 3; row++) for (let col = 0; col < 4; col++) {
-      const crop = crops[col];
+      const crop = crops[col];   // = cropOfBed
       beds.push({ id: id++, tx: 9 + col * 2, ty: 9 + row * 2, crop, stage: 1, growth: 1, health: 100,
         cls: healthyOf(crop).id, card: '', watered: false, noWater: false, diagnosed: null, dead: false });
     }
@@ -101,14 +107,14 @@ export class Game {
   }
 
   /** Результат ритуала: сравнение с ИСТИННЫМ классом грядки. mult — множитель качества жеста. */
-  treat(b: Bed, seq: Action[], mult: number): { ok: boolean; msg: string } {
+  treat(b: Bed, seq: Action[], mult: number): { ok: boolean; msg: string; blocked?: boolean } {
     const truth = this.cls(b);
     const s = this.data.stats;
+    // ресурсы проверяются до любых изменений: без фунгицида ритуал не начинается и не засчитывается
+    if (seq.includes('spray') && this.data.fungicide <= 0) return { ok: false, blocked: true, msg: 'Нет фунгицида — купите его у Огавы.' };
     if (seq.length) { s.gradeSum += mult; s.gradeN++; }
-    if (seq.includes('spray')) {
-      if (this.data.fungicide <= 0) return { ok: false, msg: 'Фунгицид закончился. Купите его в лавке Огавы.' };
-      this.data.fungicide--;
-    }
+    if (seq.includes('spray')) this.data.fungicide--;
+    b.treatedDay = this.data.totalDays;
     if (seq.length === 1 && seq[0] === 'water') b.watered = true;
 
     const same = seq.length === truth.cure.length && seq.every((a, i) => a === truth.cure[i]);
@@ -172,6 +178,7 @@ export class Game {
       }
       b.watered = false; b.noWater = false; b.diagnosed = null;
     }
+    for (const b of d.beds) { b.scanToday = null; b.treatedDay = 0; }
     // распространение заразных болезней на соседние грядки
     for (const b of d.beds) {
       const c = this.cls(b);
@@ -206,11 +213,15 @@ export class Game {
     d.season = (d.season + 1) as 2 | 3; d.day = 1;
     d.weather = rollWeather(d.season);
     d.fukuCharge = d.fukuMax;
-    // новые посадки на погибших грядках, урожай сезона продолжает расти
+    // новые посадки на погибших грядках (культура — по столбцу), живые растения отдохнули между сезонами
     for (const b of d.beds) {
-      if (b.dead || !b.crop) { b.dead = false; b.crop = (['tomato', 'potato', 'pepper'] as Crop[])[b.id % 3]; b.stage = 0; b.growth = 0; b.health = 100; b.cls = healthyOf(b.crop).id; this.assignCard(b); }
+      b.scanToday = null; b.treatedDay = 0;
+      if (b.dead || !b.crop) { b.dead = false; b.crop = cropOfBed(b); b.stage = 0; b.growth = 0; b.health = 100; b.cls = healthyOf(b.crop).id; this.assignCard(b); }
+      else b.health = Math.min(100, b.health + 30);
     }
-    this.infectRandom(2 + d.season);
+    // на старте сезона больны не больше половины грядок
+    const sick = d.beds.filter((b) => b.crop && !b.dead && !isHealthy(this.cls(b))).length;
+    this.infectRandom(Math.max(0, Math.min(2 + d.season, Math.floor(d.beds.length / 2) - sick)));
     this.save();
   }
 
@@ -218,7 +229,7 @@ export class Game {
   replantDead(): number {
     let n = 0;
     for (const b of this.data.beds) if (b.dead) {
-      const crop = (['tomato', 'tomato', 'potato', 'pepper'] as Crop[])[b.id % 4];
+      const crop = cropOfBed(b);
       Object.assign(b, { dead: false, crop, stage: 0, growth: 0, health: 100, cls: healthyOf(crop).id, watered: false, noWater: false });
       this.assignCard(b); n++;
     }
@@ -229,6 +240,8 @@ export class Game {
 
   save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch { /* приватный режим */ } }
   hasSave() { try { return !!localStorage.getItem(SAVE_KEY); } catch { return false; } }
+  /** Сохранение пройденной игры: «Продолжить» для него не предлагается. */
+  saveCompleted() { try { const s = localStorage.getItem(SAVE_KEY); return !!s && !!JSON.parse(s).completed; } catch { return false; } }
   load(): boolean {
     try {
       const s = localStorage.getItem(SAVE_KEY);

@@ -14,7 +14,7 @@ function mix(c1: number, c2: number, t: number) {
   return (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(b);
 }
 // освещение по часам: [час, цвет-множитель]
-const LIGHT: [number, number][] = [[6, 0xc8b4d8], [7.5, 0xf2e2e8], [9, 0xffffff], [16, 0xffffff], [18, 0xffd6a8], [19.5, 0xd8a0a8], [20.5, 0x8080c0], [22, 0x5a5a9a], [24, 0x44447c]];
+const LIGHT: [number, number][] = [[6, 0xb0a0cc], [7.5, 0xf2e2e8], [9, 0xffffff], [16, 0xffffff], [18, 0xffd0a0], [19.5, 0xc8889a], [20.5, 0x6a6aa8], [21.5, 0x46467c], [24, 0x34345e]];
 function lightAt(h: number) {
   for (let i = 1; i < LIGHT.length; i++) if (h <= LIGHT[i][0]) {
     const [h0, c0] = LIGHT[i - 1], [h1, c1] = LIGHT[i];
@@ -112,12 +112,11 @@ export class FarmLife {
       this.fog.push(f);
       sc.tweens.add({ targets: f, x: f.x + 60 + Math.random() * 40, duration: 14000 + Math.random() * 8000, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     }
-    // сезонные частицы: весной лепестки сакуры, осенью листья
-    const s = game.data.season;
-    if (s !== 2) this.season = add.particles(0, 0, s === 1 ? 'petal' : 'leaf-fall', {
-      x: { min: 0, max: MAPW }, y: -6, lifespan: 9000, speedY: { min: 10, max: 18 }, speedX: { min: 4, max: 14 }, rotate: { min: 0, max: 360 },
-      frequency: s === 1 ? 700 : 500, quantity: 1,
-    }).setDepth(9003);
+    // сезонные частицы: весной лепестки сакуры, летом — ничего, осенью листья; пересоздаются при смене сезона
+    this.seasonFx();
+    const onSeason = () => { this.seasonFx(); this.apply(); };
+    events.on('season', onSeason);
+    sc.events.once('shutdown', () => events.off('season', onSeason));
     // бабочки
     for (const [cx, cy] of [[12 * T, 9 * T], [22 * T, 11 * T], [9 * T, 17 * T]]) {
       const b = add.sprite(cx, cy, 'butterfly', 0).setDepth(8000).setTint([0xffffff, 0xf2c230, 0xf2a7b8][this.butterflies.length]);
@@ -146,6 +145,16 @@ export class FarmLife {
     // автобус
     this.bus = add.sprite(MAPW + 40, LAYOUT.road + 10, 'bus-hd', 0).setOrigin(0.5, 1).setScale(0.5).setDepth(LAYOUT.road + 12).setVisible(false);
     this.apply(true);
+  }
+
+  seasonFx() {
+    this.season?.destroy(); this.season = null;
+    const s = game.data.season;
+    if (s === 2) return;
+    this.season = this.sc.add.particles(0, 0, s === 1 ? 'petal' : 'leaf-fall', {
+      x: { min: 0, max: MAPW }, y: -6, lifespan: 9000, speedY: { min: 10, max: 18 }, speedX: { min: 4, max: 14 }, rotate: { min: 0, max: 360 },
+      frequency: s === 1 ? 700 : 500, quantity: 1,
+    }).setDepth(9003);
   }
 
   // ---------- Моти ----------
@@ -188,7 +197,7 @@ export class FarmLife {
     sound.play('meow');
     this.cat.stop();
     this.mochi.setFrame(8);
-    const heart = this.sc.add.text(this.mochi.x, this.mochi.y - 14, '♥', { fontSize: '10px', color: '#ff4f9a' }).setOrigin(0.5).setDepth(9500).setResolution(4);
+    const heart = this.sc.add.image(this.mochi.x, this.mochi.y - 16, 'heart-px').setDepth(9500);
     this.sc.tweens.add({ targets: heart, y: heart.y - 12, alpha: 0, duration: 1200, onComplete: () => heart.destroy() });
     this.sc.time.delayedCall(2500, () => this.mochiNext());
     if (d.mochiDay === d.totalDays) return 'Моти мурчит и трётся о сапоги.';

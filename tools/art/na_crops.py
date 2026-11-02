@@ -66,7 +66,12 @@ def tint(im, kind):
 sheet = Image.new('RGBA', (16 * 8, 20 * 3))
 for i, kind in enumerate(['tomato', 'potato', 'pepper']):
     fr = [mound()] + [plant(kind, s) for s in (1, 2, 3, 4)]
-    fr += [tint(fr[4], 'sick'), tint(fr[4], 'very'), tint(fr[3], 'dead')]
+    def droop(im, k):     # поникшее растение: ниже и шире (сжато по вертикали от земли)
+        bb = im.getbbox(); p = im.crop(bb); w, h = p.size
+        p = p.resize((min(16, int(w * (1 + (1 - k) * 0.6))), max(4, int(h * k))), Image.NEAREST)
+        c = Image.new('RGBA', (16, 20)); c.alpha_composite(p, ((16 - p.width) // 2, 20 - p.height)); return outline(c) if False else c
+    # больные кадры строятся из растения БЕЗ плодов: пятна, поникшие листья — не спутать со спелым
+    fr += [tint(droop(fr[3], 0.92), 'sick'), tint(droop(fr[3], 0.78), 'very'), tint(droop(fr[3], 0.7), 'dead')]
     for j, f in enumerate(fr):
         bg = mound() if j else Image.new('RGBA', (16, 20))
         c = Image.new('RGBA', (16, 20))

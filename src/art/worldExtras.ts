@@ -65,4 +65,12 @@ export function registerWorldExtras(scene: Phaser.Scene) {
     ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
     scene.textures.addCanvas('fog', cv);
   }
+  // пиксельное сердечко (символ ♥ есть не во всех шрифтах)
+  if (!scene.textures.exists('heart-px')) {
+    const rows = ['.oo.oo.', 'oppopp o'.replace(' ', ''), 'opppppo', '.opppo.', '..opo..', '...o...'];
+    const cv = document.createElement('canvas'); cv.width = 7; cv.height = 6;
+    const ctx = cv.getContext('2d')!;
+    rows.forEach((r, y) => [...r].forEach((c, x) => { if (c !== '.') { ctx.fillStyle = c === 'o' ? '#1e1b2e' : '#ff4f9a'; ctx.fillRect(x, y, 1, 1); } }));
+    scene.textures.addCanvas('heart-px', cv);
+  }
 }

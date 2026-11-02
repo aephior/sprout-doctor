@@ -11,13 +11,13 @@ import { sound } from '../audio/sound';
 const KEYS = Object.keys(PAGES);
 
 export class Diary extends Phaser.Scene {
-  returnTo: 'World' | 'Home' = 'World';
+  returnTo: 'World' | 'Home' | 'Procedure' = 'World';
   sel = 0;
   page!: Phaser.GameObjects.Container;
   list!: Phaser.GameObjects.Container;
 
   constructor() { super('Diary'); }
-  init(data: { returnTo?: 'World' | 'Home'; open?: string }) {
+  init(data: { returnTo?: 'World' | 'Home' | 'Procedure'; open?: string }) {
     this.returnTo = data?.returnTo ?? 'World';
     this.sel = data?.open ? Math.max(0, KEYS.indexOf(data.open)) : Math.max(0, KEYS.findIndex((k) => game.data.pages.includes(k)));
   }
@@ -33,17 +33,17 @@ export class Diary extends Phaser.Scene {
     g.fillStyle(0xf6e7c1, 1).fillRect(76, 50, 400, 440).fillRect(484, 50, 400, 440);
     g.fillStyle(0xe2cfa0, 1).fillRect(468, 50, 8, 440).fillRect(484, 50, 8, 440);
     g.fillStyle(0xc9ab74, 1).fillRect(476, 46, 8, 448);
-    for (let y = 120; y < 480; y += 26) { g.fillStyle(0xd9c79e, 1).fillRect(96, y, 360, 1); }
+    for (let i = 0; i < KEYS.length; i++) g.fillStyle(0xd9c79e, 1).fillRect(96, 130 + i * 48 + 38, 360, 1);   // линейка — под каждой строкой списка
     g.fillStyle(0xc8323c, 1).fillRect(860, 30, 14, 70).fillTriangle(860, 100, 874, 100, 867, 92);   // закладка
     this.list = this.add.container(0, 0);
     this.page = this.add.container(0, 0);
     text(this, 276, 66, 'Дневник Хару', 24, '#5a2a2a').setOrigin(0.5, 0);
     text(this, 276, 96, `Страниц: ${game.data.pages.length} из ${KEYS.length}`, 14, '#8a6a4a').setOrigin(0.5, 0);
-    text(this, 480, 520, '↑↓ — листать · Esc — закрыть', 13, '#c9ab74').setOrigin(0.5);
+    text(this, 480, 520, 'W/S или стрелки — листать · Esc — закрыть', 13, '#c9ab74').setOrigin(0.5);
     this.input.keyboard!.on('keydown', (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.key === 'Tab') { e.preventDefault(); this.close(); }
-      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') this.go(-1);
-      if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') this.go(1);
+      if (e.key === 'ArrowUp' || e.code === 'KeyW') this.go(-1);      // e.code — физическая клавиша, работает и в русской раскладке
+      if (e.key === 'ArrowDown' || e.code === 'KeyS') this.go(1);
     });
     this.drawList(); this.drawPage();
     this.cameras.main.fadeIn(250, 0, 0, 0);
@@ -60,7 +60,7 @@ export class Diary extends Phaser.Scene {
       if (sel) { const h = this.add.graphics(); h.fillStyle(0xf2d39a, 1).fillRect(92, y - 6, 368, 40); this.list.add(h); }
       this.list.add(text(this, 104, y, open ? c.name : '? ? ?', 18, open ? '#3a2a1a' : '#b8a888'));
       this.list.add(text(this, 104, y + 21, open ? CLASSES.filter((x) => x.key === k).map((x) => CROP_NAME[x.crop]).join(', ') : 'ещё не встречалась', 12, '#8a6a4a'));
-      if (open) this.list.add(text(this, 444, y + 8, '✓', 18, '#2e6b2a').setOrigin(1, 0));
+      if (open) { const ck = this.add.graphics(); ck.lineStyle(3, 0x2e6b2a, 1).beginPath(); ck.moveTo(430, y + 16); ck.lineTo(436, y + 22); ck.lineTo(446, y + 8); ck.strokePath(); this.list.add(ck); }
       const z = this.add.zone(92, y - 6, 368, 40).setOrigin(0).setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.sel = i; sound.play('page'); this.drawList(); this.drawPage(); });
       this.list.add(z);
     });
@@ -76,7 +76,7 @@ export class Diary extends Phaser.Scene {
       add(g);
       add(text(this, 684, 190, '?', 72, '#c9ab74').setOrigin(0.5));
       add(text(this, 684, 320, 'Страница пока пуста.', 18, '#8a6a4a').setOrigin(0.5));
-      add(text(this, 684, 350, 'Вылечите эту болезнь хотя бы раз —\nи бабушкина запись проявится.', 14, '#8a6a4a', { align: 'center' }).setOrigin(0.5, 0));
+      add(text(this, 684, 350, 'Найдите эту болезнь Линзой Фуку —\nи бабушкина запись проявится.', 14, '#8a6a4a', { align: 'center' }).setOrigin(0.5, 0));
       return;
     }
     // фото листа, приклеенное «скотчем»
@@ -104,6 +104,7 @@ export class Diary extends Phaser.Scene {
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.stop();
       if (this.returnTo === 'Home') { events.emit('diary-closed'); return; }
+      if (this.returnTo === 'Procedure') { const p = this.scene.get('Procedure'); this.scene.resume('Procedure'); p.input.keyboard!.enabled = true; return; }
       this.scene.wake('World'); this.scene.setVisible(true, 'Hud');
       events.emit('lock', false);
     });

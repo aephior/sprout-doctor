@@ -26,7 +26,7 @@ export class Menu extends Phaser.Scene {
     text(this, W / 2, 162, 'Лечи урожай. Читай листья. Колдуй руками.', 18, HEX.paper, { stroke: HEX.ink, strokeThickness: 4 }).setOrigin(0.5);
 
     const items: [string, () => void][] = [['Новая игра', () => { game.newGame(); game.save(); this.startGame(); }]];
-    if (game.hasSave()) items.unshift(['Продолжить', () => {
+    if (game.hasSave() && !game.saveCompleted()) items.unshift(['Продолжить', () => {
       if (game.load()) this.startGame();
       else { game.newGame(); game.save(); this.startGame(); }   // сохранение повреждено — начинаем заново, а не зависаем
     }]);
@@ -42,17 +42,21 @@ export class Menu extends Phaser.Scene {
     const cursor = text(this, px + 4, py, '›', 24, '#c8323c');
     const draw = () => { labels.forEach((l, i) => l.setColor(i === sel ? '#c8323c' : HEX.ink)); cursor.setY(py + sel * 40); };
     draw();
-    this.input.keyboard!.on('keydown-UP', () => { sel = (sel + items.length - 1) % items.length; draw(); });
-    this.input.keyboard!.on('keydown-DOWN', () => { sel = (sel + 1) % items.length; draw(); });
-    this.input.keyboard!.on('keydown-ENTER', () => items[sel][1]());
-    this.input.keyboard!.on('keydown-SPACE', () => items[sel][1]());
+    // пока открыт оверлей («Как играть», «Рекорды»), меню позади не управляется
+    this.overlay = false;
+    this.input.keyboard!.on('keydown-UP', () => { if (!this.overlay) { sel = (sel + items.length - 1) % items.length; draw(); } });
+    this.input.keyboard!.on('keydown-DOWN', () => { if (!this.overlay) { sel = (sel + 1) % items.length; draw(); } });
+    this.input.keyboard!.on('keydown-ENTER', () => { if (!this.overlay) items[sel][1](); });
+    this.input.keyboard!.on('keydown-SPACE', () => { if (!this.overlay) items[sel][1](); });
 
     const full = isLicensed();
     const demo = this.add.graphics();
     demo.fillStyle(full ? C.teal : C.magenta, 1).fillRect(W - 170, 20, 150, 30);
     text(this, W - 95, 35, full ? 'ПОЛНАЯ ВЕРСИЯ' : 'ДЕМО', 16, full ? HEX.ink : HEX.white).setOrigin(0.5);
-    text(this, W - 16, H - 16, 'v0.6 · бета', 14, HEX.paper).setOrigin(1, 1);
+    text(this, W - 16, H - 16, 'v0.7 · бета', 14, HEX.paper).setOrigin(1, 1);
   }
+
+  overlay = false;
 
   startGame() {
     this.cameras.main.fadeOut(300, 0, 0, 0);
@@ -64,7 +68,7 @@ export class Menu extends Phaser.Scene {
     const { width: W, height: H } = this.scale;
     const box = this.add.container(0, 0);
     const shade = this.add.rectangle(0, 0, W, H, 0x000000, 0.6).setOrigin(0).setInteractive();
-    const lines = rows.length ? rows.map((r, i) => `${String(i + 1).padStart(2)}. ${String(r.score).padStart(5)}  ${r.ending.padEnd(18)} ${r.accuracy}%  ${r.days} дн.  ${r.date}`)
+    const lines = rows.length ? rows.map((r, i) => `${String(i + 1).padStart(2)}. ${String(r.score).padStart(5)}  ${r.ending.padEnd(18)} ${r.cured || r.accuracy ? r.accuracy + '%' : ' —'}  ${r.days} дн.  ${r.date}`)
       : ['Пока пусто. Пройдите демо-сезон или всю игру.'];
     box.add([shade, paperPanel(this, 140, 70, W - 280, H - 140),
       text(this, 170, 92, 'Рекорды', 26),
@@ -72,7 +76,8 @@ export class Menu extends Phaser.Scene {
       text(this, 170, 160, lines.join('\n'), 16, HEX.ink, { lineSpacing: 6 })]);
     const close = text(this, W - 170, H - 100, '[ закрыть ]', 18, '#c8323c').setOrigin(1, 0).setInteractive({ useHandCursor: true });
     box.add(close);
-    const done = () => box.destroy();
+    this.overlay = true;
+    const done = () => { if (!box.active) return; box.destroy(); this.time.delayedCall(0, () => { this.overlay = false; }); };
     close.on('pointerdown', done); shade.on('pointerdown', done);
     this.input.keyboard!.once('keydown-ESC', done);
   }
@@ -85,9 +90,8 @@ export class Menu extends Phaser.Scene {
     const t = text(this, 170, 60, [
       'Как играть',
       '',
-      'WASD / стрелки — ходить по ферме',
-      'E — осмотреть грядку, войти в дом, лавку',
-      'Esc — пауза / выход   ·   M — звук вкл/выкл',
+      'WASD / стрелки — ходить · E — грядка, дом, лавка, разговор',
+      'Tab — дневник Хару · Esc — пауза · M — звук',
       '',
       'В «Процедурной»:',
       '1 — скан Линзой Фуку (тратит заряд)',
@@ -95,14 +99,16 @@ export class Menu extends Phaser.Scene {
       '2 полив · 3 спрей · 4 обрезка · 7 удалить',
       '0 — не лечить (растение здорово)',
       'Enter — подтвердить ритуал, Backspace — сбросить',
-      'H — собрать урожай (созревшее здоровое растение)',
+      '6 — смахнуть тлю · Tab — дневник с ритуалами',
+      'H — урожай (только созревшее здоровое растение)',
       '',
       'Нейросеть может ошибаться. Смотрите на уверенность!',
-      'Графика: LPC (CC-BY-SA/GPL) и ИИ — авторы в CREDITS.md',
+      'Графика: Ninja Adventure (CC0) и ИИ — авторы в CREDITS.md',
     ].join('\n'), 18, HEX.ink, { lineSpacing: 4 });
     const close = text(this, W - 170, H - 72, '[ закрыть ]', 18, '#c8323c').setOrigin(1, 0).setInteractive({ useHandCursor: true });
     box.add([shade, p, t, close]);
-    const done = () => box.destroy();
+    this.overlay = true;
+    const done = () => { if (!box.active) return; box.destroy(); this.time.delayedCall(0, () => { this.overlay = false; }); };
     close.on('pointerdown', done);
     shade.on('pointerdown', done);
     this.input.keyboard!.once('keydown-ESC', done);

@@ -137,8 +137,11 @@ export class Boss extends Phaser.Scene {
 
   hit(grade: Grade) {
     sound.play(grade.label === 'Perfect' ? 'perfect' : grade.label === 'Good' ? 'good' : 'miss');
+    // урон — равная доля оставшихся ударов: последний удар доводит полоску до нуля.
+    // Качество (Perfect/Good/Miss) идёт в оценку боя, а не в урон.
+    const left = (this.need.length - this.step) + (this.phase === 1 ? 4 + 3 : this.phase === 2 ? 3 : 0);
     this.step++; this.grades.push(grade.mult);
-    this.bossHp = Math.max(0, this.bossHp - (100 / 9) * (0.6 + 0.4 * grade.mult));
+    this.bossHp = left <= 1 ? 0 : Math.max(0, this.bossHp - this.bossHp / left);
     this.boss.setTintFill(grade.color);
     this.time.delayedCall(90, () => this.boss.clearTint());
     this.cameras.main.flash(80, (grade.color >> 16) & 255, (grade.color >> 8) & 255, grade.color & 255);
@@ -163,7 +166,7 @@ export class Boss extends Phaser.Scene {
     const g = this.add.graphics();
     g.fillStyle(0x000000, 0.45).fillRect(0, 0, 960, 540);
     for (let i = 0; i < 30; i++) g.fillStyle(i % 3 ? 0xffffff : C.magenta, 0.12).fillRect(0, Math.random() * 540, 960, 2 + Math.random() * 6);
-    vhs.add([g, text(this, 480, 230, '◀◀  ПЕРЕМОТКА', 48, HEX.white, { stroke: HEX.ink, strokeThickness: 8 }).setOrigin(0.5),
+    vhs.add([g, text(this, 480, 230, '«« ПЕРЕМОТКА', 48, HEX.white, { stroke: HEX.ink, strokeThickness: 8 }).setOrigin(0.5),
       text(this, 480, 290, reason, 18, HEX.paper, { stroke: HEX.ink, strokeThickness: 4 }).setOrigin(0.5)]);
     this.cameras.main.shake(300, 0.01);
     this.tweens.add({ targets: vhs, x: { from: -12, to: 12 }, duration: 60, yoyo: true, repeat: 10 });
@@ -183,7 +186,7 @@ export class Boss extends Phaser.Scene {
     this.boss.setTexture('g-haikabi_defeated');
     this.tweens.add({ targets: this.boss, y: 360, alpha: 0.85, duration: 1600, ease: 'Quad.out' });
     const d = game.data;
-    d.bossDone = true;
+    d.bossDone = true; d.completed = true;   // финал пройден: «Продолжить» больше не ведёт в бой
     const avg = this.grades.reduce((a, b) => a + b, 0) / Math.max(1, this.grades.length);
     d.stats.gradeSum += avg; d.stats.gradeN++;
     d.reputation = Math.min(100, d.reputation + 20);
@@ -209,7 +212,7 @@ export class Boss extends Phaser.Scene {
       full ? 'Деревня Кири-но-Сато снова в цвете. Бабушка Хару гордилась бы вами.' : `Теплица свободна, но выручки к фестивалю не хватило: ${revenue} из ${FESTIVAL_GOAL}.`,
       '',
       `Дней на ферме: ${d.totalDays}   ·   Перемоток в бою: ${this.rewinds}`,
-      `Точность ритуалов: ${row.accuracy}%   ·   Вылечено грядок: ${d.stats.cured}`,
+      `Точность ритуалов: ${d.stats.correctTreat + d.stats.wrongTreat ? row.accuracy + '%' : '—'}   ·   Вылечено грядок: ${d.stats.cured}`,
       `Сканов Линзой: ${d.stats.scans}   ·   Тли прогнано: ${d.stats.aphids}`,
       `Выручка: ${revenue} монет (цель ${FESTIVAL_GOAL})`,
       '',
@@ -230,7 +233,8 @@ export class Boss extends Phaser.Scene {
     if (!this.done) {
       for (const sp of [...this.sporons]) if (this.time.now > sp.until) {
         this.sporons.splice(this.sporons.indexOf(sp), 1);
-        sp.s.destroy(); this.hp = Math.max(0, this.hp - 15); this.step++;
+        sp.s.destroy(); this.hp = Math.max(0, this.hp - 15);
+        this.pendingSporons++;   // взрыв — не взмах: шаг ритуала не засчитывается, Спорон появится снова
         this.cameras.main.shake(150, 0.006);
         this.say('Спорон взорвался облаком спор: −15 к теплице!');
         if (this.pendingSporons > 0) this.time.delayedCall(400, () => this.spawnSporon());
@@ -267,7 +271,7 @@ export class Boss extends Phaser.Scene {
     const names = this.need.map((a, i) => {
       const label = a === 'swipe' ? 'Взмах' : ACTION_NAME[a];
       const hidden = this.phase === 3 && !this.showSeq && i >= this.step;
-      return `${i < this.step ? '✓' : '·'} ${hidden ? '???' : `${label} (${KEY_OF[a]})`}`;
+      return `${i < this.step ? '+' : '·'} ${hidden ? '???' : `${label} (${KEY_OF[a]})`}`;
     });
     add(text(this, 574, 118, names.join('\n'), 15, HEX.white, { lineSpacing: 3 }));
     if (this.updateCam && this.textures.exists('cam-boss')) {
