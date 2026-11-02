@@ -12,7 +12,7 @@ import { gestures } from '../ai/gestureCtl';
 import { tracker } from '../ai/hands';
 import { GestureEvent, FrameInfo } from '../ai/gestures';
 import { drawHand, cameraTexture } from '../ui/hand';
-import { GRADES, Grade } from './Procedure';
+import { GRADES, Grade, RU_GRADE } from './Procedure';
 import { addRecord, FESTIVAL_GOAL } from '../state/records';
 
 const KEYS: Record<string, Action | 'swipe'> = { '2': 'water', '3': 'spray', '4': 'prune', '6': 'swipe' };
@@ -146,8 +146,8 @@ export class Boss extends Phaser.Scene {
     this.time.delayedCall(90, () => this.boss.clearTint());
     this.cameras.main.flash(80, (grade.color >> 16) & 255, (grade.color >> 8) & 255, grade.color & 255);
     const col = '#' + grade.color.toString(16).padStart(6, '0');
-    const t = text(this, 480, 120, grade.label, 30, col, { stroke: HEX.ink, strokeThickness: 6 }).setOrigin(0.5).setDepth(40);
-    this.tweens.add({ targets: t, y: 80, alpha: 0, duration: 700, onComplete: () => t.destroy() });
+    const t = text(this, 480, 230, RU_GRADE[grade.label], 30, HEX.white, { stroke: col, strokeThickness: 7 }).setOrigin(0.5).setDepth(40);
+    this.tweens.add({ targets: t, y: 190, alpha: 0, delay: 300, duration: 600, onComplete: () => t.destroy() });
     if (this.step >= this.need.length) {
       this.locked = true;
       if (this.phase < 3) this.time.delayedCall(900, () => this.startPhase(this.phase + 1));

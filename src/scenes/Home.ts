@@ -128,9 +128,9 @@ export class Home extends Phaser.Scene {
     this.time.delayedCall(1600, () => {
       for (let i = 0; i < 6; i++) this.time.delayedCall(i * 700, () => {
         if (this.state !== 'sleeping') return;
-        const z = text(this, 600 + (i % 4) * 8, 200, 'z', 18 + (i % 4) * 6, HEX.paper).setDepth(7).setAlpha(0.9);
+        const z = text(this, 560 + (i % 4) * 10, 230, 'z', 18 + (i % 4) * 6, HEX.paper).setDepth(7).setAlpha(0.9);   // внутри круга сна
         this.zs.push(z);
-        this.tweens.add({ targets: z, y: z.y - 90, x: z.x + 40, alpha: 0, duration: 2200 });
+        this.tweens.add({ targets: z, y: z.y - 80, x: z.x + 30, alpha: 0, duration: 2200 });
       });
       sound.setMood('off');
     });

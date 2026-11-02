@@ -90,7 +90,7 @@ A = np.asarray(bg).copy()
 for py in range(POND[1] * 16, POND[3] * 16):
     for px in range(POND[0] * 16, POND[2] * 16):
         r, g, b, al = A[py, px]
-        if r > 200 and g > 100 and b < 150: A[py, px] = GR[py % 16, px % 16]
+        if (r > 200 and g > 100 and b < 150) or (120 < r < 170 and 80 < g < 125 and 80 < b < 120): A[py, px] = GR[py % 16, px % 16]   # песок и бурая кромка в углах
 bg = Image.fromarray(A, 'RGBA')
 bg.alpha_composite(t(23, 8), (5 * 16, 11 * 16)); bg.alpha_composite(t(23, 8), (7 * 16 + 4, 12 * 16))
 # мелочь на траве: травка, цветочки (не на тропинках)

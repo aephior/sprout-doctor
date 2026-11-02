@@ -14,6 +14,8 @@ import { drawHand, cameraTexture } from '../ui/hand';
 import { GardenView } from './garden';
 
 export interface Grade { label: 'Perfect' | 'Good' | 'Miss'; mult: number; color: number }
+/** Оценка по-русски (в интерфейсе). */
+export const RU_GRADE: Record<string, string> = { Perfect: 'Идеально', Good: 'Хорошо', Miss: 'Мимо' };
 export const GRADES: Record<Grade['label'], Grade> = {
   Perfect: { label: 'Perfect', mult: 1.0, color: C.teal },
   Good: { label: 'Good', mult: 0.7, color: C.orange },
@@ -279,7 +281,7 @@ export class Procedure extends Phaser.Scene {
       game.data.stats.aphids++; sound.play('swat');
       this.ring(grade);
       this.tweens.add({ targets: a.sprite, x: a.sprite.x + 500, angle: 720, alpha: 0, duration: 450, onComplete: () => a.sprite.destroy() });
-      this.say(`Тля улетела! ${grade.label}. Продолжаем лечение.`, HEX.greenDark);
+      this.say(`Тля улетела! ${RU_GRADE[grade.label]}. Продолжаем лечение.`, HEX.greenDark);
     } else {
       a.sprite.destroy();
       this.bed.health = Math.max(0, this.bed.health - 8);
@@ -335,8 +337,9 @@ export class Procedure extends Phaser.Scene {
     const r = this.add.circle(this.fuku.x, this.fuku.y + 10, 10).setStrokeStyle(3, grade.color).setDepth(50);
     this.tweens.add({ targets: r, radius: 60, alpha: 0, duration: 400, onComplete: () => r.destroy() });
     const col = '#' + grade.color.toString(16).padStart(6, '0');
-    const tag = text(this, this.fuku.x - 30, this.fuku.y + 46, grade.label, 22, col, { stroke: HEX.ink, strokeThickness: 5, backgroundColor: '#1e1b2ecc', padding: { x: 6, y: 2 } }).setOrigin(0.5).setDepth(51);
-    this.tweens.add({ targets: tag, y: tag.y - 22, alpha: 0, duration: 750, onComplete: () => tag.destroy() });
+    const pb = this.garden.bounds();   // метка — над растением, светлая с цветной обводкой
+    const tag = text(this, (pb.l + pb.r) / 2, pb.t - 18, RU_GRADE[grade.label], 22, HEX.white, { stroke: col, strokeThickness: 6 }).setOrigin(0.5).setDepth(51);
+    this.tweens.add({ targets: tag, y: tag.y - 22, alpha: 0, delay: 400, duration: 600, onComplete: () => tag.destroy() });
   }
 
   hitStop(ok: boolean) {
@@ -393,7 +396,7 @@ export class Procedure extends Phaser.Scene {
     if (b.crop) {
       add(text(this, 40, 52, `Здоровье: ${b.health}`, 16));
       add(bar(this, 186, 55, 174, 12, b.health / 100, b.health > 50 ? C.green : C.magenta));
-      add(text(this, 40, 76, `${['Росток', 'Растёт', 'Созрело'][b.stage]}${b.watered ? ' · полито' : ''} · линза ${game.data.fukuCharge}/${game.data.fukuMax} · фунгицид ${game.data.fungicide}`, 14, '#555'));
+      add(text(this, 40, 76, `${['Росток', 'Растёт', 'Созрело'][b.stage]}${b.watered ? ' · полито' : ''} · линза ${Math.min(game.data.fukuCharge, game.data.fukuMax)}/${game.data.fukuMax} · фунгицид ${game.data.fungicide}`, 14, '#555'));
     } else {   // растение удалено: здоровья нет, только подсказка
       add(text(this, 40, 54, 'Растение удалено, соседи в безопасности.', 15, '#555'));
       add(text(this, 40, 78, `Семена — у Огавы · фунгицид ${game.data.fungicide}`, 14, '#555'));
@@ -433,7 +436,7 @@ export class Procedure extends Phaser.Scene {
 
     // ритуал + подсказка из дневника
     add(neonPanel(this, 400, 290, 540, 62, C.magenta));
-    const seqText = this.seq.length ? this.seq.map((a, i) => `${ACTION_NAME[a]} [${this.grades[i].label}]`).join(' › ') : '— выберите действия ниже —';
+    const seqText = this.seq.length ? this.seq.map((a, i) => `${ACTION_NAME[a]} [${RU_GRADE[this.grades[i].label]}]`).join(' › ') : '— выберите действия ниже —';
     add(text(this, 414, 297, `РИТУАЛ: ${seqText}`, 16, HEX.white, { wordWrap: { width: 512 } }));
     const top = this.diag ? CLASSES[this.diag.top[0].id] : null;
     // весной (обучение) ритуал подсказывается здесь; летом и осенью — только в дневнике (Tab)
@@ -459,7 +462,7 @@ export class Procedure extends Phaser.Scene {
       add(pv);
       if (this.textures.exists('cam-proc')) add(this.add.image(248, 136, 'cam-proc').setOrigin(0).setDepth(31));
       add(text(this, 724, 434, 'G1 скан · G2 полив · G3 спрей\nG4 обрезка · G5 подтвердить', 11, '#b9b7d9', { lineSpacing: 0 }));
-    } else add(text(this, 724, 434, gestures.possible ? 'Клавиши: оценка Good ×0,7\nЖесты — меню «Ритуалы рук»' : 'Веб-версия: клавиши и мышь\nЖесты — в версии для ПК', 11, '#8a88b0', { lineSpacing: 0 }));
+    } else add(text(this, 724, 434, gestures.possible ? 'Клавиши: оценка «Хорошо» ×0,7\nЖесты — меню «Ритуалы рук»' : 'Веб-версия: клавиши и мышь\nЖесты — в версии для ПК', 11, '#8a88b0', { lineSpacing: 0 }));
   }
 
   closing = false;
