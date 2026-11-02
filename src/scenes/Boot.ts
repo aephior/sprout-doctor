@@ -26,12 +26,13 @@ export class Boot extends Phaser.Scene {
     this.load.image('lamppost-hd', asset('art/world/lamppost_hd.png'));
     this.load.spritesheet('bus-hd', asset('art/world/bus_hd.png'), { frameWidth: 96, frameHeight: 52 });
     this.load.image('bed-soil-wet', asset('art/world/soil_wet.png'));
-    this.load.spritesheet('aoi-lpc', asset('art/chars/aoi_walk.png'), { frameWidth: 64, frameHeight: 64 });
-    this.load.spritesheet('aoi-water', asset('art/chars/aoi_water.png'), { frameWidth: 64, frameHeight: 64 });
-    this.load.spritesheet('fisher', asset('art/chars/fisher_sit.png'), { frameWidth: 64, frameHeight: 64 });
-    this.load.spritesheet('ogawa-lpc', asset('art/chars/ogawa_walk.png'), { frameWidth: 64, frameHeight: 64 });
-    this.load.spritesheet('mochi-walk', asset('art/chars/mochi_small.png'), { frameWidth: 36, frameHeight: 24 });
-    this.load.spritesheet('fuku-s', asset('art/chars/fuku_small.png'), { frameWidth: 28, frameHeight: 34 });
+    // персонажи фермы — из тех же рисунков, что портреты и сцены (единый стиль)
+    this.load.spritesheet('aoi-chibi', asset('art/chars/aoi_chibi.png'), { frameWidth: 34, frameHeight: 64 });
+    this.load.image('fisher', asset('art/chars/fisher_chibi.png'));
+    this.load.spritesheet('mochi-walk', asset('art/chars/mochi_small.png'), { frameWidth: 40, frameHeight: 28 });
+    this.load.spritesheet('fuku-s', asset('art/chars/fuku_small.png'), { frameWidth: 24, frameHeight: 32 });
+    this.load.image('closeup-dry', asset('art/world/closeup_dry.png'));
+    this.load.image('closeup-wet', asset('art/world/closeup_wet.png'));
     this.load.spritesheet('fuku', asset('art/chars/fuku_hd.png'), { frameWidth: 112, frameHeight: 136 });
     for (const g of GEN) this.load.image('g-' + g, asset(`art/gen/${g}.png`));
     this.load.on('filecomplete-json-cards', (_k: string, _t: string, data: Card[]) => {
@@ -43,7 +44,7 @@ export class Boot extends Phaser.Scene {
     registerSprites(this);
     game.setCards(this.cache.json.get('cards'));
     try {
-      await Promise.race([document.fonts.load('16px "Pixelify Sans"'), new Promise((r) => setTimeout(r, 1500))]);
+      await Promise.race([Promise.all([document.fonts.load('600 16px "Nunito"', 'Aой'), document.fonts.load('800 16px "Nunito"', 'Aой')]), new Promise((r) => setTimeout(r, 1500))]);
     } catch { /* шрифт не обязателен */ }
     this.scene.start('Menu');
   }

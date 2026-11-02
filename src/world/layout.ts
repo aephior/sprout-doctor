@@ -30,22 +30,22 @@ export const LAYOUT = {
   {
    "key": "tree_pine",
    "x": -8,
-   "y": -36,
-   "depth": 37.5,
+   "y": -43,
+   "depth": 30.5,
    "solid": null
   },
   {
    "key": "tree_pine",
-   "x": 28,
-   "y": -40,
-   "depth": 33.5,
-   "solid": null
-  },
-  {
-   "key": "tree_pine",
-   "x": 62,
+   "x": 27,
    "y": -46,
    "depth": 27.5,
+   "solid": null
+  },
+  {
+   "key": "tree_pine",
+   "x": 66,
+   "y": -34,
+   "depth": 39.5,
    "solid": null
   },
   {
@@ -57,65 +57,65 @@ export const LAYOUT = {
   },
   {
    "key": "tree_pine",
-   "x": 134,
-   "y": -41,
-   "depth": 32.5,
+   "x": 131,
+   "y": -45,
+   "depth": 28.5,
    "solid": null
   },
   {
    "key": "tree_pine",
-   "x": 167,
+   "x": 166,
    "y": -37,
    "depth": 36.5,
    "solid": null
   },
   {
    "key": "tree_pine",
-   "x": 202,
-   "y": -35,
-   "depth": 38.5,
+   "x": 201,
+   "y": -38,
+   "depth": 35.5,
    "solid": null
   },
   {
    "key": "tree_pine",
-   "x": 439,
-   "y": -43,
-   "depth": 30.5,
+   "x": 436,
+   "y": -36,
+   "depth": 37.5,
    "solid": null
   },
   {
    "key": "tree_pine",
-   "x": 468,
-   "y": -46,
-   "depth": 27.5,
+   "x": 472,
+   "y": -42,
+   "depth": 31.5,
    "solid": null
   },
   {
    "key": "tree_pine",
-   "x": 500,
-   "y": -46,
-   "depth": 27.5,
+   "x": 503,
+   "y": -40,
+   "depth": 33.5,
    "solid": null
   },
   {
    "key": "tree_pine",
-   "x": 542,
-   "y": -46,
-   "depth": 27.5,
+   "x": 540,
+   "y": -36,
+   "depth": 37.5,
    "solid": null
   },
   {
    "key": "tree_pine",
-   "x": 574,
-   "y": -44,
-   "depth": 29.5,
+   "x": 573,
+   "y": -39,
+   "depth": 34.5,
    "solid": null
   },
   {
    "key": "tree_pine",
-   "x": 605,
-   "y": -44,
-   "depth": 29.5,
+   "x": 610,
+   "y": -39,
+   "depth": 34.5,
    "solid": null
   },
   {

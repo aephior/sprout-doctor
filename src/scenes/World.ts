@@ -37,8 +37,8 @@ export class World extends Phaser.Scene {
     this.buildMap();
 
     // Аой — LPC-спрайт 64×64, в мире масштаб 0.5 (1 ед. мира = 2 px арта)
-    this.aoi = this.physics.add.sprite(LAYOUT.doorHouse[0], LAYOUT.doorHouse[1] + 22, 'aoi-lpc', 2 * 9).setOrigin(0.5, 62 / 64).setScale(0.5);
-    (this.aoi.body as Phaser.Physics.Arcade.Body).setSize(20, 10).setOffset(22, 52);
+    this.aoi = this.physics.add.sprite(LAYOUT.doorHouse[0], LAYOUT.doorHouse[1] + 22, 'aoi-chibi', 2 * 4).setOrigin(0.5, 1).setScale(0.5);
+    (this.aoi.body as Phaser.Physics.Arcade.Body).setSize(16, 8).setOffset(9, 55);
     this.aoi.setCollideWorldBounds(true);
     this.physics.world.setBounds(0, 0, MW * T, MH * T);
     this.physics.add.collider(this.aoi, this.solids);
@@ -198,7 +198,7 @@ export class World extends Phaser.Scene {
       else { this.facing = 'down'; this.aoi.anims.play('aoil-down', true); }
     } else {
       this.aoi.anims.stop();
-      this.aoi.setFrame((this.facing === 'down' ? 2 : this.facing === 'up' ? 0 : this.facingSide === 'left' ? 1 : 3) * 9);
+      this.aoi.setFrame((this.facing === 'down' ? 2 : this.facing === 'up' ? 0 : this.facingSide === 'left' ? 1 : 3) * 4);
     }
     this.aoi.setDepth(this.aoi.y);
 

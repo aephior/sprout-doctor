@@ -188,11 +188,10 @@ export function registerSprites(scene: Phaser.Scene) {
   a.create({ key: 'aoi-side', frames: a.generateFrameNumbers('aoi', { frames: [6, 7] }), frameRate: 7, repeat: -1 });
   a.create({ key: 'fuku-idle', frames: a.generateFrameNumbers('fuku', { frames: [0, 1] }), frameRate: 4, repeat: -1 });
   if (scene.textures.exists('fuku-s')) a.create({ key: 'fukus-idle', frames: a.generateFrameNumbers('fuku-s', { frames: [0, 1] }), frameRate: 4, repeat: -1 });
-  // Аой (LPC, 64×64): ряды 0 вверх, 1 влево, 2 вниз, 3 вправо; кадр 0 — стойка, 1–8 — шаг
-  if (scene.textures.exists('aoi-lpc')) {
+  // Аой на ферме (34×64): ряды 0 вверх, 1 влево, 2 вниз, 3 вправо; кадры: стойка, шаг, стойка, шаг
+  if (scene.textures.exists('aoi-chibi')) {
     (['up', 'left', 'down', 'right'] as const).forEach((d, r) =>
-      a.create({ key: 'aoil-' + d, frames: a.generateFrameNumbers('aoi-lpc', { start: r * 9 + 1, end: r * 9 + 8 }), frameRate: 12, repeat: -1 }));
-    a.create({ key: 'aoil-water', frames: a.generateFrameNumbers('aoi-water', { start: 2 * 8, end: 2 * 8 + 7 }), frameRate: 10, repeat: 0 });
+      a.create({ key: 'aoil-' + d, frames: a.generateFrameNumbers('aoi-chibi', { frames: [r * 4 + 1, r * 4 + 2, r * 4 + 3, r * 4] }), frameRate: 7, repeat: -1 }));
   }
 
   registerTiles(scene);

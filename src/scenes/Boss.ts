@@ -43,14 +43,16 @@ export class Boss extends Phaser.Scene {
   create() {
     this.updateCam = undefined; this.hand = null; this.msg = ''; this.showSeq = true; this.locked = true;
     this.phase = 1; this.hp = 100; this.bossHp = 100; this.step = 0; this.rewinds = 0; this.sporons = []; this.done = false; this.grades = [];
+    // заброшенная теплица: огород фермы ночью, затянутый спорами; ржавый каркас и разбитое стекло
+    const cx = 220, cy = 250, sc = 1.1;   // участок огорода на карте фермы (px текстуры)
+    this.add.image(-cx * sc, -cy * sc, 'ground').setOrigin(0).setScale(sc).setTint(0x7a6aa8).setCrop(cx, cy, 960 / sc, 540 / sc);
     const g = this.add.graphics();
-    [0x1a1530, 0x241c3d, 0x30244a, 0x3b2b52].forEach((c, i) => g.fillStyle(c, 1).fillRect(0, i * 135, 960, 136));
-    // каркас теплицы
-    g.lineStyle(3, 0x55536e, 0.8);
-    for (let x = 60; x < 960; x += 120) g.lineBetween(x, 40, x, 470);
-    for (const y of [40, 180, 320]) g.lineBetween(0, y, 960, y);
-    g.lineStyle(2, 0x6b4e8c, 0.4).lineBetween(0, 40, 480, -60).lineBetween(960, 40, 480, -60);
-    g.fillStyle(0x3a2a20, 1).fillRect(0, 470, 960, 70);
+    g.fillStyle(0x140f26, 0.55).fillRect(0, 0, 960, 540);
+    g.lineStyle(6, 0x2a2440, 0.9);
+    for (let x = 60; x < 960; x += 150) g.lineBetween(x, 0, x + 10, 470);
+    g.lineStyle(4, 0x2a2440, 0.9).lineBetween(0, 120, 960, 100).lineBetween(0, 300, 960, 290);
+    g.fillStyle(0x9ad8e8, 0.07).fillTriangle(70, 0, 210, 0, 120, 110).fillTriangle(660, 110, 800, 100, 720, 280);
+    g.fillStyle(0x1e1830, 1).fillRect(0, 470, 960, 70);
     this.add.particles(0, 0, 'pixel', {
       x: { min: 0, max: 960 }, y: { min: 0, max: 470 }, lifespan: 4000, speedY: { min: -12, max: -3 }, speedX: { min: -6, max: 6 },
       scale: { start: 3, end: 0 }, alpha: { start: 0.6, end: 0 }, frequency: 60, tint: [0x6b4e8c, 0x9a9a9a, 0xff4f9a],

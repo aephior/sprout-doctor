@@ -40,7 +40,12 @@ for y in range(MH):
     for x in range(MW):
         if (x, y) in path: continue
         n = {d for d in EDGE if (x + d[0], y + d[1]) in path}
-        if not n: continue
+        if not n:   # внутренний угол: тропа только по диагонали
+            diag = [(dx, dy) for dx in (-1, 1) for dy in (-1, 1) if (x + dx, y + dy) in path]
+            if len(diag) == 1:
+                put(t(16, 3), x, y)
+                put(t(*{(1, 1): (22, 0), (-1, 1): (23, 0), (1, -1): (22, 1), (-1, -1): (23, 1)}[diag[0]]), x, y)
+            continue
         put(t(16, 3), x, y)
         S, N, W, E = (0, 1) in n, (0, -1) in n, (-1, 0) in n, (1, 0) in n
         if S and W: p = (21, 4)
@@ -66,11 +71,6 @@ for y in range(py0, py1):
         put(t(sx, sy), x, y)
 for (x, y, tx, ty) in [(3, 17, 6, 30), (6, 19, 7, 31), (4, 20, 8, 30), (7, 16, 6, 31)]: put(t(tx, ty), x, y)
 put(t(7, 14), 6, 17)
-# пучки травы
-for _ in range(70):
-    x, y = rnd.randrange(MW), rnd.randrange(MH)
-    if (x, y) in path or (gx0 - 1 <= x <= gx1 and gy0 - 1 <= y <= gy1) or (px0 - 1 <= x <= px1 and py0 - 1 <= y <= py1): continue
-    put(t(rnd.choice([1, 2]), 25), x, y)
 bg.save(OUT + 'ground.png')
 # ---- объекты ----
 objs = []      # key, x, y (левый верх, ед.), depth(ед.), solid [x,y,w,h] ед.

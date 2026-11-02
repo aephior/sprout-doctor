@@ -40,9 +40,7 @@ export class FarmLife {
   mochi: Phaser.GameObjects.Sprite;
   mochiAnim?: Phaser.Time.TimerEvent;
   fisher: Phaser.GameObjects.Sprite;
-  rod!: Phaser.GameObjects.Graphics;
   bus: Phaser.GameObjects.Sprite;
-  ogawa: Phaser.GameObjects.Sprite;
   busDone = new Set<string>();
   private lastTenMin = -1;
   private midnightSent = false;
@@ -101,12 +99,8 @@ export class FarmLife {
     // рыбак (бывает у пруда после обеда)
     // рыбак сидит на берегу лицом к воде, удочка — линия с поплавком
     const [fx, fy] = LAYOUT.fisher;
-    this.fisher = add.sprite(fx + 4, fy + 4, 'fisher', 3).setOrigin(0.5, 1).setScale(0.5).setDepth(fy + 4).setVisible(false);
-    this.rod = add.graphics().setDepth(fy + 5);
-    sc.time.addEvent({ delay: 900, loop: true, callback: () => this.fisher.setFrame(Math.random() < 0.15 ? 4 : 3) });
-    // Огава подметает у входа в лавку днём (поглядывает по сторонам)
-    this.ogawa = add.sprite(LAYOUT.doorShop[0] + 24, LAYOUT.doorShop[1] + 8, 'ogawa-lpc', 2 * 9).setOrigin(0.5, 62 / 64).setScale(0.5).setDepth(LAYOUT.doorShop[1] + 8);
-    sc.time.addEvent({ delay: 2600, loop: true, callback: () => this.ogawa.setFrame([2, 2, 1, 3][Math.floor(Math.random() * 4)] * 9) });
+    this.fisher = add.sprite(fx + 2, fy + 6, 'fisher').setOrigin(0.7, 1).setScale(0.5).setDepth(fy + 6).setVisible(false);
+    sc.tweens.add({ targets: this.fisher, scaleY: 0.505, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     // автобус
     this.bus = add.sprite(MAPW + 40, LAYOUT.road + 10, 'bus-hd', 0).setOrigin(0.5, 1).setScale(0.5).setDepth(LAYOUT.road + 12).setVisible(false);
     this.apply(true);
@@ -210,16 +204,8 @@ export class FarmLife {
     const fogA = h < 9 ? (9 - h) / 3 * (d.season === 3 ? 0.9 : 0.6) : d.rain ? 0.25 : 0;
     this.fog.forEach((f) => f.setAlpha(Math.min(0.9, fogA)));
     if (this.season) this.season.emitting = !d.rain;
-    this.ogawa.setVisible(h >= 8 && h < 19 && !d.rain);
     const fish = h >= 15 && h < 20.5 && !d.rain;
     this.fisher.setVisible(fish);
-    this.rod.clear();
-    if (fish) {   // удочка: от рук к воде, поплавок
-      const x0 = this.fisher.x - 6, y0 = this.fisher.y - 14;
-      this.rod.lineStyle(1, 0x6a4329, 1).lineBetween(x0, y0, x0 - 18, y0 - 12);
-      this.rod.lineStyle(0.5, 0xf6e7c1, 0.7).lineBetween(x0 - 18, y0 - 12, x0 - 26, y0 + 10);
-      this.rod.fillStyle(0xc8323c, 1).fillRect(x0 - 27, y0 + 9, 2, 2);
-    }
     sound.setAmbient({ rain: d.rain, night: h > 20 || h < 5.5, morning: h > 6 && h < 9 && !d.rain });
   }
 }

@@ -3,7 +3,7 @@
 import type { Bed } from '../state/game';
 import { game } from '../state/game';
 import { isHealthy, Action } from '../data/diseases';
-import { plantTexture, bedTexture, registerTools, PlantState } from '../art/plants';
+import { plantTexture, registerTools, PlantState } from '../art/plants';
 import { C } from '../ui/ui';
 
 export const GW = 352, GH = 396, GS = 4;   // окно 88×99 в родном разрешении, масштаб ×4
@@ -41,7 +41,8 @@ export class GardenView {
 
   refresh() {
     const b = this.bed, st = this.state();
-    this.bg.setTexture(bedTexture(this.scene, b.crop, game.data.season, b.watered));
+    this.bg.setTexture(b.watered ? 'closeup-wet' : 'closeup-dry');
+    if (game.data.season === 3) this.bg.setTint(0xf0d8b0); else if (game.data.season === 2) this.bg.setTint(0xfff6d8); else this.bg.clearTint();
     if (b.crop) {   // удалённое растение (crop = null) — пустая грядка
       this.plant.setVisible(true).setTexture(plantTexture(this.scene, b.crop ?? 'tomato', st, game.cls(b).key, b.stage === 2));
       if (!this.sway) this.sway = this.scene.tweens.add({ targets: this.plant, angle: { from: -1.2, to: 1.2 }, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
