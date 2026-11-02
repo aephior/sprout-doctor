@@ -81,9 +81,17 @@ export class Diary extends Phaser.Scene {
     }
     // фото листа, приклеенное «скотчем»
     const card = game.cards.find((c) => cls.some((x) => x.id === c.cls));
-    const ph = this.add.graphics(); ph.fillStyle(0xffffff, 1).fillRect(592, 70, 184, 184); ph.fillStyle(0xf2e8c8, 0.85).fillRect(566, 62, 50, 16).fillRect(752, 62, 50, 16);
-    add(ph);
-    if (card) add(this.add.image(684, 162, `card:${card.file}`).setDisplaySize(172, 172).setAngle(-1.5));
+    // фото с белой рамкой и тенью поворачиваются вместе; полоски скотча — полупрозрачные, с краем
+    const photo = this.add.container(684, 162).setAngle(-1.5);
+    const ph = this.add.graphics();
+    ph.fillStyle(0x6b4a2a, 0.25).fillRect(-88, -88, 184, 184).fillStyle(0xffffff, 1).fillRect(-92, -92, 184, 184);
+    photo.add(ph);
+    if (card) photo.add(this.add.image(0, 0, `card:${card.file}`).setDisplaySize(172, 172));
+    for (const [tx, ang] of [[-84, -32], [84, 32]] as [number, number][]) {
+      const tape = this.add.rectangle(tx, -88, 56, 16, 0xe9dcb4, 0.8).setStrokeStyle(1, 0xb8a476, 0.9).setAngle(ang);
+      photo.add(tape);
+    }
+    add(photo);
     const c = cls[0];
     add(text(this, 684, 268, c.name, 22, '#3a2a1a').setOrigin(0.5, 0));
     add(text(this, 684, 296, cls.map((x) => CROP_NAME[x.crop]).join(' · '), 13, '#8a6a4a').setOrigin(0.5, 0));

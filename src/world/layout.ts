@@ -455,19 +455,6 @@ export const LAYOUT = {
    "hidden": false
   },
   {
-   "key": "stall",
-   "x": 416,
-   "y": 52,
-   "depth": 78,
-   "solid": [
-    417,
-    66.3,
-    46,
-    10.4
-   ],
-   "hidden": false
-  },
-  {
    "key": "bush",
    "x": 56,
    "y": 120,
@@ -714,18 +701,6 @@ export const LAYOUT = {
    0,
    512,
    58
-  ],
-  [
-   0,
-   64,
-   48,
-   202
-  ],
-  [
-   464,
-   64,
-   48,
-   202
   ],
   [
    128,

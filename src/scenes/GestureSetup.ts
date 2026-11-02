@@ -123,7 +123,7 @@ export class GestureSetup extends Phaser.Scene {
     // словарь жестов
     add(paperPanel(this, 448, 386, 488, 116));
     const ids: GestureId[] = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7'];
-    ids.forEach((id, k) => add(text(this, 462 + (k % 2) * 240, 394 + Math.floor(k / 2) * 30, `${id} ${GESTURE_INFO[id].name}`, 14, HEX.ink)));
+    ids.forEach((id, k) => add(text(this, 462 + (k % 2) * 240, 396 + Math.floor(k / 2) * 25, `${id} ${GESTURE_INFO[id].name}`, 14, HEX.ink)));   // 4 строки помещаются в панель
     
 
     // кнопки

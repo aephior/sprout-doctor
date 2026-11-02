@@ -13,36 +13,87 @@ def trim(im): bb = im.getbbox(); return im.crop(bb) if bb else im
 rnd = random.Random(5)
 bg = Image.new('RGBA', (MW * 16, MH * 16))
 def put(im, tx, ty): bg.alpha_composite(im, (int(tx * 16), int(ty * 16)))
-# ---- земля: песок; «плато» травы с обрывом; огород; пруд ----
-SAND = [t(18, 6), t(18, 6), t(18, 6), t(21, 11)]
+# ---- земля: трава; песчаные тропинки и дворики; «плато» травы с обрывом; огород; пруд ----
+GR = np.asarray(t(22, 11)).copy()
 for y in range(MH):
-    for x in range(MW): put(SAND[0], x, y)
+    for x in range(MW): put(t(22, 11), x, y)
+# тропинки (в пикселях): мягкие края, тёмная кромка, редкие камешки
+PATHS = [
+    (4 * 16, 7 * 16, 4 * 16, 2 * 16),            # двор у дома
+    (6 * 16, 8 * 16 + 4, 10 * 16, 22),           # от дома на восток
+    (15 * 16, 6 * 16 + 4, 14 * 16, 22),          # вдоль огорода к лавке
+    (20 * 16, 5 * 16, 7 * 16, 2 * 16),           # двор у лавки
+    (15 * 16, 6 * 16 + 4, 26, 13 * 16),          # на юг к тории
+    (7 * 16, 9 * 16, 22, 26),                    # к пруду
+    (0, 19 * 16 + 6, MW * 16, 2 * 16 + 10),     # дорога (автобус)
+    (27 * 16, 17 * 16 + 8, 3 * 16, 2 * 16),      # площадка у остановки
+]
+mask = np.zeros((MH * 16, MW * 16), bool)
+for (x, y, w, h) in PATHS: mask[y:y + h, x:x + w] = True
+import scipy.ndimage as nd0
+mask = nd0.binary_closing(mask, np.ones((5, 5)))
+# неровный край: случайно «откусываем»/добавляем пиксели по границе
+edge = mask ^ nd0.binary_erosion(mask)
+rng = np.random.RandomState(7)
+ys, xs = np.where(edge)
+for y, x in zip(ys, xs):
+    if rng.rand() < 0.35: mask[y, x] = False
+outer = nd0.binary_dilation(mask) & ~mask
+ys, xs = np.where(outer)
+for y, x in zip(ys, xs):
+    if rng.rand() < 0.15: mask[y, x] = True
+A = np.asarray(bg).copy()
+SANDC = np.array([255, 173, 93, 255], np.uint8)
+A[mask] = SANDC
+peb = mask & (rng.rand(*mask.shape) < 0.012)
+A[peb] = [255, 203, 141, 255]
+peb2 = mask & (rng.rand(*mask.shape) < 0.006)
+A[peb2] = [239, 140, 70, 255]
+rim = mask & ~nd0.binary_erosion(mask)
+A[rim] = [240, 150, 78, 255]
+grim = nd0.binary_dilation(mask) & ~mask
+A[grim] = [56, 125, 45, 255]
+bg = Image.fromarray(A, 'RGBA')
+PATHMASK = mask
+GRASS = (14, 15, 17, 15, 16, 17)
+plateaus = [(0, 0, MW, 4), (8, 15, 14, 18), (23, 16, 28, 19)]
+for (x0, y0, x1, y1) in plateaus:
+    def nine_(x0, y0, x1, y1):
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                cx = 14 if x == x0 else 17 if x == x1 - 1 else 15
+                cy = 15 if y == y0 else 17 if y == y1 - 1 else 16
+                put(t(cx, cy), x, y)
+    nine_(x0, y0, x1, y1)
+    for y in range(y0 + 1, y1 - 1):
+        for x in range(x0 + 1, x1 - 1): put(t(22, 11), x, y)
+# у краёв уступов тайлы рассчитаны на песок вокруг — заменяем песчаные пиксели травой
+A = np.asarray(bg).copy()
+for (x0, y0, x1, y1) in plateaus:
+    for py in range(y0 * 16, y1 * 16):
+        for px in range(x0 * 16, x1 * 16):
+            r, g, b, al = A[py, px]
+            if r > 200 and g > 120 and b < 150: A[py, px] = GR[py % 16, px % 16]
+bg = Image.fromarray(A, 'RGBA')
 def nine(x0, y0, x1, y1, L, M, R, Tp, Mid, Bt):
-    """9-slice: координаты тайлов кусочков (x,y) для столбцов L/M/R и строк Top/Mid/Bot."""
     for y in range(y0, y1):
         for x in range(x0, x1):
             cx = L if x == x0 else R if x == x1 - 1 else M
             cy = Tp if y == y0 else Bt if y == y1 - 1 else Mid
             put(t(cx, cy), x, y)
-GRASS = (14, 15, 17, 15, 16, 17)   # x: лев/сред/прав, y: верх/сред/низ(обрыв)
-plateaus = [(0, 0, MW, 4), (0, 4, 3, 17), (MW - 3, 4, MW, 17), (8, 15, 14, 18), (23, 16, 28, 19)]
-for (x0, y0, x1, y1) in plateaus:
-    nine(x0, y0, x1, y1, 14, 15, 17, 15, 16, 17)
-    for y in range(y0 + 1, y1 - 1):
-        for x in range(x0 + 1, x1 - 1): put(t(22, 11), x, y)
-# огород: вспаханное поле с травяной каймой
 GARDEN = (17, 8, 27, 15)
 nine(*GARDEN, 20, 21, 22, 15, 16, 17)
-# пруд с песчаным берегом
 POND = (4, 10, 9, 14)
 nine(*POND, 19, 20, 21, 7, 8, 9)
 bg.alpha_composite(t(23, 8), (5 * 16, 11 * 16)); bg.alpha_composite(t(23, 8), (7 * 16 + 4, 12 * 16))
-# мелочь на песке: травка, камешки
-for _ in range(40):
+# мелочь на траве: травка, цветочки (не на тропинках)
+DECO = [t(0, 5), t(2, 8), t(0, 8), t(1, 8), t(0, 5)]
+for _ in range(70):
     x, y = rnd.randrange(3, MW - 3), rnd.randrange(4, MH - 1)
     if GARDEN[0] - 1 <= x <= GARDEN[2] and GARDEN[1] - 1 <= y <= GARDEN[3]: continue
     if POND[0] - 1 <= x <= POND[2] and POND[1] - 1 <= y <= POND[3]: continue
-    bg.alpha_composite(rnd.choice([t(0, 5), t(2, 8), t(0, 8), t(1, 8)]), (x * 16, y * 16))
+    if PATHMASK[y * 16:(y + 1) * 16, x * 16:(x + 1) * 16].any(): continue
+    bg.alpha_composite(rnd.choice(DECO), (x * 16 + rnd.randrange(-4, 5), y * 16 + rnd.randrange(-4, 5)))
 bg.save(OUT + 'ground.png')
 # ---- объекты ----
 objs = []
@@ -94,7 +145,6 @@ for i, (tx, ty) in enumerate([(16, 13), (17, 13), (18, 13)]):
     obj(f'basket{i}', trim(t(tx, ty, 1, 1, TH)), 25 * 16 + i * 14, 5 * 16 + 4)
 obj('barrel', trim(t(16, 15, 1, 1, TH)), 19 * 16 + 4, 4 * 16 + 4); obj('barrel2', trim(t(17, 15, 1, 1, TH)), 20 * 16, 5 * 16)
 obj('crate', trim(t(20, 14, 1, 1, TH)), 9 * 16, 5 * 16 + 4); obj('sack', trim(t(19, 14, 1, 1, TH)), 10 * 16, 6 * 16)
-obj('stall', trim(t(16, 16, 3, 2, TH)), 26 * 16, 3 * 16 + 4)
 # цветы, кусты, камни
 bush, flowers, stone = C('T', [0, 20, 3, 2], 1), C('T', [0, 20, 3, 2], 2), C('T', [0, 5, 3, 4], 6)
 for (x, y) in [(56, 120), (140, 110), (220, 70), (300, 100), (420, 160), (380, 290), (250, 300), (190, 220)]: obj('bush', bush, x, y)
@@ -107,4 +157,35 @@ layout = dict(MW=MW, MH=MH, scale=1, objs=objs, doorHouse=DOOR_HOUSE, doorShop=D
               blocks=[[x0 * 16, y0 * 16, (x1 - x0) * 16, (y1 - y0) * 16 - 6] for (x0, y0, x1, y1) in plateaus])
 ts = '// Сгенерировано tools/art/build_world_na.py — раскладка фермы (1 ед. мира = 1 px арта, тайл 16).\nexport const LAYOUT = ' + json.dumps(layout, indent=1) + ';\n'
 open('/home/claude/sprout-doctor/src/world/layout.ts', 'w').write(ts)
+
+# ---- сезонные варианты (лето/осень): перекраска листвы и травы ----
+import colorsys
+def recolor(path, season, kind):
+    im = Image.open(path).convert('RGBA'); a = np.asarray(im).astype(float) / 255
+    rgb = a[..., :3]; hsv = np.zeros_like(rgb)
+    flat = rgb.reshape(-1, 3)
+    h, sv, v = np.vectorize(colorsys.rgb_to_hsv)(flat[:, 0], flat[:, 1], flat[:, 2])
+    h = h.reshape(rgb.shape[:2]); sv = sv.reshape(rgb.shape[:2]); v = v.reshape(rgb.shape[:2])
+    green = (h > 0.17) & (h < 0.45) & (sv > 0.2)
+    pink = ((h > 0.85) | (h < 0.07)) & (sv > 0.08) & (v > 0.55)
+    if season == 2:
+        if kind == 'sakura':
+            h = np.where(pink, 0.27 + (v - 0.8) * 0.1, h); sv = np.where(pink, 0.62, sv); v = np.where(pink, v * 0.72, v)
+        else:
+            h = np.where(green, h - 0.012, h); sv = np.where(green, np.minimum(1, sv * 1.12), sv); v = np.where(green, v * 0.96, v)
+    if season == 3:
+        if kind == 'sakura':
+            h = np.where(pink, 0.03, h); sv = np.where(pink, np.minimum(1, sv * 1.5 + 0.15), sv); v = np.where(pink, v * 0.9, v)
+        elif kind == 'pines':
+            h = np.where(green, h - 0.05, h); sv = np.where(green, sv * 0.8, sv)
+        elif kind in ('ground',):
+            h = np.where(green, 0.16 - (h - 0.25) * 0.4, h); sv = np.where(green, sv * 0.85, sv); v = np.where(green, v * 1.02, v)
+        else:   # роща, кусты, цветы: рыжая листва с разбросом
+            jitter = 0
+            h = np.where(green, 0.045 + (v - 0.4) * 0.12, h); sv = np.where(green, np.minimum(1, sv * 1.3), sv); v = np.where(green, np.minimum(1, v * 1.08), v)
+    out = np.stack(np.vectorize(colorsys.hsv_to_rgb)(h.ravel(), sv.ravel(), v.ravel()), -1).reshape(rgb.shape)
+    res = np.concatenate([np.clip(out, 0, 1), a[..., 3:]], -1)
+    Image.fromarray((res * 255 + 0.5).astype(np.uint8), 'RGBA').save(path.replace('.png', f'_s{season}.png'))
+for k in ['ground', 'grove', 'pines', 'sakura', 'bush', 'flowers']:
+    for se in (2, 3): recolor(OUT + k + '.png', se, k)
 print('ok', len(objs))

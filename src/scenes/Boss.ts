@@ -3,6 +3,7 @@
 // Фаза 1: обрезка → спрей. Фаза 2: смахнуть трёх Споронов (G6) → спрей. Фаза 3 (ярость): повторить
 // последовательность из трёх жестов, которую Фуку показывает 3 секунды. Ошибка — перемотка к началу фазы.
 import { sound } from '../audio/sound';
+import { makeGlow } from '../art/interiors';
 import { game } from '../state/game';
 import { ACTION_NAME, Action } from '../data/diseases';
 import { events } from '../state/events';
@@ -29,6 +30,7 @@ export class Boss extends Phaser.Scene {
   pendingSporons = 0;
   boss!: Phaser.GameObjects.Image;
   fuku!: Phaser.GameObjects.Sprite;
+  aoi!: Phaser.GameObjects.Sprite;
   ui!: Phaser.GameObjects.Container;
   ghost!: Phaser.GameObjects.Graphics;
   hand: FrameInfo | null = null;
@@ -43,25 +45,23 @@ export class Boss extends Phaser.Scene {
   create() {
     this.updateCam = undefined; this.hand = null; this.msg = ''; this.showSeq = true; this.locked = true;
     this.phase = 1; this.hp = 100; this.bossHp = 100; this.step = 0; this.rewinds = 0; this.sporons = []; this.done = false; this.grades = [];
-    // заброшенная теплица: огород фермы ночью, затянутый спорами; ржавый каркас и разбитое стекло
-    const cx = 192, cy = 96, sc = 3;   // участок огорода на карте фермы (px текстуры), ×3
-    this.add.image(-cx * sc, -cy * sc, 'ground').setOrigin(0).setScale(sc).setTint(0x7a6aa8).setCrop(cx, cy, 960 / sc, 540 / sc);
+    // заброшенная теплица ночью (tools/art/boss_arena.py, 320×180 ×3): разбитое стекло, мёртвые грядки, плесень
+    this.add.image(0, 0, 'boss-arena').setOrigin(0).setScale(3);
     const g = this.add.graphics();
-    g.fillStyle(0x140f26, 0.55).fillRect(0, 0, 960, 540);
-    g.lineStyle(6, 0x2a2440, 0.9);
-    for (let x = 60; x < 960; x += 150) g.lineBetween(x, 0, x + 10, 470);
-    g.lineStyle(4, 0x2a2440, 0.9).lineBetween(0, 120, 960, 100).lineBetween(0, 300, 960, 290);
-    g.fillStyle(0x9ad8e8, 0.07).fillTriangle(70, 0, 210, 0, 120, 110).fillTriangle(660, 110, 800, 100, 720, 280);
-    g.fillStyle(0x1e1830, 1).fillRect(0, 470, 960, 70);
+    g.fillStyle(0x1e1830, 0.92).fillRect(0, 474, 960, 66);
     this.add.particles(0, 0, 'pixel', {
       x: { min: 0, max: 960 }, y: { min: 0, max: 470 }, lifespan: 4000, speedY: { min: -12, max: -3 }, speedX: { min: -6, max: 6 },
       scale: { start: 3, end: 0 }, alpha: { start: 0.6, end: 0 }, frequency: 60, tint: [0x6b4e8c, 0x9a9a9a, 0xff4f9a],
     });
 
-    this.boss = this.add.image(480, 318, 'g-haikabi_idle').setScale(1.85);
-    this.tweens.add({ targets: this.boss, y: 328, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    this.fuku = this.add.sprite(140, 120, 'fuku', 3).setScale(0.55);
-    this.tweens.add({ targets: this.fuku, y: 128, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    // Хайкаби пересэмплирована под сетку арены (×3); щупальца не уходят под нижнюю панель
+    this.boss = this.add.image(480, 290, 'g-haikabi_idle_px').setScale(3);
+    this.tweens.add({ targets: this.boss, y: 299, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    // Аой и Фуку — те же спрайты, что на ферме, ×3
+    this.add.ellipse(290, 464, 36, 10, 0x000000, 0.35);
+    this.aoi = this.add.sprite(290, 468, 'aoi-na', 3).setOrigin(0.5, 1).setScale(3);
+    this.fuku = this.add.sprite(124, 120, 'fuku-na', 0).setScale(4).play('fukuna-idle');
+    this.tweens.add({ targets: this.fuku, y: 129, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.ui = this.add.container(0, 0).setDepth(20);
     this.ghost = this.add.graphics().setDepth(30);
     this.cameras.main.fadeIn(800, 30, 20, 40); sound.setMood('boss'); sound.play('boss');
@@ -97,7 +97,7 @@ export class Boss extends Phaser.Scene {
       this.time.delayedCall(800, () => this.spawnSporon());
     }
     if (n === 3) {
-      this.boss.setTexture('g-haikabi_rage');
+      this.boss.setTexture('g-haikabi_rage_px');
       this.cameras.main.shake(400, 0.01);
       const pool: Action[] = ['water', 'spray', 'prune'];
       this.need = Array.from({ length: 3 }, () => pool[Math.floor(Math.random() * 3)]);
@@ -112,7 +112,7 @@ export class Boss extends Phaser.Scene {
     if (this.phase !== 2 || this.pendingSporons <= 0 || this.done) return;
     this.pendingSporons--;
     const x = 260 + Math.random() * 440, y = 330 + Math.random() * 100;
-    const s = this.add.image(480, 250, 'sporon').setScale(5).setDepth(15).setInteractive({ useHandCursor: true })
+    const s = this.add.image(480, 250, 'sporon').setScale(3).setDepth(15).setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.input2('swipe', GRADES.Good));
     this.tweens.add({ targets: s, x, y, duration: 350, ease: 'Back.out' });
     this.sporons.push({ s, until: this.time.now + 3500 });
@@ -173,7 +173,7 @@ export class Boss extends Phaser.Scene {
     this.time.delayedCall(1700, () => {
       vhs.destroy();
       if (this.hp <= 0) { this.hp = 60; this.bossHp = Math.min(100, this.bossHp + 20); this.say('Теплица едва держится… Фуку перезапустил защиту. Ещё раз!'); }
-      if (this.phase === 3) this.boss.setTexture('g-haikabi_rage');
+      if (this.phase === 3) this.boss.setTexture('g-haikabi_rage_px');
       this.startPhase(this.phase);
     });
     this.redraw();
@@ -183,7 +183,7 @@ export class Boss extends Phaser.Scene {
     sound.setMood('evening'); sound.play('win');
     this.done = true;
     this.tweens.killTweensOf(this.boss);
-    this.boss.setTexture('g-haikabi_defeated');
+    this.boss.setTexture('g-haikabi_defeated_px');
     this.tweens.add({ targets: this.boss, y: 360, alpha: 0.85, duration: 1600, ease: 'Quad.out' });
     const d = game.data;
     d.bossDone = true; d.completed = true;   // финал пройден: «Продолжить» больше не ведёт в бой
@@ -205,9 +205,38 @@ export class Boss extends Phaser.Scene {
     const { row, place } = addRecord(d, ending, true);
     this.ui.removeAll(true);
     const add = (o: Phaser.GameObjects.GameObject) => this.ui.add(o);
-    add(this.add.rectangle(0, 0, 960, 540, 0x000000, 0.55).setOrigin(0));
-    add(paperPanel(this, 180, 70, 600, 400));
-    add(text(this, 480, 96, full ? 'Фестиваль урожая спасён!' : 'Хайкаби повержена', 30).setOrigin(0.5));
+    // финал: вечер фестиваля — веранда на закате, гирлянда фонариков, салют; Фуку рядом с Аой
+    this.cameras.main.fadeIn(900, 0, 0, 0); makeGlow(this);
+    add(this.add.image(0, 0, 'g-evening').setOrigin(0).setScale(2));
+    const lan = this.add.graphics();
+    lan.lineStyle(2, 0x2a2030, 1);
+    const pts: [number, number][] = [];
+    for (let x = 0; x <= 960; x += 8) pts.push([x, 40 + Math.sin(x / 960 * Math.PI) * 50]);
+    pts.slice(1).forEach(([x, y], i) => lan.lineBetween(pts[i][0], pts[i][1], x, y));
+    add(lan);
+    const COLS = [0xd8323c, 0xf2b84a, 0xff6fa0, 0x3fd0c9];
+    for (let i = 1; i < 12; i++) {
+      const x = i * 80, y = 40 + Math.sin(x / 960 * Math.PI) * 50;
+      const c = COLS[i % 4];
+      const glow = this.add.image(x, y + 12, 'glow').setScale(0.9).setTint(c).setAlpha(0.5).setBlendMode(Phaser.BlendModes.ADD);
+      const body = this.add.graphics().fillStyle(0x1e1b2e, 1).fillRect(x - 7, y + 2, 14, 20).fillStyle(c, 1).fillRect(x - 6, y + 3, 12, 18)
+        .fillStyle(0xffffff, 0.35).fillRect(x - 4, y + 5, 3, 12).fillStyle(0x1e1b2e, 1).fillRect(x - 6, y + 9, 12, 2).fillRect(x - 6, y + 15, 12, 2);
+      add(glow); add(body);
+      this.tweens.add({ targets: glow, alpha: 0.3, duration: 700 + i * 60, yoyo: true, repeat: -1 });
+    }
+    // салют
+    const burst = () => {
+      if (!this.scene.isActive()) return;
+      const x = 520 + Math.random() * 400, y = 60 + Math.random() * 120, c = COLS[Math.floor(Math.random() * 4)];
+      const e = this.add.particles(x, y, 'pixel', { speed: { min: 60, max: 140 }, lifespan: 1100, quantity: 36, frequency: -1, scale: { start: 3, end: 0 }, gravityY: 60, tint: [c, 0xffffff], blendMode: 'ADD' });
+      add(e); e.explode(36); sound.play('good');
+      this.time.delayedCall(1600, () => e.destroy());
+    };
+    this.time.addEvent({ delay: 1400, loop: true, callback: burst }); this.time.delayedCall(300, burst);
+    const fk = this.add.sprite(820, 300, 'fuku-na', 0).setScale(4).play('fukuna-idle'); add(fk);
+    this.tweens.add({ targets: fk, y: 320, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    add(paperPanel(this, 24, 110, 470, 400));
+    add(text(this, 259, 132, full ? 'Фестиваль урожая спасён!' : 'Хайкаби повержена', 26).setOrigin(0.5, 0));
     const lines = [
       full ? 'Деревня Кири-но-Сато снова в цвете. Бабушка Хару гордилась бы вами.' : `Теплица свободна, но выручки к фестивалю не хватило: ${revenue} из ${FESTIVAL_GOAL}.`,
       '',
@@ -218,8 +247,8 @@ export class Boss extends Phaser.Scene {
       '',
       `Итоговый счёт: ${row.score}  —  ${place}-е место в рекордах`,
     ];
-    add(text(this, 210, 140, lines.join('\n'), 17, '#3a3550', { lineSpacing: 6, wordWrap: { width: 540 } }));
-    const b = text(this, 480, 430, '[ Enter ] В главное меню', 20, '#c8323c').setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.toMenu());
+    add(text(this, 46, 176, lines.join('\n'), 16, '#3a3550', { lineSpacing: 6, wordWrap: { width: 426 } }));
+    const b = text(this, 259, 474, '[ Enter ] В главное меню', 20, '#c8323c').setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.toMenu());
     add(b);
     this.input.keyboard!.once('keydown-ENTER', () => this.toMenu());
   }
@@ -266,14 +295,14 @@ export class Boss extends Phaser.Scene {
     add(paperPanel(this, 184, 82, 324, t.height + 20)); add(t);
 
     // ритуал фазы
-    add(neonPanel(this, 560, 82, 380, 110, this.phase === 3 ? C.magenta : C.teal));
+    add(neonPanel(this, 560, 82, 380, 46 + this.need.length * 22, this.phase === 3 ? C.magenta : C.teal));   // высота — по числу шагов
     add(text(this, 574, 92, `РИТУАЛ ФАЗЫ ${this.phase}`, 15, HEX.teal));
     const names = this.need.map((a, i) => {
       const label = a === 'swipe' ? 'Взмах' : ACTION_NAME[a];
       const hidden = this.phase === 3 && !this.showSeq && i >= this.step;
       return `${i < this.step ? '+' : '·'} ${hidden ? '???' : `${label} (${KEY_OF[a]})`}`;
     });
-    add(text(this, 574, 118, names.join('\n'), 15, HEX.white, { lineSpacing: 3 }));
+    add(text(this, 574, 116, names.join('\n'), 15, HEX.white, { lineSpacing: 5 }));
     if (this.updateCam && this.textures.exists('cam-boss')) {
       add(neonPanel(this, 760, 392, 176, 132, C.teal));
       add(this.add.image(760, 392, 'cam-boss').setOrigin(0));

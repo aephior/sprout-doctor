@@ -9,8 +9,9 @@ import { hourNow } from '../world/life';
 
 const S = 3;   // сетка раскладки меню (исторически 320×180 ×3)
 // Огава стоит за прилавком (прилавок из фона рисуется поверх него); правый край портретов совпадает
-const OG_S = 1.0, OG_X = 470 + 165 / 2, OG_Y = 400;
-const OGAWA: Record<number, string> = { 0: 'g-ogawa_neutral', 2: 'g-ogawa_talk', 3: 'g-ogawa_happy' };
+const OG_S = 2,   // портрет пересэмплирован под сетку фона (tools/art/regrid.py)
+  OG_X = 470 + 165 / 2, OG_Y = 400;
+const OGAWA: Record<number, string> = { 0: 'g-ogawa_neutral_px', 2: 'g-ogawa_talk_px', 3: 'g-ogawa_happy_px' };
 
 interface Item { key: string; name: string; price: () => number | null; note: () => string; buy: () => string | null }
 
@@ -32,13 +33,17 @@ export class Shop extends Phaser.Scene {
     const bgKey = hourNow() < 17 ? 'g-shop_bg_day' : 'g-shop_bg';
     this.add.image(0, 0, bgKey).setOrigin(0).setScale(2);
     // тёплый свет красного фонаря
-    const glow = this.add.image(486, 165, 'glow').setScale(3.4).setAlpha(0.5).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffb070);
-    this.tweens.add({ targets: glow, alpha: 0.36, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    const day = bgKey === 'g-shop_bg_day';
+    const glow = this.add.image(486, 165, 'glow').setScale(3.4).setAlpha(day ? 0.16 : 0.5).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffb070);
+    this.tweens.add({ targets: glow, alpha: day ? 0.1 : 0.36, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     // Огава за прилавком: портреты «спокоен / говорит / радуется», правый край совпадает
-    this.ogawa = this.add.sprite(OG_X, OG_Y, 'g-ogawa_neutral').setOrigin(1, 1).setScale(OG_S).setTint(0xffe8cc);
-    this.tweens.add({ targets: this.ogawa, y: OG_Y - 2, duration: 1700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.ogawa = this.add.sprite(OG_X, OG_Y, 'g-ogawa_neutral_px').setOrigin(1, 1).setScale(OG_S).setTint(0xffe8cc);
+    this.tweens.add({ targets: this.ogawa, y: OG_Y - 2, duration: 1700, yoyo: true, repeat: -1, ease: 'Stepped' });
     // прилавок из того же фона — поверх Огавы, чтобы он стоял за ним
     this.add.image(0, 0, bgKey).setOrigin(0).setScale(2).setCrop(168, 176, 230, 50);
+    // днём комната светлее, вечером — тёплый полумрак (слой под интерфейсом, поверх сцены)
+    if (day) this.add.rectangle(0, 0, 960, 540, 0xfff4e0, 0.06).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD);
+    else this.add.rectangle(0, 0, 960, 540, 0x2a1830, 0.16).setOrigin(0);
     // тень под прилавком и тёплый свет на лице
     // кошка Моти дремлет на табурете (она нарисована в фоне) — её можно погладить
     const mochi = this.add.zone(140, 365, 100, 60).setOrigin(0).setInteractive({ useHandCursor: true });

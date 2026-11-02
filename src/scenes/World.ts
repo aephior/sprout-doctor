@@ -5,6 +5,7 @@ import { isHealthy } from '../data/diseases';
 import { events, uiBlocks } from '../state/events';
 import { FarmLife } from '../world/life';
 import { LAYOUT } from '../world/layout';
+import { SEASONAL } from './Boot';
 
 const T = 16, MW = LAYOUT.MW, MH = LAYOUT.MH;
 const CROP_ROW: Record<string, number> = { tomato: 0, potato: 1, pepper: 2 };
@@ -16,6 +17,7 @@ type Interact = { kind: 'bed'; bed: Bed } | { kind: 'villager'; who: string } | 
 export class World extends Phaser.Scene {
   aoi!: Phaser.Physics.Arcade.Sprite;
   fuku!: Phaser.GameObjects.Sprite;
+  fukuShadow!: Phaser.GameObjects.Ellipse;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
   beds = new Map<number, { plant: Phaser.GameObjects.Sprite; soil: Phaser.GameObjects.Image; spores: Phaser.GameObjects.Particles.ParticleEmitter }>();
   facingSide: 'left' | 'right' = 'right';
@@ -27,10 +29,12 @@ export class World extends Phaser.Scene {
   lastStep = 0;
   fx?: Phaser.FX.ColorMatrix;
   life!: FarmLife;
+  seasonal: { img: Phaser.GameObjects.Image; key: string }[] = [];
 
   constructor() { super('World'); }
 
   create() {
+    this.seasonal = [];
     sound.setMood('day');
     this.cameras.main.fadeIn(400);
     this.solids = this.physics.add.staticGroup();
@@ -43,13 +47,14 @@ export class World extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, MW * T, MH * T);
     this.physics.add.collider(this.aoi, this.solids);
     this.fuku = this.add.sprite(this.aoi.x + 12, this.aoi.y - 24, 'fuku-na', 0).play('fukuna-idle').setDepth(8500);
+    this.fukuShadow = this.add.ellipse(this.aoi.x, this.aoi.y, 8, 3, 0x000000, 0.22);   // тень Фуку на земле
     this.life = new FarmLife(this, this.aoi);
 
     this.marker = this.add.graphics().setDepth(9600);
 
     const cam = this.cameras.main;
     cam.setZoom(3).setBounds(0, 0, MW * T, MH * T).startFollow(this.aoi, true, 0.12, 0.12).setRoundPixels(true);
-    cam.setBackgroundColor('#f2b56c');
+    cam.setBackgroundColor('#5a9e2b');
     // эффект выцветания доступен только с видеоускорением (WebGL); без него игра работает без эффекта
     if (this.game.renderer.type === Phaser.WEBGL) {
       try { this.fx = cam.postFX.addColorMatrix(); } catch { this.fx = undefined; }
@@ -81,12 +86,14 @@ export class World extends Phaser.Scene {
 
   /** Сезонная палитра и выцветание мира от болезни (визуальная механика «Хайкаби»). */
   applySeasonLook() {
+    // летняя/осенняя трава и листва — отдельные текстуры
+    const se = game.data.season;
+    for (const { img, key } of this.seasonal) img.setTexture(se >= 2 ? `${key}_s${se}` : key);
     if (!this.fx) return;
     const beds = game.data.beds, sick = beds.filter((b) => b.crop && !b.dead && !isHealthy(game.cls(b))).length + beds.filter((b) => b.dead).length;
     const ratio = sick / beds.length, season = game.data.season;
     this.fx.reset();
-    if (season === 2) this.fx.saturate(0.15, true).brightness(1.04, true);
-    if (season === 3) this.fx.hue(-12, true).brightness(0.95, true);
+    if (season === 2) this.fx.brightness(1.03, true);
     this.fx.saturate(-Math.min(0.85, ratio * (season === 3 ? 1.3 : 0.7)), true);
   }
 
@@ -102,9 +109,12 @@ export class World extends Phaser.Scene {
 
   buildMap() {
     // фон (песок, травяные уступы, поле, пруд) — одна картинка; объекты — отдельно, сортировка по нижнему краю
-    this.add.image(0, 0, 'ground').setOrigin(0).setDepth(-10);
+    this.seasonal.push({ img: this.add.image(0, 0, 'ground').setOrigin(0).setDepth(-10), key: 'ground' });
     for (const o of LAYOUT.objs) {
-      if (!o.hidden) this.add.image(o.x, o.y, 'w-' + o.key).setOrigin(0).setDepth(o.depth);
+      if (!o.hidden) {
+        const img = this.add.image(o.x, o.y, 'w-' + o.key).setOrigin(0).setDepth(o.depth);
+        if (SEASONAL.includes(o.key)) this.seasonal.push({ img, key: 'w-' + o.key });
+      }
       if (o.solid) this.solid(o.solid[0], o.solid[1], o.solid[2], o.solid[3]);
     }
     for (const b of LAYOUT.blocks) this.solid(b[0], b[1], b[2], b[3]);   // травяные уступы с обрывом
@@ -112,19 +122,20 @@ export class World extends Phaser.Scene {
     this.solid(px, py, pw, ph);
     // торговый автомат и остановка
     const [vx, vy] = LAYOUT.vending;
-    this.add.image(vx, vy, 'vending-hd').setOrigin(0).setScale(0.5).setDepth(vy + 29);
+    this.add.image(vx - 1, vy - 1, 'vending-px').setOrigin(0).setDepth(vy + 29);
     this.solid(vx + 1, vy + 18, 15, 10);
     const [bx, by] = LAYOUT.busstop;
-    this.add.image(bx, by, 'busstop-hd').setOrigin(0).setScale(0.5).setDepth(by + 33);
+    this.add.image(bx - 1, by - 1, 'busstop-px').setOrigin(0).setDepth(by + 33);
     this.solid(bx + 3, by + 24, 24, 8);
     // грядки
     for (const b of game.data.beds) {
       const { x, y } = bedXY(b);
       const soil = this.add.image(x, y, 'bed-wet').setOrigin(0).setDepth(-5).setAlpha(0.9);
       const plant = this.add.sprite(x + 8, y + 16, 'crops', 1).setOrigin(0.5, 1).setDepth(y + 16);
+      this.solid(x + 4, y + 11, 8, 5);   // куст — препятствие, грядку осматривают стоя рядом
       const spores = this.add.particles(x + 8, y + 2, 'pixel', {
         speed: { min: 3, max: 9 }, angle: { min: 240, max: 300 }, lifespan: 1700, frequency: 110, quantity: 1,
-        scale: { start: 2.4, end: 0.8 }, alpha: { start: 1, end: 0 }, tint: [0x8a5cc0, 0xb070e0, 0xff4f9a],
+        scale: 2, alpha: { start: 1, end: 0 }, tint: [0x8a5cc0, 0xb070e0, 0xff4f9a],   // целый размер пикселя
       }).setDepth(y + 20);
       this.beds.set(b.id, { plant, soil, spores });
     }
@@ -191,6 +202,7 @@ export class World extends Phaser.Scene {
     const tx = this.aoi.x + (this.facingSide === 'left' ? 12 : -12), ty = this.aoi.y - 24 + Math.sin(this.time.now / 300) * 2;
     this.fuku.x += (tx - this.fuku.x) * Math.min(1, dt / 220);
     this.fuku.y += (ty - this.fuku.y) * Math.min(1, dt / 220);
+    this.fukuShadow.setPosition(Math.round(this.fuku.x), Math.round(this.aoi.y - 1)).setDepth(this.aoi.y - 2);
 
     if (this.frozen()) { this.aoi.setVelocity(0); this.aoi.anims.stop(); return; }
     this.life.update(dt, !!(this.keys.A.isDown || this.keys.D.isDown || this.keys.W.isDown || this.keys.S.isDown || this.keys.LEFT.isDown || this.keys.RIGHT.isDown || this.keys.UP.isDown || this.keys.DOWN.isDown));
@@ -198,7 +210,13 @@ export class World extends Phaser.Scene {
     const vx = (k.A.isDown || k.LEFT.isDown ? -1 : 0) + (k.D.isDown || k.RIGHT.isDown ? 1 : 0);
     const vy = (k.W.isDown || k.UP.isDown ? -1 : 0) + (k.S.isDown || k.DOWN.isDown ? 1 : 0);
     const sp = 72, n = vx && vy ? Math.SQRT1_2 : 1;
-    this.aoi.setVelocity(vx * sp * n, vy * sp * n);
+    let mvx = vx * sp * n, mvy = vy * sp * n;
+    // люди — препятствия: шаг навстречу соседу ближе 10 px гасится
+    for (const b of this.life.blockers()) {
+      const dx = b.x - this.aoi.x, dy = (b.y - this.aoi.y) * 1.6;
+      if (Math.hypot(dx, dy) < 11) { if (dx * mvx > 0) mvx = 0; if (dy * mvy > 0) mvy = 0; }
+    }
+    this.aoi.setVelocity(mvx, mvy);
     if (vx || vy) {
       if (this.time.now - this.lastStep > 300) { this.lastStep = this.time.now; sound.play('step'); this.life.footstep(); }
       // направление взгляда — по последней нажатой оси (по диагонали — горизонталь)

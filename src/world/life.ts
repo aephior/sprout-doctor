@@ -46,9 +46,9 @@ export class Walker {
 }
 
 const VILLAGERS: { key: string; name: string; route: [number, number][]; lines: string[] }[] = [
-  { key: 'villager16-na', name: 'Юки', route: [[11, 7], [15, 7], [15, 20], [22, 20], [15, 20]],
+  { key: 'villager16-na', name: 'Юки', route: [[10, 8], [15, 8], [15, 20], [22, 20], [15, 20]],
     lines: ['Юки: «Ты внучка Хару? Она угощала нас томатами каждое лето!»', 'Юки: «Если листья желтеют снизу — это не всегда болезнь. Бабушка так говорила».', 'Юки: «На фестивале будет конкурс на лучший урожай. Я болею за тебя!»'] },
-  { key: 'villager2-na', name: 'Кэндзи', route: [[29, 20], [16, 20], [16, 6], [27, 6]],
+  { key: 'villager2-na', name: 'Кэндзи', route: [[29, 20], [15, 20], [15, 6], [27, 6]],
     lines: ['Кэндзи: «Автобус в город — в 7:40 и 18:20. Не опаздывай».', 'Кэндзи: «Старая теплица за лесом… Говорят, оттуда и летят споры».', 'Кэндзи: «Огава опять поднял цены на фунгицид? Шучу, шучу».'] },
   { key: 'villager25-na', name: 'Хина', route: [[5, 17], [5, 19], [12, 20], [7, 20]],
     lines: ['Хина: «А это правда, что твой фонарик умеет смотреть сквозь листья?»', 'Хина: «Я видела, как Моти ловила бабочку!»'] },
@@ -143,7 +143,7 @@ export class FarmLife {
     this.fisher = add.sprite(fx, fy, 'fisher-na', 2).setOrigin(0.5, 1).setDepth(fy).setVisible(false);
     this.rod = add.graphics().setDepth(fy + 1);
     // автобус
-    this.bus = add.sprite(MAPW + 40, LAYOUT.road + 10, 'bus-hd', 0).setOrigin(0.5, 1).setScale(0.5).setDepth(LAYOUT.road + 12).setVisible(false);
+    this.bus = add.sprite(MAPW + 40, LAYOUT.road + 10, 'bus-px', 0).setOrigin(0.5, 1).setDepth(LAYOUT.road + 12).setVisible(false);
     this.apply(true);
   }
 
@@ -154,7 +154,7 @@ export class FarmLife {
     this.season = this.sc.add.particles(0, 0, s === 1 ? 'petal' : 'leaf-fall', {
       x: { min: 0, max: MAPW }, y: -6, lifespan: 9000, speedY: { min: 10, max: 18 }, speedX: { min: 4, max: 14 }, rotate: { min: 0, max: 360 },
       frequency: s === 1 ? 700 : 500, quantity: 1,
-    }).setDepth(9003);
+    }).setDepth(8990);   // под слоем освещения: ночью лепестки темнеют вместе с миром
   }
 
   // ---------- Моти ----------
@@ -191,6 +191,13 @@ export class FarmLife {
     this.sc.time.delayedCall(4000, () => this.walkOn(p));
     return p.def.lines[Math.floor(Math.random() * p.def.lines.length)];
   }
+  /** Точки, сквозь которые Аой не проходит (жители, Огава, рыбак). */
+  blockers(): { x: number; y: number }[] {
+    const r = this.people.filter((p) => p.w.s.visible).map((p) => ({ x: p.w.s.x, y: p.w.s.y }));
+    if (this.ogawa.visible) r.push({ x: this.ogawa.x, y: this.ogawa.y });
+    if (this.fisher.visible) r.push({ x: this.fisher.x, y: this.fisher.y });
+    return r;
+  }
   nearMochi(x: number, y: number) { return Math.hypot(this.mochi.x - x, this.mochi.y - y) < 16; }
   petMochi(): string {
     const d = game.data;
@@ -225,7 +232,12 @@ export class FarmLife {
     if (game.data.minutes < 23 * 60) this.midnightSent = false;
     this.shadow.setPosition(this.aoi.x, this.aoi.y - 1).setDepth(this.aoi.depth - 1);
     this.mochi.setDepth(this.mochi.y);
-    for (const p of this.people) p.w.s.setDepth(p.w.s.y);
+    for (const p of this.people) {
+      p.w.s.setDepth(p.w.s.y);
+      // жители не проходят сквозь Аой: останавливаются, пока она рядом
+      const close = Math.hypot(p.w.s.x - this.aoi.x, p.w.s.y - this.aoi.y) < 13;
+      for (const tw of this.sc.tweens.getTweensOf(p.w.s)) { if (close && tw.isPlaying()) { tw.pause(); p.w.s.anims.pause(); } else if (!close && tw.isPaused()) { tw.resume(); p.w.s.anims.resume(); } }
+    }
     // бабочки — днём, весной и летом
     const showB = h > 8 && h < 18 && !game.data.rain && game.data.season < 3;
     for (const b of this.butterflies) {
@@ -260,8 +272,9 @@ export class FarmLife {
     let col = lightAt(h);
     if (d.rain) col = mix(col, mix(col, 0x8c9cb8, 1), 0.45);
     this.overlay.setFillStyle(col);
-    const dark = h < 7 ? (7 - h) : h > 18 ? Math.min(1, (h - 18) / 2.2) : 0;
-    const lamp = Math.min(1, dark + (d.rain ? 0.35 : 0));
+    // яркость огней — по тому, насколько темно на самом деле (иначе на рассвете фасады «пересвечены»)
+    const lum = (((col >> 16) & 255) * 0.3 + ((col >> 8) & 255) * 0.59 + (col & 255) * 0.11) / 255;
+    const lamp = Math.min(1, Math.max(0, (0.92 - lum) * 1.7) + (d.rain ? 0.25 : 0));
     this.lights.forEach((l) => l.img.setAlpha(lamp * 0.9 * l.base));
     this.fireflies.emitting = h > 19.5 && !d.rain && d.season < 3;
     this.rain.emitting = d.rain;
@@ -276,9 +289,15 @@ export class FarmLife {
     this.rod.clear();
     if (fish) {   // удочка над водой и поплавок
       const x0 = this.fisher.x - 5, y0 = this.fisher.y - 9;
-      this.rod.lineStyle(1, 0x6a4329, 1).lineBetween(x0, y0, x0 - 14, y0 - 10);
-      this.rod.lineStyle(0.5, 0xf6e7c1, 0.8).lineBetween(x0 - 14, y0 - 10, x0 - 20, y0 + 8);
-      this.rod.fillStyle(0xd63a3a, 1).fillRect(x0 - 21, y0 + 7, 2, 2);
+      // удочка и леска — пиксельными отрезками (без субпиксельных линий)
+      const px = (xa: number, ya: number, xb: number, yb: number, col: number) => {
+        const n = Math.max(Math.abs(xb - xa), Math.abs(yb - ya));
+        this.rod.fillStyle(col, 1);
+        for (let i = 0; i <= n; i++) this.rod.fillRect(Math.round(xa + (xb - xa) * i / n), Math.round(ya + (yb - ya) * i / n), 1, 1);
+      };
+      px(x0, y0, x0 - 14, y0 - 10, 0x6a4329);
+      px(x0 - 14, y0 - 10, x0 - 20, y0 + 8, 0xd8ccb0);
+      this.rod.fillStyle(0xd63a3a, 1).fillRect(x0 - 21, y0 + 7, 2, 2).fillStyle(0xffffff, 1).fillRect(x0 - 21, y0 + 7, 2, 1);
     }
     sound.setAmbient({ rain: d.rain, night: h > 20 || h < 5.5, morning: h > 6 && h < 9 && !d.rain });
   }

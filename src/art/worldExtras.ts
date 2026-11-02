@@ -51,7 +51,7 @@ export function registerWorldExtras(scene: Phaser.Scene) {
   });
   paintSheet(scene, 'petal', 3, 2, 1, (p) => { p.rect(0, 0, 3, 2, K.sakura).px(2, 0, '#ffd6e0'); });
   paintSheet(scene, 'leaf-fall', 3, 3, 1, (p) => { p.rect(0, 1, 3, 1, K.lamp3).px(1, 0, '#c8323c').px(1, 2, '#d29a5f'); });
-  paintSheet(scene, 'step', 4, 3, 1, (p) => { p.rect(0, 0, 1, 2, '#5a4a30').rect(3, 1, 1, 2, '#5a4a30'); });
+  paintSheet(scene, 'step', 5, 2, 1, (p) => { p.rect(0, 0, 2, 1, '#4a3a24').rect(3, 1, 2, 1, '#4a3a24'); });   // два следа-отпечатка (тёмные — видны и на траве, и на песке)
   paintSheet(scene, 'raindrop', 1, 4, 1, (p) => { p.rect(0, 0, 1, 4, '#9cc4e4'); });
   paintSheet(scene, 'puddle', 12, 5, 1, (p) => { p.ellipse(6, 2, 5, 2, '#5b8fb9').hline(4, 1, 3, '#9cc4e4'); });
   paintSheet(scene, 'shadow', 12, 4, 1, (p) => { p.ellipse(6, 2, 5, 1, '#1e1b2e'); });

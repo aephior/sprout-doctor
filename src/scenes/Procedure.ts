@@ -121,7 +121,7 @@ export class Procedure extends Phaser.Scene {
   update() {
     if (this.aphid) {
       const left = Math.max(0, this.aphid.until - this.time.now), win = game.tuning().aphidWindowMs;
-      this.aphid.bar.clear().fillStyle(C.ink, 0.9).fillRect(40, 140, 220, 8).fillStyle(left > win / 3 ? C.orange : C.magenta, 1).fillRect(41, 141, 218 * left / win, 6);
+      this.aphid.bar.clear().fillStyle(C.ink, 0.9).fillRect(this.aphid.sprite.x - 40, this.aphid.sprite.y - 30, 80, 8).fillStyle(left > win / 3 ? C.orange : C.magenta, 1).fillRect(this.aphid.sprite.x - 39, this.aphid.sprite.y - 29, 78 * left / win, 6);
       if (left <= 0) this.resolveAphid(false);
     }
     if (!this.gestureOn) return;
@@ -242,7 +242,7 @@ export class Procedure extends Phaser.Scene {
     } catch (err) {
       this.say(`Линза не отвечает: ${(err as Error).message}`, HEX.magentaDark);
     }
-    this.fuku.play('fuku-idle');
+    this.fuku.play('fukuna-idle');
     this.busy = false;
     events.emit('stats');
     if (!this.aphidRolled && this.diag && !this.treated) {
@@ -257,7 +257,7 @@ export class Procedure extends Phaser.Scene {
     const win = game.tuning().aphidWindowMs;
     const pos = () => this.garden.leafPoint();
     const p = pos();
-    const sprite = this.add.sprite(p.x, p.y, 'g-aphid_dash').setScale(0.55).setDepth(60).setInteractive({ useHandCursor: true })
+    const sprite = this.add.sprite(p.x, p.y, 'g-aphid_dash').setScale(0.32).setDepth(60).setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.command('swipe'));
     const hop = this.time.addEvent({ delay: 420, loop: true, callback: () => {
       const q = pos();
@@ -315,11 +315,12 @@ export class Procedure extends Phaser.Scene {
   pageUnlocked(key: string) {
     sound.play('page');
     const c = CLASSES.find((x) => x.key === key)!;
-    const card = this.add.container(200, 330).setDepth(80).setScale(0.2).setAlpha(0);
+    const card = this.add.container(200, 62).setDepth(80)   // над паспортом грядки — не заслоняет растение
+     .setScale(0.2).setAlpha(0);
     const g = this.add.graphics(); g.fillStyle(C.ink, 1).fillRect(-124, -44, 248, 88).fillStyle(0xf6e7c1, 1).fillRect(-120, -40, 240, 80).fillStyle(0x8e2230, 1).fillRect(-120, -40, 240, 18);
     card.add([g, text(this, 0, -31, 'НОВАЯ СТРАНИЦА ДНЕВНИКА', 12, HEX.paper).setOrigin(0.5), text(this, 0, -2, c.name, 18).setOrigin(0.5), text(this, 0, 22, `Записей: ${game.data.pages.length}/7 · Tab — открыть`, 12, '#8a6a4a').setOrigin(0.5)]);
     this.tweens.add({ targets: card, scale: 1, alpha: 1, angle: { from: -12, to: 0 }, duration: 450, ease: 'Back.out' });
-    this.tweens.add({ targets: card, alpha: 0, y: 300, delay: 3200, duration: 400, onComplete: () => card.destroy() });
+    this.tweens.add({ targets: card, alpha: 0, y: 40, delay: 3200, duration: 400, onComplete: () => card.destroy() });
   }
 
   // ---------- эффекты ----------
@@ -334,7 +335,7 @@ export class Procedure extends Phaser.Scene {
     const r = this.add.circle(this.fuku.x, this.fuku.y + 10, 10).setStrokeStyle(3, grade.color).setDepth(50);
     this.tweens.add({ targets: r, radius: 60, alpha: 0, duration: 400, onComplete: () => r.destroy() });
     const col = '#' + grade.color.toString(16).padStart(6, '0');
-    const tag = text(this, this.fuku.x, this.fuku.y - 46, grade.label, 22, col, { stroke: HEX.ink, strokeThickness: 5 }).setOrigin(0.5).setDepth(51);
+    const tag = text(this, this.fuku.x - 30, this.fuku.y + 46, grade.label, 22, col, { stroke: HEX.ink, strokeThickness: 5 }).setOrigin(0.5).setDepth(51);
     this.tweens.add({ targets: tag, y: tag.y - 22, alpha: 0, duration: 750, onComplete: () => tag.destroy() });
   }
 
@@ -388,10 +389,15 @@ export class Procedure extends Phaser.Scene {
 
     // паспорт грядки
     add(paperPanel(this, 24, 14, 352, 96));
-    add(text(this, 40, 22, `Грядка ${b.id + 1} · ${b.crop ? CROP_NAME[b.crop] : '—'}`, 20));
-    add(text(this, 40, 52, `Здоровье: ${b.health}`, 16));
-    add(bar(this, 186, 55, 174, 12, b.health / 100, b.health > 50 ? C.green : C.magenta));
-    add(text(this, 40, 76, `${['Росток', 'Растёт', 'Созрело'][b.stage]}${b.watered ? ' · полито' : ''} · линза ${game.data.fukuCharge}/${game.data.fukuMax} · фунгицид ${game.data.fungicide}`, 14, '#555'));
+    add(text(this, 40, 22, `Грядка ${b.id + 1} · ${b.crop ? CROP_NAME[b.crop] : 'пусто'}`, 20));
+    if (b.crop) {
+      add(text(this, 40, 52, `Здоровье: ${b.health}`, 16));
+      add(bar(this, 186, 55, 174, 12, b.health / 100, b.health > 50 ? C.green : C.magenta));
+      add(text(this, 40, 76, `${['Росток', 'Растёт', 'Созрело'][b.stage]}${b.watered ? ' · полито' : ''} · линза ${game.data.fukuCharge}/${game.data.fukuMax} · фунгицид ${game.data.fungicide}`, 14, '#555'));
+    } else {   // растение удалено: здоровья нет, только подсказка
+      add(text(this, 40, 52, 'Растение удалено — соседние грядки в безопасности.', 14, '#555', { wordWrap: { width: 320 } }));
+      add(text(this, 40, 76, `Новые семена — в лавке Огавы · фунгицид ${game.data.fungicide}`, 14, '#555'));
+    }
 
     // реплика Фуку — внизу справа
     if (this.msg) {

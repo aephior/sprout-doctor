@@ -13,9 +13,10 @@ export class Menu extends Phaser.Scene {
     gestures.stop();   // в меню камера выключена
     const { width: W, height: H } = this.scale;
     // заставка: деревня в горах на закате, Аой и Фуку на огороде
-    const bg = this.add.image(W / 2, H / 2, 'g-title').setScale(2.02);
-    this.tweens.add({ targets: bg, scale: 2.08, duration: 18000, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    this.add.rectangle(0, 0, W, 190, 0x1e1b2e, 0.25).setOrigin(0);
+    this.add.image(W / 2, H / 2, 'g-title').setScale(2);   // ровно ×2 — без «плавающих» пикселей
+    // мягкое затемнение под заголовком: ступенчатый градиент (без резкой границы)
+    const band = this.add.graphics();
+    for (let i = 0; i < 12; i++) band.fillStyle(0x1e1b2e, 0.34 * (1 - i / 12)).fillRect(0, i * 18, W, 18);
     this.add.particles(0, 0, 'pixel', {
       x: { min: 0, max: W }, y: { min: 250, max: H }, lifespan: 3500, speedX: { min: -6, max: 6 }, speedY: { min: -5, max: 5 },
       scale: { start: 2.4, end: 0 }, alpha: { start: 0.9, end: 0 }, frequency: 260, tint: [0xf2e070, 0xd8f080], blendMode: 'ADD',
@@ -53,7 +54,7 @@ export class Menu extends Phaser.Scene {
     const demo = this.add.graphics();
     demo.fillStyle(full ? C.teal : C.magenta, 1).fillRect(W - 170, 20, 150, 30);
     text(this, W - 95, 35, full ? 'ПОЛНАЯ ВЕРСИЯ' : 'ДЕМО', 16, full ? HEX.ink : HEX.white).setOrigin(0.5);
-    text(this, W - 16, H - 16, 'v0.7 · бета', 14, HEX.paper).setOrigin(1, 1);
+    text(this, W - 16, H - 16, 'v0.8 · бета', 14, HEX.paper).setOrigin(1, 1);
   }
 
   overlay = false;
@@ -68,13 +69,19 @@ export class Menu extends Phaser.Scene {
     const { width: W, height: H } = this.scale;
     const box = this.add.container(0, 0);
     const shade = this.add.rectangle(0, 0, W, H, 0x000000, 0.6).setOrigin(0).setInteractive();
-    const lines = rows.length ? rows.map((r, i) => `${String(i + 1).padStart(2)}. ${String(r.score).padStart(5)}  ${r.ending.padEnd(18)} ${r.cured || r.accuracy ? r.accuracy + '%' : ' —'}  ${r.days} дн.  ${r.date}`)
-      : ['Пока пусто. Пройдите демо-сезон или всю игру.'];
-    box.add([shade, paperPanel(this, 140, 70, W - 280, H - 140),
-      text(this, 170, 92, 'Рекорды', 26),
-      text(this, 170, 134, '    Счёт  Финал              Точн.  Дни   Дата', 15, '#777'),
-      text(this, 170, 160, lines.join('\n'), 16, HEX.ink, { lineSpacing: 6 })]);
-    const close = text(this, W - 170, H - 100, '[ закрыть ]', 18, '#c8323c').setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    // таблица — отдельные колонки (пропорциональный шрифт не выравнивается пробелами); панель по высоте содержимого
+    const COLS: [string, number, number][] = [['#', 0, 0], ['Счёт', 70, 1], ['Финал', 92, 0], ['Точн.', 380, 1], ['Дни', 440, 1], ['Дата', 470, 0]];
+    const n = Math.max(1, rows.length), ph = 150 + n * 30, py = Math.max(30, (H - ph) / 2), x0 = 190;
+    box.add([shade, paperPanel(this, 150, py, W - 300, ph), text(this, 174, py + 18, 'Рекорды', 26)]);
+    COLS.forEach(([h, dx, right]) => box.add(text(this, x0 + dx, py + 62, h, 15, '#8a7a6a').setOrigin(right, 0)));
+    const line = this.add.graphics().lineStyle(1, 0xc9b48f, 1).lineBetween(174, py + 84, W - 174, py + 84); box.add(line);
+    if (!rows.length) box.add(text(this, x0, py + 96, 'Пока пусто. Пройдите демо-сезон или всю игру.', 16, HEX.ink));
+    rows.forEach((r, i) => {
+      const y = py + 94 + i * 30;
+      const cells = [`${i + 1}.`, String(r.score), r.ending, r.cured || r.accuracy ? r.accuracy + '%' : '—', String(r.days), r.date];
+      cells.forEach((c, j) => box.add(text(this, x0 + COLS[j][1], y, c, 16, i === 0 ? '#8e2230' : HEX.ink).setOrigin(COLS[j][2], 0)));
+    });
+    const close = text(this, W - 174, py + ph - 36, '[ закрыть ]', 18, '#c8323c').setOrigin(1, 0).setInteractive({ useHandCursor: true });
     box.add(close);
     this.overlay = true;
     const done = () => { if (!box.active) return; box.destroy(); this.time.delayedCall(0, () => { this.overlay = false; }); };

@@ -6,7 +6,7 @@ import { isHealthy, Action } from '../data/diseases';
 import { registerTools, PlantState } from '../art/plants';
 
 const CROP_ROW: Record<string, number> = { tomato: 0, potato: 1, pepper: 2 };
-const PS = 9;   // растение — тот же спрайт, что на ферме (16×20), крупно
+const PS = 4;   // растение 48×60 (crops_hd) ×4 — та же сетка пикселей, что у фона грядки ×4
 import { C } from '../ui/ui';
 
 export const GW = 352, GH = 396, GS = 4;   // окно 88×99 в родном разрешении, масштаб ×4
@@ -24,10 +24,10 @@ export class GardenView {
     registerTools(scene);
     this.baseX = x + 44 * GS; this.baseY = y + 77 * GS;
     this.bg = scene.add.image(x, y, '__DEFAULT').setOrigin(0).setScale(GS);
-    this.plant = scene.add.image(this.baseX, this.baseY + 10, 'crops', 0).setOrigin(0.5, 1).setScale(PS);
+    this.plant = scene.add.image(this.baseX, this.baseY + 10, 'crops-hd', 0).setOrigin(0.5, 1).setScale(PS);
     this.fx = scene.add.container(0, 0).setDepth(20);
     // маску не используем: она дорогая в отрисовке; эффекты рассчитаны так, чтобы оставаться в окне
-    this.fuku = scene.add.sprite(x + GW - 46, y + 74, 'fuku', 0).setScale(0.42).play('fuku-idle').setDepth(21);
+    this.fuku = scene.add.sprite(x + GW - 46, y + 74, 'fuku-na', 0).setScale(GS).play('fukuna-idle').setDepth(21);   // тот же Фуку, что на ферме, сетка ×4
     scene.tweens.add({ targets: this.fuku, y: this.fuku.y + 8, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.frame = scene.add.graphics().setDepth(22);
     this.frame.lineStyle(4, C.ink, 1).strokeRect(x - 2, y - 2, GW + 4, GH + 4).lineStyle(2, C.wood, 1).strokeRect(x - 5, y - 5, GW + 10, GH + 10);
@@ -49,14 +49,14 @@ export class GardenView {
     if (b.crop) {   // удалённое растение (crop = null) — пустая грядка
       const row = CROP_ROW[b.crop] * 8;
       const f = st === 'dead' ? 7 : st === 'severe' ? 6 : st === 'sick' ? 5 : st === 'sprout' ? 1 : st === 'mature' ? 4 : 3;
-      this.plant.setVisible(true).setTexture('crops', row + f);
+      this.plant.setVisible(true).setTexture('crops-hd', row + f);
       if (!this.sway) this.sway = this.scene.tweens.add({ targets: this.plant, scaleY: { from: PS, to: PS * 1.025 }, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     } else this.plant.setVisible(false);
   }
 
   /** Случайная точка на листве (экранные координаты). */
   leafPoint() {
-    return { x: this.baseX + (Math.random() - 0.5) * 140, y: this.baseY - 90 - Math.random() * 150 };
+    return { x: this.baseX + (Math.random() - 0.5) * 130, y: this.baseY - 40 - Math.random() * 160 };   // в пределах листвы (куст ~190×230)
   }
 
   private particles(px: number, py: number, cfg: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig, ms: number) {
@@ -72,13 +72,13 @@ export class GardenView {
   scan(): Promise<void> {
     const sc = this.scene, home = { x: this.fuku.x, y: this.fuku.y };
     return new Promise((done) => {
-      sc.tweens.add({ targets: this.fuku, x: this.baseX + 40, y: this.baseY - 300, duration: 250, ease: 'Quad.out', onComplete: () => {
+      sc.tweens.add({ targets: this.fuku, x: this.baseX + 50, y: this.baseY - 250, duration: 250, ease: 'Quad.out', onComplete: () => {
         this.fuku.setFrame(2).anims.stop();
         const beam = sc.add.graphics().setBlendMode(Phaser.BlendModes.ADD); this.fx.add(beam);
-        const line = sc.add.rectangle(this.baseX, this.baseY - 280, 220, 3, C.teal, 0.9).setBlendMode(Phaser.BlendModes.ADD); this.fx.add(line);
-        const draw = (ly: number) => beam.clear().fillStyle(C.teal, 0.16).fillTriangle(this.fuku.x, this.fuku.y + 12, this.baseX - 110, ly, this.baseX + 110, ly);
-        sc.tweens.addCounter({ from: this.baseY - 280, to: this.baseY - 10, duration: 650, onUpdate: (t) => { const v = t.getValue() ?? 0; line.y = v; draw(v); },
-          onComplete: () => { beam.destroy(); line.destroy(); this.fuku.play('fuku-idle'); sc.tweens.add({ targets: this.fuku, x: home.x, y: home.y, duration: 300, ease: 'Quad.inOut' }); done(); } });
+        const line = sc.add.rectangle(this.baseX, this.baseY - 235, 200, 4, C.teal, 0.9).setBlendMode(Phaser.BlendModes.ADD); this.fx.add(line);
+        const draw = (ly: number) => beam.clear().fillStyle(C.teal, 0.16).fillTriangle(this.fuku.x, this.fuku.y + 12, this.baseX - 100, ly, this.baseX + 100, ly);
+        sc.tweens.addCounter({ from: this.baseY - 235, to: this.baseY, duration: 900, onUpdate: (t) => { const v = t.getValue() ?? 0; line.y = v; draw(v); },
+          onComplete: () => { beam.destroy(); line.destroy(); this.fuku.play('fukuna-idle'); sc.tweens.add({ targets: this.fuku, x: home.x, y: home.y, duration: 300, ease: 'Quad.inOut' }); done(); } });
       } });
     });
   }
@@ -89,15 +89,15 @@ export class GardenView {
     if (a === 'water') {
       const can = sc.add.image(bx - 120, by - 230, 'tool-can').setScale(GS).setAngle(0); this.fx.add(can);
       sc.tweens.add({ targets: can, angle: 32, x: bx - 90, duration: 300, ease: 'Quad.out' });
-      sc.time.delayedCall(250, () => this.particles(bx - 20, by - 200, { texture: 'drop', speedY: { min: 220, max: 300 }, speedX: { min: -40, max: 40 }, gravityY: 400, lifespan: 700, frequency: 18, quantity: 2, scale: GS / 1.5 }, 900));
+      sc.time.delayedCall(250, () => this.particles(bx - 30, by - 200, { texture: 'drop', speedY: { min: 220, max: 300 }, speedX: { min: -40, max: 40 }, gravityY: 400, lifespan: 700, frequency: 18, quantity: 2, scale: GS / 1.5 }, 900));
       sc.time.delayedCall(1100, () => { sc.tweens.add({ targets: can, angle: 0, alpha: 0, x: bx - 140, duration: 300, onComplete: () => can.destroy() }); this.bed.watered = true; this.refresh(); });
       return 1400;
     }
     if (a === 'spray') {
-      const bottle = sc.add.sprite(bx + 120, by - 160, 'tool-spray', 0).setScale(GS).setFlipX(true); this.fx.add(bottle);
+      const bottle = sc.add.sprite(bx + 125, by - 130, 'tool-spray', 0).setScale(GS).setFlipX(true); this.fx.add(bottle);
       for (let i = 0; i < 4; i++) sc.time.delayedCall(150 + i * 220, () => {
         bottle.setFrame(1); sc.time.delayedCall(100, () => bottle.setFrame(0));
-        this.particles(bx + 90, by - 165 - i * 18, { texture: 'pixel', speedX: { min: -220, max: -120 }, speedY: { min: -40, max: 40 }, lifespan: 900, quantity: 14, frequency: -1, scale: { start: 7, end: 1 }, alpha: { start: 0.7, end: 0 }, tint: [0xf2a7b8, 0xffffff, 0xff4f9a] }, 50);
+        this.particles(bx + 97, by - 134 - i * 18, { texture: 'pixel', speedX: { min: -200, max: -110 }, speedY: { min: -40, max: 40 }, lifespan: 900, quantity: 14, frequency: -1, scale: { start: 7, end: 1 }, alpha: { start: 0.7, end: 0 }, tint: [0xf2a7b8, 0xffffff, 0xff4f9a] }, 50);
       });
       sc.time.delayedCall(1200, () => sc.tweens.add({ targets: bottle, alpha: 0, x: bx + 160, duration: 250, onComplete: () => bottle.destroy() }));
       return 1400;
@@ -134,7 +134,7 @@ export class GardenView {
     const sc = this.scene;
     this.refresh();
     sc.tweens.add({ targets: this.plant, scaleX: PS * 1.06, scaleY: PS * 0.95, duration: 120, yoyo: true, repeat: 1 });
-    this.particles(this.baseX, this.baseY - 150, { texture: 'sparkle', x: { min: -110, max: 110 }, y: { min: -120, max: 120 }, speedY: { min: -60, max: -20 }, lifespan: 1100, quantity: 2, frequency: 40, scale: { start: GS, end: 0 } }, 700);
+    this.particles(this.baseX, this.baseY - 110, { texture: 'sparkle', x: { min: -90, max: 90 }, y: { min: -90, max: 90 }, speedY: { min: -60, max: -20 }, lifespan: 1100, quantity: 2, frequency: 40, scale: { start: GS, end: 0 } }, 700);
   }
 
   /** Неудача: растение вздрагивает, вылетают серые споры. */
@@ -142,7 +142,7 @@ export class GardenView {
     const sc = this.scene;
     this.refresh();
     sc.tweens.add({ targets: this.plant, x: { from: this.baseX - 6, to: this.baseX + 6 }, duration: 50, yoyo: true, repeat: 4, onComplete: () => this.plant.setX(this.baseX) });
-    this.particles(this.baseX, this.baseY - 140, { texture: 'pixel', speed: { min: 30, max: 90 }, lifespan: 1100, quantity: 26, frequency: -1, scale: { start: 7, end: 2 }, alpha: { start: 0.8, end: 0 }, tint: [0x6b4e8c, 0x9a9a9a, 0x4b3766] }, 50);
+    this.particles(this.baseX, this.baseY - 110, { texture: 'pixel', speed: { min: 30, max: 90 }, lifespan: 1100, quantity: 26, frequency: -1, scale: { start: 7, end: 2 }, alpha: { start: 0.8, end: 0 }, tint: [0x6b4e8c, 0x9a9a9a, 0x4b3766] }, 50);
   }
 
   /** Урожай: плоды вылетают из куста. */

@@ -15,6 +15,11 @@ const PLACE_HINT: Record<string, string> = {
   vending: 'E — торговый автомат', busstop: 'E — автобусная остановка',
 };
 
+const SPEAKERS: [RegExp, string, number][] = [
+  [/^Рыбак/, 'fisher-na', 0], [/^Юки/, 'villager16-na', 0], [/^Кэндзи/, 'villager2-na', 0], [/^Хина/, 'villager25-na', 0],
+  [/^Моти/, 'mochi-na', 8], [/^Огава/, 'ogawa-na', 0],
+];
+
 export class Hud extends Phaser.Scene {
   stats!: Phaser.GameObjects.Container;
   hint!: Phaser.GameObjects.Text;
@@ -33,6 +38,13 @@ export class Hud extends Phaser.Scene {
     this.stats = this.add.container(0, 0);
     this.hintBg = this.add.graphics();
     this.hint = text(this, 480, 512, '', 18, HEX.paper, { stroke: HEX.ink, strokeThickness: 4 }).setOrigin(0.5);
+    // подложка подсказки — тёмная плашка по ширине текста
+    const setText0 = this.hint.setText.bind(this.hint);
+    this.hint.setText = ((v: string | string[]) => {
+      const r = setText0(v); this.hintBg.clear();
+      if (this.hint.text) { const w = this.hint.width + 28; this.hintBg.fillStyle(0x1e1b2e, 0.72).fillRoundedRect(480 - w / 2, 497, w, 30, 8); }
+      return r;
+    }) as typeof this.hint.setText;
     this.bubble = this.add.container(0, 0).setVisible(false);
     this.drawStats();
 
@@ -98,7 +110,11 @@ export class Hud extends Phaser.Scene {
     const t = text(this, 960 - 14 - w + 54, 24, s, 16, HEX.ink, { wordWrap: { width: w - 70 }, lineSpacing: 2 });
     const h = Math.max(56, t.height + 20);
     const g = paperPanel(this, 960 - 14 - w, 14, w, h);
-    const icon = this.add.sprite(960 - 14 - w + 26, 14 + 30, 'fuku', 0).setScale(0.34).play('fuku-idle');
+    // портрет говорящего: житель/рыбак/кошка — их спрайт из мира, иначе Фуку
+    const who = SPEAKERS.find(([re]) => re.test(s));
+    const icon = who
+      ? this.add.sprite(960 - 14 - w + 28, 14 + 32, who[1], who[2]).setScale(3)
+      : this.add.sprite(960 - 14 - w + 28, 14 + 30, 'fuku-px', 0).setScale(2);   // пиксельный Фуку без «лесенки» от уменьшения
     this.bubble.add([g, icon, t]).setVisible(true).setAlpha(0);
     this.tweens.add({ targets: this.bubble, alpha: 1, duration: 150 });
     this.bubbleTimer?.remove();
@@ -106,18 +122,27 @@ export class Hud extends Phaser.Scene {
   }
 
   // ---------- модальные окна ----------
-  openModal(title: string, lines: string[], options: [string, string, () => void][]): Phaser.GameObjects.Text[] {
+  openModal(title: string, lines: string[], options: [string, string, () => void][], art?: string): Phaser.GameObjects.Text[] {
     this.closeModal();
     ui.modal = true; this.hint.setText('');
     this.modalTs = this.keyTs;   // клавиша, открывшая окно, в этом окне не срабатывает
-    const W = 660, c = this.add.container(0, 0);
-    // сначала измеряем текст, затем рисуем панель по высоте содержимого
-    const body = lines.map((s) => text(this, 0, 0, s || ' ', 16, '#3a3550', { wordWrap: { width: W - 48 } }));
+    const AW = art ? 170 : 0, c = this.add.container(0, 0);
+    // сначала измеряем текст, затем рисуем панель по размеру содержимого (короткие окна — узкие)
+    const wrap = 612 - AW;
+    const body = lines.map((s) => text(this, 0, 0, s || ' ', 16, '#3a3550', { wordWrap: { width: wrap } }));
     const opts = options.map(([key, label, fn]) => text(this, 0, 0, `[${key}] ${label}`, 18, '#c8323c').setInteractive({ useHandCursor: true }).on('pointerdown', fn));
-    const H = 70 + body.reduce((h, t) => h + t.height + 6, 0) + 16 + opts.length * 34;
+    const ttl = text(this, 0, 0, title, 24);
+    const inner = Math.max(ttl.width, ...body.map((t) => t.width), ...opts.map((t) => t.width));
+    const W = Math.min(660, Math.max(art ? 560 : 400, inner + 48 + AW));
+    const H = Math.max(art ? 200 : 0, 70 + body.reduce((h, t) => h + t.height + 6, 0) + 16 + opts.length * 34);
     const x = 480 - W / 2, y = Math.max(16, 270 - H / 2);
     const shade = this.add.rectangle(0, 0, 960, 540, 0x000000, 0.45).setOrigin(0).setInteractive();
-    c.add([shade, paperPanel(this, x, y, W, H), text(this, x + 24, y + 18, title, 24)]);
+    c.add([shade, paperPanel(this, x, y, W, H), ttl.setPosition(x + 24, y + 18)]);
+    if (art) {   // портрет Фуку справа: радуется / тревожится / повреждён
+      const im = this.add.image(x + W - AW / 2 - 12, y + H / 2 + 6, art);
+      const k = Math.min(1, (H - 40) / im.height, (AW - 10) / im.width); im.setScale(k >= 1 ? 1 : k);
+      c.add(im);
+    }
     let cy = y + 58;
     body.forEach((t) => { t.setPosition(x + 24, cy); cy += t.height + 6; c.add(t); });
     cy += 12;
@@ -164,7 +189,7 @@ export class Hud extends Phaser.Scene {
     this.hint.setText('');
     this.scene.sleep('World');
     this.scene.setVisible(false);
-    this.scene.launch(key, data);
+    this.scene.launch(key, data ?? {});   // без данных Phaser повторно отдал бы прошлые (например, {early:true})
   }
 
   fisherIdx = 0;
@@ -213,7 +238,7 @@ export class Hud extends Phaser.Scene {
         ['1', 'Ввести ключ полной версии', () => this.keyModal('')],
         ['2', `Купить полную версию (${PRICE})`, () => this.storeModal()],
         ['3', 'В главное меню', () => this.toMenu()],
-      ]);
+      ], 'g-fuku_happy');
       return;
     }
     if (win && d.season < 3) {
@@ -221,20 +246,20 @@ export class Hud extends Phaser.Scene {
       this.openModal(`${SEASONS[d.season]} позади!`, [next, '', ...lines], [
         ['1', 'Продолжить', () => { this.closeModal(); game.nextSeason(); events.emit('season'); this.drawStats(); this.say(this.forecast(), 7000); }],
         ['2', 'Сохранить и выйти в меню', () => { game.nextSeason(); this.toMenu(); }],
-      ]);
+      ], 'g-fuku_happy');
       return;
     }
     if (win && d.season === 3) {
       this.openModal('Источник найден', ['Споры тянутся к заброшенной теплице в конце долины. Хайкаби ждёт.', '', ...lines], [
         ['1', 'Войти в теплицу', () => { this.closeModal(); events.emit('boss'); }],
-      ]);
+      ], 'g-fuku_alert');
       return;
     }
     if (!this.recorded) { addRecord(d, 'Поражение', false); this.recorded = true; }
     const why = d.season === 3 ? 'Хайкаби оказалась сильнее.' : 'Болезни захватили огород: больше половины грядок погибло или репутация упала до нуля.';
     this.openModal('Ферма не выстояла', [`${why} Попробуйте снова — внимательнее к диагнозам.`, ...lines], [
       ['1', 'Начать заново', () => { game.newGame(); game.save(); this.toMenu(); }],
-    ]);
+    ], 'g-fuku_damaged');
   }
 
   // ---------- полная версия ----------
@@ -266,6 +291,11 @@ export class Hud extends Phaser.Scene {
       }],
       ['Esc', 'Назад', () => { this.keyEntry = null; this.endScreen(true); }],
     ]);
+    // поле ввода — на подложке, ошибка — красным
+    const f = this.keyTexts[1], box = this.add.graphics();
+    box.fillStyle(0xfffaf0, 1).fillRect(f.x - 6, f.y - 4, 300, f.height + 8).lineStyle(2, 0x3a3550, 1).strokeRect(f.x - 6, f.y - 4, 300, f.height + 8);
+    this.modal!.addAt(box, this.modal!.getIndex(f));
+    this.keyTexts[2].setColor('#c8323c');
   }
 
   /** Ввод символов ключа (подключается один раз в create). */
