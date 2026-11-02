@@ -26,6 +26,34 @@ function lightAt(h: number) {
 export const hourNow = () => game.data.minutes / 60;
 export const clockText = () => { const m = Math.floor(game.data.minutes); return `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
 
+/** Персонаж, гуляющий по точкам: идёт «буквой Г» (сначала по горизонтали, потом по вертикали) — анимация всегда совпадает с направлением. */
+export class Walker {
+  busy = false;
+  constructor(private sc: Phaser.Scene, public s: Phaser.GameObjects.Sprite, private anim: string, private speed = 22) {}
+  private leg(x: number, y: number, done: () => void) {
+    const dx = x - this.s.x, dy = y - this.s.y, d = Math.abs(dx) + Math.abs(dy);
+    if (d < 1) { done(); return; }
+    const dir = Math.abs(dx) > 0.5 ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
+    this.s.anims.play(`${this.anim}-${dir}`, true);
+    this.sc.tweens.add({ targets: this.s, x, y, duration: (d / this.speed) * 1000, onComplete: done });
+  }
+  go(x: number, y: number, done: () => void) {
+    this.busy = true;
+    this.sc.tweens.killTweensOf(this.s);
+    this.leg(x, this.s.y, () => this.leg(x, y, () => { this.busy = false; this.s.anims.stop(); done(); }));
+  }
+  stop() { this.sc.tweens.killTweensOf(this.s); this.s.anims.stop(); this.busy = false; }
+}
+
+const VILLAGERS: { key: string; name: string; route: [number, number][]; lines: string[] }[] = [
+  { key: 'villager16-na', name: 'Юки', route: [[11, 7], [15, 7], [15, 20], [22, 20], [15, 20]],
+    lines: ['Юки: «Ты внучка Хару? Она угощала нас томатами каждое лето!»', 'Юки: «Если листья желтеют снизу — это не всегда болезнь. Бабушка так говорила».', 'Юки: «На фестивале будет конкурс на лучший урожай. Я болею за тебя!»'] },
+  { key: 'villager2-na', name: 'Кэндзи', route: [[29, 20], [16, 20], [16, 6], [27, 6]],
+    lines: ['Кэндзи: «Автобус в город — в 7:40 и 18:20. Не опаздывай».', 'Кэндзи: «Старая теплица за лесом… Говорят, оттуда и летят споры».', 'Кэндзи: «Огава опять поднял цены на фунгицид? Шучу, шучу».'] },
+  { key: 'villager25-na', name: 'Хина', route: [[5, 17], [5, 19], [12, 20], [7, 20]],
+    lines: ['Хина: «А это правда, что твой фонарик умеет смотреть сквозь листья?»', 'Хина: «Я видела, как Моти ловила бабочку!»'] },
+];
+
 export class FarmLife {
   overlay: Phaser.GameObjects.Rectangle;
   lights: { img: Phaser.GameObjects.Image; base: number }[] = [];
@@ -40,6 +68,10 @@ export class FarmLife {
   mochi: Phaser.GameObjects.Sprite;
   mochiAnim?: Phaser.Time.TimerEvent;
   fisher: Phaser.GameObjects.Sprite;
+  rod!: Phaser.GameObjects.Graphics;
+  ogawa!: Phaser.GameObjects.Sprite;
+  cat!: Walker;
+  people: { w: Walker; def: typeof VILLAGERS[number]; i: number; talk: number }[] = [];
   bus: Phaser.GameObjects.Sprite;
   busDone = new Set<string>();
   private lastTenMin = -1;
@@ -48,11 +80,8 @@ export class FarmLife {
   constructor(private sc: Phaser.Scene, private aoi: Phaser.GameObjects.Sprite) {
     registerWorldExtras(sc); makeGlow(sc);
     const add = sc.add;
-    // фонарь у остановки
-    const [lx, ly] = LAYOUT.lamp;
-    add.image(lx, ly + 12, 'lamppost-hd').setOrigin(0.5, 1).setScale(0.5).setDepth(ly + 12);
-    // лужи на тропинке (видны в дождь)
-    for (const [x, y] of [[8, 9], [16, 10], [27, 9], [19, 22], [35, 15], [12, 25], [30, 26]]) this.puddles.push(add.image(x * T + 2, y * T + 6, 'puddle').setOrigin(0).setDepth(-4).setVisible(false));
+    // лужи (видны в дождь)
+    for (const [x, y] of [[8, 8], [13, 9], [27, 8], [19, 17], [11, 19], [26, 20], [6, 16]]) this.puddles.push(add.image(x * T + 2, y * T + 6, 'puddle').setOrigin(0).setDepth(-4).setVisible(false));
     // тень под Аой
     this.shadow = add.image(aoi.x, aoi.y, 'shadow').setAlpha(0.3);
 
@@ -62,11 +91,12 @@ export class FarmLife {
       const img = add.image(x, y, 'glow').setScale(scale).setTint(tint).setBlendMode(Phaser.BlendModes.ADD).setDepth(9001).setAlpha(0);
       this.lights.push({ img, base });
     };
-    light(69, 112, 0.5, 0xffd27a); light(100, 112, 0.5, 0xffd27a);                      // окна дома
-    light(470, 119, 0.45, 0xffb070); light(495, 119, 0.45, 0xffb070);                   // окна лавки
-    light(LAYOUT.doorShop[0], 124, 0.55, 0xff9060);                                      // фонарь у норэна
+    const [hx, hy] = LAYOUT.doorHouse, [sx, sy] = LAYOUT.doorShop;
+    light(hx - 20, hy - 18, 0.4, 0xffd27a); light(hx + 20, hy - 18, 0.4, 0xffd27a);      // окна дома
+    light(hx, hy - 6, 0.5, 0xffb070);                                                     // дверь дома
+    light(sx, sy - 10, 0.55, 0xffb070); light(sx - 22, sy - 22, 0.4, 0xffd27a);         // лавка
     light(LAYOUT.vending[0] + 8, LAYOUT.vending[1] + 10, 0.35, 0x3fd0c9, 0.8);           // торговый автомат
-    light(lx, ly - 8, 0.7, 0xffe0a0);                                                   // фонарь
+    for (const o of LAYOUT.objs) if (o.key === 'lantern') light(o.x + 8, o.y + 4, 0.45, 0xffe0a0);   // каменные фонари у тории
     this.fireflies = add.particles(0, 0, 'pixel', {
       x: { min: 0, max: MAPW }, y: { min: 40, max: MAPH }, lifespan: 3500, speedX: { min: -6, max: 6 }, speedY: { min: -5, max: 5 },
       scale: { start: 1.6, end: 0 }, alpha: { start: 1, end: 0 }, frequency: 180, tint: [0xf2e070, 0xd8f080], blendMode: 'ADD',
@@ -89,18 +119,30 @@ export class FarmLife {
       frequency: s === 1 ? 700 : 500, quantity: 1,
     }).setDepth(9003);
     // бабочки
-    for (const [cx, cy] of [[12 * T, 13 * T], [20 * T, 16 * T], [30 * T, 15 * T]]) {
+    for (const [cx, cy] of [[12 * T, 9 * T], [22 * T, 11 * T], [9 * T, 17 * T]]) {
       const b = add.sprite(cx, cy, 'butterfly', 0).setDepth(8000).setTint([0xffffff, 0xf2c230, 0xf2a7b8][this.butterflies.length]);
       this.butterflies.push({ s: b, cx, cy, ph: Math.random() * 10 });
     }
     // кошка Моти
-    this.mochi = add.sprite(LAYOUT.doorHouse[0] + 30, LAYOUT.doorHouse[1] + 12, 'mochi-walk', 2).setOrigin(0.5, 1).setScale(0.5);
+    this.mochi = add.sprite(LAYOUT.doorHouse[0] + 24, LAYOUT.doorHouse[1] + 12, 'mochi-na', 8).setOrigin(0.5, 1);
+    this.cat = new Walker(sc, this.mochi, 'mochi', 24);
     this.mochiNext();
-    // рыбак (бывает у пруда после обеда)
-    // рыбак сидит на берегу лицом к воде, удочка — линия с поплавком
+    // жители деревни гуляют по своим маршрутам
+    for (const def of VILLAGERS) {
+      const [tx, ty] = def.route[0];
+      const s = add.sprite(tx * T + 8, ty * T + 12, def.key, 0).setOrigin(0.5, 1);
+      const w = new Walker(sc, s, def.key, 20);
+      const p = { w, def, i: 0, talk: 0 };
+      this.people.push(p);
+      sc.time.delayedCall(800 + Math.random() * 3000, () => this.walkOn(p));
+    }
+    // Огава днём стоит у лавки и поглядывает по сторонам
+    this.ogawa = add.sprite(LAYOUT.doorShop[0] + 22, LAYOUT.doorShop[1] + 14, 'ogawa-na', 0).setOrigin(0.5, 1).setDepth(LAYOUT.doorShop[1] + 14);
+    sc.time.addEvent({ delay: 2600, loop: true, callback: () => this.ogawa.setFrame([0, 0, 2, 3][Math.floor(Math.random() * 4)]) });
+    // рыбак у пруда (после обеда): смотрит на воду, удочка — линия с поплавком
     const [fx, fy] = LAYOUT.fisher;
-    this.fisher = add.sprite(fx + 2, fy + 6, 'fisher').setOrigin(0.7, 1).setScale(0.5).setDepth(fy + 6).setVisible(false);
-    sc.tweens.add({ targets: this.fisher, scaleY: 0.505, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.fisher = add.sprite(fx, fy, 'fisher-na', 2).setOrigin(0.5, 1).setDepth(fy).setVisible(false);
+    this.rod = add.graphics().setDepth(fy + 1);
     // автобус
     this.bus = add.sprite(MAPW + 40, LAYOUT.road + 10, 'bus-hd', 0).setOrigin(0.5, 1).setScale(0.5).setDepth(LAYOUT.road + 12).setVisible(false);
     this.apply(true);
@@ -108,32 +150,45 @@ export class FarmLife {
 
   // ---------- Моти ----------
   private mochiNext() {
+    if (!this.mochi.active) return;
     const h = hourNow();
     if (h >= 21 || h < 6.5) {   // ночью спит у крыльца
-      this.walkMochi(LAYOUT.doorHouse[0] + 26, LAYOUT.doorHouse[1] + 8, () => { this.mochi.setFrame(3); this.sc.time.delayedCall(8000, () => this.mochiNext()); });
+      this.cat.go(LAYOUT.doorHouse[0] + 24, LAYOUT.doorHouse[1] + 12, () => { this.mochi.setFrame(9); this.sc.time.delayedCall(8000, () => this.mochiNext()); });
       return;
     }
-    const spots = [[8, 11], [14, 12], [12, 10], [24, 11], [26, 14], [28, 18], [30, 21], [13, 20], [11, 23], [22, 22], [32, 10], [17, 9], [10, 14]];
+    const spots = [[9, 7], [13, 8], [16, 6], [19, 6], [27, 15], [16, 18], [6, 16], [9, 14], [12, 12], [20, 18], [25, 6]];
     const [tx, ty] = spots[Math.floor(Math.random() * spots.length)];
-    this.walkMochi(tx * T + 8, ty * T + 10, () => {
-      this.mochi.setFrame(2);
+    this.cat.go(tx * T + 8, ty * T + 10, () => {
+      this.mochi.setFrame(Math.random() < 0.3 ? 9 : 8);
       this.sc.time.delayedCall(2500 + Math.random() * 4500, () => this.mochiNext());
     });
   }
-  private walkMochi(x: number, y: number, done: () => void) {
-    this.mochiAnim?.remove();
-    const d = Math.hypot(x - this.mochi.x, y - this.mochi.y);
-    this.mochi.setFlipX(x > this.mochi.x);   // кадры смотрят влево
-    this.mochiAnim = this.sc.time.addEvent({ delay: 180, loop: true, callback: () => this.mochi.setFrame(this.mochi.frame.name === '0' ? 1 : 0) });
-    this.sc.tweens.add({ targets: this.mochi, x, y, duration: (d / 22) * 1000, onComplete: () => { this.mochiAnim?.remove(); done(); } });
+  private walkOn(p: { w: Walker; def: typeof VILLAGERS[number]; i: number; talk: number }) {
+    if (!p.w.s.active) return;
+    if (p.talk > this.sc.time.now) { this.sc.time.delayedCall(1000, () => this.walkOn(p)); return; }
+    p.i = (p.i + 1) % p.def.route.length;
+    const [tx, ty] = p.def.route[p.i];
+    p.w.go(tx * T + 8, ty * T + 12, () => { p.w.s.setFrame(0); this.sc.time.delayedCall(1500 + Math.random() * 3500, () => this.walkOn(p)); });
+  }
+  nearVillager(x: number, y: number): string | null {
+    const p = this.people.find((q) => q.w.s.visible && Math.hypot(q.w.s.x - x, q.w.s.y - y) < 16);
+    return p ? p.def.key : null;
+  }
+  talkVillager(key: string): string {
+    const p = this.people.find((q) => q.def.key === key)!;
+    p.w.stop(); p.talk = this.sc.time.now + 4000;
+    const dx = this.aoi.x - p.w.s.x, dy = this.aoi.y - p.w.s.y;      // повернуться к Аой
+    p.w.s.setFrame(Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0));
+    this.sc.time.delayedCall(4000, () => this.walkOn(p));
+    return p.def.lines[Math.floor(Math.random() * p.def.lines.length)];
   }
   nearMochi(x: number, y: number) { return Math.hypot(this.mochi.x - x, this.mochi.y - y) < 16; }
   petMochi(): string {
     const d = game.data;
     sound.play('meow');
-    this.sc.tweens.killTweensOf(this.mochi); this.mochiAnim?.remove();
-    this.mochi.setFrame(2);
-    const heart = this.sc.add.text(this.mochi.x, this.mochi.y - 16, '♥', { fontSize: '10px', color: '#ff4f9a' }).setOrigin(0.5).setDepth(9500).setResolution(4);
+    this.cat.stop();
+    this.mochi.setFrame(8);
+    const heart = this.sc.add.text(this.mochi.x, this.mochi.y - 14, '♥', { fontSize: '10px', color: '#ff4f9a' }).setOrigin(0.5).setDepth(9500).setResolution(4);
     this.sc.tweens.add({ targets: heart, y: heart.y - 12, alpha: 0, duration: 1200, onComplete: () => heart.destroy() });
     this.sc.time.delayedCall(2500, () => this.mochiNext());
     if (d.mochiDay === d.totalDays) return 'Моти мурчит и трётся о сапоги.';
@@ -161,6 +216,7 @@ export class FarmLife {
     if (game.data.minutes < 23 * 60) this.midnightSent = false;
     this.shadow.setPosition(this.aoi.x, this.aoi.y - 1).setDepth(this.aoi.depth - 1);
     this.mochi.setDepth(this.mochi.y);
+    for (const p of this.people) p.w.s.setDepth(p.w.s.y);
     // бабочки — днём, весной и летом
     const showB = h > 8 && h < 18 && !game.data.rain && game.data.season < 3;
     for (const b of this.butterflies) {
@@ -206,6 +262,15 @@ export class FarmLife {
     if (this.season) this.season.emitting = !d.rain;
     const fish = h >= 15 && h < 20.5 && !d.rain;
     this.fisher.setVisible(fish);
+    this.ogawa.setVisible(h >= 8 && h < 19 && !d.rain);
+    for (const p of this.people) p.w.s.setVisible(h >= 7 && h < 20 && !d.rain);
+    this.rod.clear();
+    if (fish) {   // удочка над водой и поплавок
+      const x0 = this.fisher.x - 5, y0 = this.fisher.y - 9;
+      this.rod.lineStyle(1, 0x6a4329, 1).lineBetween(x0, y0, x0 - 14, y0 - 10);
+      this.rod.lineStyle(0.5, 0xf6e7c1, 0.8).lineBetween(x0 - 14, y0 - 10, x0 - 20, y0 + 8);
+      this.rod.fillStyle(0xd63a3a, 1).fillRect(x0 - 21, y0 + 7, 2, 2);
+    }
     sound.setAmbient({ rain: d.rain, night: h > 20 || h < 5.5, morning: h > 6 && h < 9 && !d.rain });
   }
 }

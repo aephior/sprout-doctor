@@ -11,7 +11,7 @@ const CROP_ROW: Record<string, number> = { tomato: 0, potato: 1, pepper: 2 };
 /** Позиция грядки в мире (левый верх клетки). */
 export const bedXY = (b: Bed) => ({ x: (b.tx + LAYOUT.bedOffset[0]) * T, y: (b.ty + LAYOUT.bedOffset[1]) * T });
 
-type Interact = { kind: 'bed'; bed: Bed } | { kind: 'mochi' } | { kind: 'fisher' } | { kind: 'house' } | { kind: 'shop' } | { kind: 'busstop' } | { kind: 'vending' };
+type Interact = { kind: 'bed'; bed: Bed } | { kind: 'villager'; who: string } | { kind: 'mochi' } | { kind: 'fisher' } | { kind: 'house' } | { kind: 'shop' } | { kind: 'busstop' } | { kind: 'vending' };
 
 export class World extends Phaser.Scene {
   aoi!: Phaser.Physics.Arcade.Sprite;
@@ -36,20 +36,20 @@ export class World extends Phaser.Scene {
     this.solids = this.physics.add.staticGroup();
     this.buildMap();
 
-    // Аой — LPC-спрайт 64×64, в мире масштаб 0.5 (1 ед. мира = 2 px арта)
-    this.aoi = this.physics.add.sprite(LAYOUT.doorHouse[0], LAYOUT.doorHouse[1] + 22, 'aoi-chibi', 2 * 4).setOrigin(0.5, 1).setScale(0.5);
-    (this.aoi.body as Phaser.Physics.Arcade.Body).setSize(16, 8).setOffset(9, 55);
+    // Аой — спрайт 16×20 (стиль Ninja Adventure), 1 ед. мира = 1 px арта
+    this.aoi = this.physics.add.sprite(LAYOUT.doorHouse[0], LAYOUT.doorHouse[1] + 18, 'aoi-na', 0).setOrigin(0.5, 1);
+    (this.aoi.body as Phaser.Physics.Arcade.Body).setSize(10, 5).setOffset(3, 15);
     this.aoi.setCollideWorldBounds(true);
     this.physics.world.setBounds(0, 0, MW * T, MH * T);
     this.physics.add.collider(this.aoi, this.solids);
-    this.fuku = this.add.sprite(this.aoi.x + 14, this.aoi.y - 30, 'fuku-s', 0).setScale(0.5).play('fukus-idle').setDepth(8500);
+    this.fuku = this.add.sprite(this.aoi.x + 12, this.aoi.y - 24, 'fuku-na', 0).play('fukuna-idle').setDepth(8500);
     this.life = new FarmLife(this, this.aoi);
 
     this.marker = this.add.graphics().setDepth(9600);
 
     const cam = this.cameras.main;
-    cam.setZoom(4).setBounds(0, 0, MW * T, MH * T).startFollow(this.aoi, true, 0.12, 0.12).setRoundPixels(true);
-    cam.setBackgroundColor('#2f5f2a');
+    cam.setZoom(3).setBounds(0, 0, MW * T, MH * T).startFollow(this.aoi, true, 0.12, 0.12).setRoundPixels(true);
+    cam.setBackgroundColor('#f2b56c');
     // эффект выцветания доступен только с видеоускорением (WebGL); без него игра работает без эффекта
     if (this.game.renderer.type === Phaser.WEBGL) {
       try { this.fx = cam.postFX.addColorMatrix(); } catch { this.fx = undefined; }
@@ -98,29 +98,30 @@ export class World extends Phaser.Scene {
   }
 
   buildMap() {
-    // фон (земля, трава, тропы, огород, пруд) — одна картинка; объекты — отдельно, с сортировкой по глубине
-    this.add.image(0, 0, 'ground').setOrigin(0).setScale(0.5).setDepth(-10);
+    // фон (песок, травяные уступы, поле, пруд) — одна картинка; объекты — отдельно, сортировка по нижнему краю
+    this.add.image(0, 0, 'ground').setOrigin(0).setDepth(-10);
     for (const o of LAYOUT.objs) {
-      this.add.image(o.x, o.y, 'w-' + o.key).setOrigin(0).setScale(0.5).setDepth(o.depth);
+      if (!o.hidden) this.add.image(o.x, o.y, 'w-' + o.key).setOrigin(0).setDepth(o.depth);
       if (o.solid) this.solid(o.solid[0], o.solid[1], o.solid[2], o.solid[3]);
     }
+    for (const b of LAYOUT.blocks) this.solid(b[0], b[1], b[2], b[3]);   // травяные уступы с обрывом
     const [px, py, pw, ph] = LAYOUT.pond;
-    this.solid(px + 6, py + 6, pw - 12, ph - 12);
-    // торговый автомат и остановка (свои спрайты)
+    this.solid(px, py, pw, ph);
+    // торговый автомат и остановка
     const [vx, vy] = LAYOUT.vending;
-    this.add.image(vx, vy, 'vending-hd').setOrigin(0).setScale(0.5).setDepth(vy + 28);
-    this.solid(vx, vy + 16, 16, 12);
+    this.add.image(vx, vy, 'vending-hd').setOrigin(0).setScale(0.5).setDepth(vy + 29);
+    this.solid(vx + 1, vy + 18, 15, 10);
     const [bx, by] = LAYOUT.busstop;
-    this.add.image(bx, by, 'busstop-hd').setOrigin(0).setScale(0.5).setDepth(by + 32);
-    this.solid(bx + 3, by + 26, 24, 6);
+    this.add.image(bx, by, 'busstop-hd').setOrigin(0).setScale(0.5).setDepth(by + 33);
+    this.solid(bx + 3, by + 24, 24, 8);
     // грядки
     for (const b of game.data.beds) {
       const { x, y } = bedXY(b);
-      const soil = this.add.image(x, y, 'bed-soil-wet').setOrigin(0).setScale(0.5).setDepth(-5).setAlpha(0.85);
-      const plant = this.add.sprite(x + 8, y + 15, 'crops', 1).setOrigin(0.5, 1).setScale(0.5).setDepth(y + 15);
+      const soil = this.add.image(x, y, 'bed-wet').setOrigin(0).setDepth(-5).setAlpha(0.9);
+      const plant = this.add.sprite(x + 8, y + 16, 'crops', 1).setOrigin(0.5, 1).setDepth(y + 16);
       const spores = this.add.particles(x + 8, y + 2, 'pixel', {
         speed: { min: 3, max: 10 }, angle: { min: 230, max: 310 }, lifespan: 1800, frequency: 140, quantity: 1,
-        scale: { start: 1.6, end: 0.4 }, alpha: { start: 0.9, end: 0 }, tint: [0x6b4e8c, 0x9a9a9a, 0xff4f9a],
+        scale: { start: 1.4, end: 0.4 }, alpha: { start: 0.9, end: 0 }, tint: [0x6b4e8c, 0x9a9a9a, 0xff4f9a],
       }).setDepth(y + 20);
       this.beds.set(b.id, { plant, soil, spores });
     }
@@ -145,7 +146,7 @@ export class World extends Phaser.Scene {
 
   findInteract(): Interact | null {
     const fx = this.aoi.x + (this.facing === 'side' ? (this.facingSide === 'left' ? -10 : 10) : 0);
-    const fy = this.aoi.y - 4 + (this.facing === 'down' ? 10 : this.facing === 'up' ? -12 : 0);
+    const fy = this.aoi.y - 3 + (this.facing === 'down' ? 10 : this.facing === 'up' ? -12 : 0);
     let best: Bed | null = null, bd = 14;
     for (const b of game.data.beds) {
       const p = bedXY(b);
@@ -158,8 +159,10 @@ export class World extends Phaser.Scene {
     if (this.life.fisher.visible && near(this.life.fisher.x, this.life.fisher.y, 30)) return { kind: 'fisher' };
     if (near(LAYOUT.doorHouse[0], LAYOUT.doorHouse[1] + 6, 20)) return { kind: 'house' };
     if (near(LAYOUT.doorShop[0], LAYOUT.doorShop[1] + 6, 20)) return { kind: 'shop' };
-    if (near(LAYOUT.vending[0] + 8, LAYOUT.vending[1] + 34, 16)) return { kind: 'vending' };
-    if (near(LAYOUT.busstop[0] + 16, LAYOUT.busstop[1] + 34, 24)) return { kind: 'busstop' };
+    if (near(LAYOUT.vending[0] + 8, LAYOUT.vending[1] + 34, 14)) return { kind: 'vending' };
+    if (near(LAYOUT.busstop[0] + 16, LAYOUT.busstop[1] + 38, 22)) return { kind: 'busstop' };
+    const v = this.life.nearVillager(this.aoi.x, this.aoi.y);
+    if (v) return { kind: 'villager', who: v };
     return null;
   }
 
@@ -175,12 +178,13 @@ export class World extends Phaser.Scene {
       this.scene.launch('Procedure', { bedId: it.bed.id });
     } else if (it.kind === 'mochi') events.emit('toast', this.life.petMochi());
     else if (it.kind === 'fisher') events.emit('fisher');
+    else if (it.kind === 'villager') events.emit('toast', this.life.talkVillager(it.who));
     else events.emit('place', it.kind);
   }
 
   update(_t: number, dt: number) {
     // Фуку парит рядом с Аой
-    const tx = this.aoi.x + (this.facingSide === 'left' ? 14 : -14), ty = this.aoi.y - 34 + Math.sin(this.time.now / 300) * 2;
+    const tx = this.aoi.x + (this.facingSide === 'left' ? 12 : -12), ty = this.aoi.y - 24 + Math.sin(this.time.now / 300) * 2;
     this.fuku.x += (tx - this.fuku.x) * Math.min(1, dt / 220);
     this.fuku.y += (ty - this.fuku.y) * Math.min(1, dt / 220);
 
@@ -193,12 +197,13 @@ export class World extends Phaser.Scene {
     this.aoi.setVelocity(vx * sp * n, vy * sp * n);
     if (vx || vy) {
       if (this.time.now - this.lastStep > 300) { this.lastStep = this.time.now; sound.play('step'); this.life.footstep(); }
-      if (vx) { this.facing = 'side'; this.facingSide = vx < 0 ? 'left' : 'right'; this.aoi.anims.play('aoil-' + this.facingSide, true); }
-      else if (vy < 0) { this.facing = 'up'; this.aoi.anims.play('aoil-up', true); }
-      else { this.facing = 'down'; this.aoi.anims.play('aoil-down', true); }
+      // направление взгляда — по последней нажатой оси (по диагонали — горизонталь)
+      if (vx) { this.facing = 'side'; this.facingSide = vx < 0 ? 'left' : 'right'; this.aoi.anims.play('aoi-na-' + this.facingSide, true); }
+      else if (vy < 0) { this.facing = 'up'; this.aoi.anims.play('aoi-na-up', true); }
+      else { this.facing = 'down'; this.aoi.anims.play('aoi-na-down', true); }
     } else {
       this.aoi.anims.stop();
-      this.aoi.setFrame((this.facing === 'down' ? 2 : this.facing === 'up' ? 0 : this.facingSide === 'left' ? 1 : 3) * 4);
+      this.aoi.setFrame(this.facing === 'down' ? 0 : this.facing === 'up' ? 1 : this.facingSide === 'left' ? 2 : 3);
     }
     this.aoi.setDepth(this.aoi.y);
 

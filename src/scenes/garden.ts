@@ -3,7 +3,10 @@
 import type { Bed } from '../state/game';
 import { game } from '../state/game';
 import { isHealthy, Action } from '../data/diseases';
-import { plantTexture, registerTools, PlantState } from '../art/plants';
+import { registerTools, PlantState } from '../art/plants';
+
+const CROP_ROW: Record<string, number> = { tomato: 0, potato: 1, pepper: 2 };
+const PS = 9;   // растение — тот же спрайт, что на ферме (16×20), крупно
 import { C } from '../ui/ui';
 
 export const GW = 352, GH = 396, GS = 4;   // окно 88×99 в родном разрешении, масштаб ×4
@@ -21,7 +24,7 @@ export class GardenView {
     registerTools(scene);
     this.baseX = x + 44 * GS; this.baseY = y + 77 * GS;
     this.bg = scene.add.image(x, y, '__DEFAULT').setOrigin(0).setScale(GS);
-    this.plant = scene.add.image(this.baseX, this.baseY, '__DEFAULT').setOrigin(0.5, 78 / 80).setScale(GS);
+    this.plant = scene.add.image(this.baseX, this.baseY + 10, 'crops', 0).setOrigin(0.5, 1).setScale(PS);
     this.fx = scene.add.container(0, 0).setDepth(20);
     // маску не используем: она дорогая в отрисовке; эффекты рассчитаны так, чтобы оставаться в окне
     this.fuku = scene.add.sprite(x + GW - 46, y + 74, 'fuku', 0).setScale(0.42).play('fuku-idle').setDepth(21);
@@ -44,8 +47,10 @@ export class GardenView {
     this.bg.setTexture(b.watered ? 'closeup-wet' : 'closeup-dry');
     if (game.data.season === 3) this.bg.setTint(0xf0d8b0); else if (game.data.season === 2) this.bg.setTint(0xfff6d8); else this.bg.clearTint();
     if (b.crop) {   // удалённое растение (crop = null) — пустая грядка
-      this.plant.setVisible(true).setTexture(plantTexture(this.scene, b.crop ?? 'tomato', st, game.cls(b).key, b.stage === 2));
-      if (!this.sway) this.sway = this.scene.tweens.add({ targets: this.plant, angle: { from: -1.2, to: 1.2 }, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      const row = CROP_ROW[b.crop] * 8;
+      const f = st === 'dead' ? 7 : st === 'severe' ? 6 : st === 'sick' ? 5 : st === 'sprout' ? 1 : st === 'mature' ? 4 : 3;
+      this.plant.setVisible(true).setTexture('crops', row + f);
+      if (!this.sway) this.sway = this.scene.tweens.add({ targets: this.plant, scaleY: { from: PS, to: PS * 1.025 }, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     } else this.plant.setVisible(false);
   }
 
@@ -120,7 +125,7 @@ export class GardenView {
       sc.tweens.add({ targets: [this.plant, root], y: '-=160', angle: -18, alpha: 0, duration: 900, ease: 'Quad.in' });
       this.particles(bx, by, { texture: 'pixel', speedX: { min: -90, max: 90 }, speedY: { min: -160, max: -60 }, gravityY: 300, lifespan: 800, quantity: 20, frequency: -1, scale: { start: 6, end: 2 }, tint: [0x5e3c26, 0x7a4f33, 0x3a2416] }, 50);
     });
-    sc.time.delayedCall(1800, () => { this.plant.setPosition(bx, by).setAngle(0).setAlpha(1); this.sway?.resume(); this.refresh(); });
+    sc.time.delayedCall(1800, () => { this.plant.setPosition(bx, by + 10).setAngle(0).setAlpha(1); this.sway?.resume(); this.refresh(); });
     return 1800;
   }
 
@@ -128,7 +133,7 @@ export class GardenView {
   heal() {
     const sc = this.scene;
     this.refresh();
-    sc.tweens.add({ targets: this.plant, scaleX: GS * 1.06, scaleY: GS * 0.95, duration: 120, yoyo: true, repeat: 1 });
+    sc.tweens.add({ targets: this.plant, scaleX: PS * 1.06, scaleY: PS * 0.95, duration: 120, yoyo: true, repeat: 1 });
     this.particles(this.baseX, this.baseY - 150, { texture: 'sparkle', x: { min: -110, max: 110 }, y: { min: -120, max: 120 }, speedY: { min: -60, max: -20 }, lifespan: 1100, quantity: 2, frequency: 40, scale: { start: GS, end: 0 } }, 700);
   }
 

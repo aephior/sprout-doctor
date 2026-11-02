@@ -13,7 +13,7 @@ import { isLicensed, activate, generateKey, normalizeKey, PRICE } from '../state
 export const SEASONS = ['', 'Весна', 'Лето', 'Осень'];
 const PLACE_HINT: Record<string, string> = {
   bed: 'E — осмотреть грядку   ·   Tab — дневник',
-  mochi: 'E — погладить Моти', fisher: 'E — поговорить с рыбаком', house: 'E — лечь спать (закончить день)', shop: 'E — лавка господина Огавы',
+  mochi: 'E — погладить Моти', villager: 'E — поговорить', fisher: 'E — поговорить с рыбаком', house: 'E — лечь спать (закончить день)', shop: 'E — лавка господина Огавы',
   vending: 'E — торговый автомат', busstop: 'E — автобусная остановка',
 };
 

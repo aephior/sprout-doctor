@@ -187,12 +187,15 @@ export function registerSprites(scene: Phaser.Scene) {
   a.create({ key: 'aoi-up', frames: a.generateFrameNumbers('aoi', { frames: [4, 3, 5, 3] }), frameRate: 8, repeat: -1 });
   a.create({ key: 'aoi-side', frames: a.generateFrameNumbers('aoi', { frames: [6, 7] }), frameRate: 7, repeat: -1 });
   a.create({ key: 'fuku-idle', frames: a.generateFrameNumbers('fuku', { frames: [0, 1] }), frameRate: 4, repeat: -1 });
-  if (scene.textures.exists('fuku-s')) a.create({ key: 'fukus-idle', frames: a.generateFrameNumbers('fuku-s', { frames: [0, 1] }), frameRate: 4, repeat: -1 });
-  // Аой на ферме (34×64): ряды 0 вверх, 1 влево, 2 вниз, 3 вправо; кадры: стойка, шаг, стойка, шаг
-  if (scene.textures.exists('aoi-chibi')) {
-    (['up', 'left', 'down', 'right'] as const).forEach((d, r) =>
-      a.create({ key: 'aoil-' + d, frames: a.generateFrameNumbers('aoi-chibi', { frames: [r * 4 + 1, r * 4 + 2, r * 4 + 3, r * 4] }), frameRate: 7, repeat: -1 }));
+  // персонажи фермы (16×20): кадр = строка*4 + столбец; столбцы: вниз, вверх, влево, вправо
+  for (const k of ['aoi-na', 'ogawa-na', 'fisher-na', 'villager2-na', 'villager16-na', 'villager25-na', 'villager12-na']) {
+    if (!scene.textures.exists(k)) continue;
+    (['down', 'up', 'left', 'right'] as const).forEach((d, c) =>
+      a.create({ key: `${k}-${d}`, frames: a.generateFrameNumbers(k, { frames: [4 + c, 8 + c, 12 + c, c] }), frameRate: 8, repeat: -1 }));
   }
+  if (scene.textures.exists('mochi-na')) (['down', 'up', 'left', 'right'] as const).forEach((d, c) =>
+    a.create({ key: `mochi-${d}`, frames: a.generateFrameNumbers('mochi-na', { frames: [c, 4 + c] }), frameRate: 6, repeat: -1 }));
+  if (scene.textures.exists('fuku-na')) a.create({ key: 'fukuna-idle', frames: a.generateFrameNumbers('fuku-na', { frames: [0, 1] }), frameRate: 6, repeat: -1 });
 
   registerTiles(scene);
 }

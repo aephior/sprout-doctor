@@ -58,9 +58,11 @@ export function registerWorldExtras(scene: Phaser.Scene) {
   // клочок тумана — мягкое белое пятно
   if (!scene.textures.exists('fog')) {
     const cv = document.createElement('canvas'); cv.width = 128; cv.height = 64;
-    const ctx = cv.getContext('2d')!, g = ctx.createRadialGradient(64, 32, 4, 64, 32, 62);
-    g.addColorStop(0, 'rgba(246,241,230,0.55)'); g.addColorStop(1, 'rgba(246,241,230,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 64);
+    // эллипс с мягкими краями: круговой градиент, сжатый по вертикали (без обрезанных краёв)
+    const ctx = cv.getContext('2d')!; ctx.setTransform(1, 0, 0, 0.5, 0, 0);
+    const g = ctx.createRadialGradient(64, 64, 2, 64, 64, 63);
+    g.addColorStop(0, 'rgba(246,241,230,0.5)'); g.addColorStop(0.6, 'rgba(246,241,230,0.22)'); g.addColorStop(1, 'rgba(246,241,230,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
     scene.textures.addCanvas('fog', cv);
   }
 }

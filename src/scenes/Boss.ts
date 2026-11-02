@@ -44,7 +44,7 @@ export class Boss extends Phaser.Scene {
     this.updateCam = undefined; this.hand = null; this.msg = ''; this.showSeq = true; this.locked = true;
     this.phase = 1; this.hp = 100; this.bossHp = 100; this.step = 0; this.rewinds = 0; this.sporons = []; this.done = false; this.grades = [];
     // заброшенная теплица: огород фермы ночью, затянутый спорами; ржавый каркас и разбитое стекло
-    const cx = 220, cy = 250, sc = 1.1;   // участок огорода на карте фермы (px текстуры)
+    const cx = 192, cy = 96, sc = 3;   // участок огорода на карте фермы (px текстуры), ×3
     this.add.image(-cx * sc, -cy * sc, 'ground').setOrigin(0).setScale(sc).setTint(0x7a6aa8).setCrop(cx, cy, 960 / sc, 540 / sc);
     const g = this.add.graphics();
     g.fillStyle(0x140f26, 0.55).fillRect(0, 0, 960, 540);
