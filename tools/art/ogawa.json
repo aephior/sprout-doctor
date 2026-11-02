@@ -1,0 +1,56 @@
+{
+ "body": "male",
+ "anims": [
+  "walk",
+  "idle",
+  "sit"
+ ],
+ "items": [
+  {
+   "def": "body"
+  },
+  {
+   "def": "heads_human_male_elderly"
+  },
+  {
+   "def": "feet_shoes_basic",
+   "recolor": {
+    "cloth": "brown"
+   }
+  },
+  {
+   "def": "legs_pants",
+   "recolor": {
+    "cloth": "navy"
+   }
+  },
+  {
+   "def": "torso_clothes_longsleeve2",
+   "recolor": {
+    "cloth": "white"
+   }
+  },
+  {
+   "def": "torso_aprons_apron",
+   "recolor": {
+    "cloth": "teal"
+   }
+  },
+  {
+   "def": "hair_plain",
+   "recolor": {
+    "hair": "gray"
+   }
+  },
+  {
+   "def": "beards_trimmed",
+   "recolor": {
+    "hair": "gray"
+   }
+  },
+  {
+   "def": "facial_glasses_halfmoon",
+   "variant": "gold"
+  }
+ ]
+}

@@ -2,16 +2,20 @@
 // товары — на деревянной доске-меню справа, реплики Огавы печатаются в окне диалога.
 import { game } from '../state/game';
 import { events } from '../state/events';
-import { paintShop } from '../art/interiors';
 import { text, HEX, C } from '../ui/ui';
 import { sound } from '../audio/sound';
+import { makeGlow } from '../art/interiors';
 
-const S = 3;   // масштаб: родное разрешение 320×180 → 960×540
+const S = 3;   // сетка раскладки меню (исторически 320×180 ×3)
+// портрет Огавы: правый нижний угол
+const OG_S = 1.45, OG_X = 392 + (165 * 1.45) / 2, OG_Y = 395;
+const OGAWA: Record<number, string> = { 0: 'g-ogawa_neutral', 2: 'g-ogawa_talk', 3: 'g-ogawa_happy' };
 
 interface Item { key: string; name: string; price: () => number | null; note: () => string; buy: () => string | null }
 
 export class Shop extends Phaser.Scene {
   ogawa!: Phaser.GameObjects.Sprite;
+  mood = 0;
   ui!: Phaser.GameObjects.Container;
   say!: Phaser.GameObjects.Text;
   sel = 0;
@@ -22,24 +26,22 @@ export class Shop extends Phaser.Scene {
   constructor() { super('Shop'); }
 
   create() {
-    paintShop(this);
-    sound.setMood('evening');
-    this.add.image(0, 0, 'shop-bg').setOrigin(0).setScale(S);
-    // тёплый свет фонаря
-    const glow = this.add.image(160 * S, 24 * S, 'glow').setScale(4).setAlpha(0.55).setBlendMode(Phaser.BlendModes.ADD);
-    this.tweens.add({ targets: glow, alpha: 0.42, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    // Огава дышит и моргает
-    this.ogawa = this.add.sprite(160 * S, 124 * S, 'ogawa', 0).setOrigin(0.5, 1).setScale(S);
-    this.tweens.add({ targets: this.ogawa, y: this.ogawa.y - 3, duration: 1700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    this.time.addEvent({ delay: 3200, loop: true, callback: () => { if (this.ogawa.frame.name === '0') { this.ogawa.setFrame(1); this.time.delayedCall(140, () => this.ogawa.frame.name === '1' && this.ogawa.setFrame(0)); } } });
-    this.add.image(0, 0, 'shop-fg').setOrigin(0).setScale(S);
-    // кошка Моти
-    const mochi = this.add.sprite(206 * S, 116 * S, 'mochi', 0).setOrigin(0.5, 1).setScale(S).setInteractive({ useHandCursor: true });
-    this.time.addEvent({ delay: 900, loop: true, callback: () => mochi.setFrame(mochi.frame.name === '0' ? 1 : 0) });
-    mochi.on('pointerdown', () => { sound.play('confirm'); this.speak('Моти любит, когда её гладят. Видишь — мурчит.', 3); });
+    sound.setMood('evening'); makeGlow(this);
+    this.add.image(0, 0, 'g-shop_bg').setOrigin(0).setScale(2);
+    // тёплый свет красного фонаря
+    const glow = this.add.image(486, 165, 'glow').setScale(3.4).setAlpha(0.5).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffb070);
+    this.tweens.add({ targets: glow, alpha: 0.36, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    // Огава за прилавком: портреты «спокоен / говорит / радуется», правый край совпадает
+    this.ogawa = this.add.sprite(OG_X, OG_Y, 'g-ogawa_neutral').setOrigin(1, 1).setScale(OG_S);
+    this.tweens.add({ targets: this.ogawa, y: OG_Y - 3, duration: 1700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.add.image(392, 548, 'g-shop_counter').setOrigin(0.5, 1).setScale(1.25);
+    // кошка Моти дремлет на прилавке
+    const mochi = this.add.image(590, 352, 'g-mochi_sleep').setOrigin(0.5, 1).setScale(0.55).setInteractive({ useHandCursor: true });
+    this.tweens.add({ targets: mochi, scaleY: 0.57, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    mochi.on('pointerdown', () => { sound.play('meow'); this.speak('Моти любит, когда её гладят. Видишь — мурчит.', 3); });
     // пылинки в свете
     this.add.particles(0, 0, 'pixel', {
-      x: { min: 120 * S, max: 200 * S }, y: { min: 30 * S, max: 110 * S }, lifespan: 5000, speedY: { min: -3, max: 3 }, speedX: { min: -3, max: 3 },
+      x: { min: 330, max: 640 }, y: { min: 90, max: 330 }, lifespan: 5000, speedY: { min: -3, max: 3 }, speedX: { min: -3, max: 3 },
       scale: { start: 2, end: 0 }, alpha: { start: 0.5, end: 0 }, frequency: 300, tint: 0xffd27a,
     });
 
@@ -92,10 +94,12 @@ export class Shop extends Phaser.Scene {
     let i = 0;
     this.say.setText('');
     this.typing = this.time.addEvent({ delay: 24, repeat: s.length - 1, callback: () => this.say.setText(s.slice(0, ++i)) });
-    this.talk = this.time.addEvent({ delay: 120, repeat: Math.min(30, Math.floor(s.length / 2)), callback: () => this.ogawa.setFrame(this.ogawa.frame.name === '2' ? 0 : mood) });
-    this.time.delayedCall(s.length * 24 + 300, () => this.ogawa.setFrame(mood === 3 ? 3 : 0));
-    this.time.delayedCall(s.length * 24 + 1600, () => this.ogawa.frame.name === '3' && this.ogawa.setFrame(0));
+    this.talk = this.time.addEvent({ delay: 260, repeat: Math.min(14, Math.floor(s.length / 5)), callback: () => this.face(this.mood === 2 ? 0 : 2) });
+    this.time.delayedCall(s.length * 24 + 300, () => this.face(mood === 3 ? 3 : 0));
+    this.time.delayedCall(s.length * 24 + 1600, () => this.mood === 3 && this.face(0));
   }
+
+  face(m: number) { this.mood = m; this.ogawa.setTexture(OGAWA[m]); }
 
   buy(i: number) {
     const it = this.items[i], d = game.data, price = it.price();

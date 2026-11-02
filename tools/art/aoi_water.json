@@ -1,0 +1,58 @@
+{
+ "body": "female",
+ "anims": [
+  "thrust"
+ ],
+ "items": [
+  {
+   "def": "body"
+  },
+  {
+   "def": "heads_human_female",
+   "recolor": {
+    "eye": "brown"
+   }
+  },
+  {
+   "def": "eyebrows_thin",
+   "recolor": {
+    "hair": "chestnut"
+   }
+  },
+  {
+   "def": "feet_boots_basic",
+   "recolor": {
+    "cloth": "red"
+   }
+  },
+  {
+   "def": "torso_clothes_longsleeve2",
+   "recolor": {
+    "cloth": "yellow"
+   }
+  },
+  {
+   "def": "torso_aprons_overalls",
+   "variant": "green"
+  },
+  {
+   "def": "facial_glasses_round",
+   "variant": "black"
+  },
+  {
+   "def": "tool_watering_can"
+  },
+  {
+   "def": "hair_braid2",
+   "recolor": {
+    "hair": "chestnut"
+   }
+  },
+  {
+   "def": "hair_bangsshort",
+   "recolor": {
+    "hair": "chestnut"
+   }
+  }
+ ]
+}

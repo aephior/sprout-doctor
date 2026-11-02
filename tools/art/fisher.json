@@ -1,0 +1,42 @@
+{
+ "body": "male",
+ "anims": [
+  "walk",
+  "sit"
+ ],
+ "items": [
+  {
+   "def": "body"
+  },
+  {
+   "def": "heads_human_male_elderly"
+  },
+  {
+   "def": "feet_boots_basic",
+   "recolor": {
+    "cloth": "black"
+   }
+  },
+  {
+   "def": "legs_pants",
+   "recolor": {
+    "cloth": "brown"
+   }
+  },
+  {
+   "def": "torso_clothes_longsleeve2",
+   "recolor": {
+    "cloth": "navy"
+   }
+  },
+  {
+   "def": "hair_plain",
+   "recolor": {
+    "hair": "white"
+   }
+  },
+  {
+   "def": "hat_cap_leather"
+  }
+ ]
+}

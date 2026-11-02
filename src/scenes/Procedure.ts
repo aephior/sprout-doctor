@@ -210,7 +210,7 @@ export class Procedure extends Phaser.Scene {
     const win = game.tuning().aphidWindowMs;
     const pos = () => this.garden.leafPoint();
     const p = pos();
-    const sprite = this.add.sprite(p.x, p.y, 'aphid', 0).setScale(4).setDepth(60).setInteractive({ useHandCursor: true })
+    const sprite = this.add.sprite(p.x, p.y, 'g-aphid_dash').setScale(0.55).setDepth(60).setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.command('swipe'));
     const hop = this.time.addEvent({ delay: 420, loop: true, callback: () => {
       const q = pos();

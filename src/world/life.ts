@@ -5,8 +5,9 @@ import { registerWorldExtras } from '../art/worldExtras';
 import { makeGlow } from '../art/interiors';
 import { sound } from '../audio/sound';
 import { events } from '../state/events';
+import { LAYOUT } from './layout';
 
-const T = 16, MAPW = 30 * T, MAPH = 20 * T;
+const T = 16, MAPW = LAYOUT.MW * T, MAPH = LAYOUT.MH * T;
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 function mix(c1: number, c2: number, t: number) {
   const r = lerp((c1 >> 16) & 255, (c2 >> 16) & 255, t), g = lerp((c1 >> 8) & 255, (c2 >> 8) & 255, t), b = lerp(c1 & 255, c2 & 255, t);
@@ -39,7 +40,9 @@ export class FarmLife {
   mochi: Phaser.GameObjects.Sprite;
   mochiAnim?: Phaser.Time.TimerEvent;
   fisher: Phaser.GameObjects.Sprite;
+  rod!: Phaser.GameObjects.Graphics;
   bus: Phaser.GameObjects.Sprite;
+  ogawa: Phaser.GameObjects.Sprite;
   busDone = new Set<string>();
   private lastTenMin = -1;
   private midnightSent = false;
@@ -48,9 +51,10 @@ export class FarmLife {
     registerWorldExtras(sc); makeGlow(sc);
     const add = sc.add;
     // фонарь у остановки
-    add.image(23 * T - 6, 14 * T - 2, 'lamppost').setOrigin(0.5, 0).setDepth(14 * T + 28);
+    const [lx, ly] = LAYOUT.lamp;
+    add.image(lx, ly + 12, 'lamppost-hd').setOrigin(0.5, 1).setScale(0.5).setDepth(ly + 12);
     // лужи на тропинке (видны в дождь)
-    for (const [x, y] of [[13, 16], [18, 16], [12, 11], [23, 9], [6, 16], [20, 6]]) this.puddles.push(add.image(x * T + 2, y * T + 6, 'puddle').setOrigin(0).setDepth(-4).setVisible(false));
+    for (const [x, y] of [[8, 9], [16, 10], [27, 9], [19, 22], [35, 15], [12, 25], [30, 26]]) this.puddles.push(add.image(x * T + 2, y * T + 6, 'puddle').setOrigin(0).setDepth(-4).setVisible(false));
     // тень под Аой
     this.shadow = add.image(aoi.x, aoi.y, 'shadow').setAlpha(0.3);
 
@@ -60,10 +64,11 @@ export class FarmLife {
       const img = add.image(x, y, 'glow').setScale(scale).setTint(tint).setBlendMode(Phaser.BlendModes.ADD).setDepth(9001).setAlpha(0);
       this.lights.push({ img, base });
     };
-    light(2 * T + 15, 37, 0.5, 0xffd27a); light(2 * T + 49, 37, 0.5, 0xffd27a);       // окна дома
-    light(20 * T + 24, 24, 0.55, 0xffb070);                                              // лавка
-    light(26 * T + 8, T + 10, 0.35, 0x3fd0c9, 0.8);                                      // торговый автомат
-    light(23 * T - 6, 14 * T + 2, 0.7, 0xffe0a0);                                        // фонарь
+    light(69, 112, 0.5, 0xffd27a); light(100, 112, 0.5, 0xffd27a);                      // окна дома
+    light(470, 119, 0.45, 0xffb070); light(495, 119, 0.45, 0xffb070);                   // окна лавки
+    light(LAYOUT.doorShop[0], 124, 0.55, 0xff9060);                                      // фонарь у норэна
+    light(LAYOUT.vending[0] + 8, LAYOUT.vending[1] + 10, 0.35, 0x3fd0c9, 0.8);           // торговый автомат
+    light(lx, ly - 8, 0.7, 0xffe0a0);                                                   // фонарь
     this.fireflies = add.particles(0, 0, 'pixel', {
       x: { min: 0, max: MAPW }, y: { min: 40, max: MAPH }, lifespan: 3500, speedX: { min: -6, max: 6 }, speedY: { min: -5, max: 5 },
       scale: { start: 1.6, end: 0 }, alpha: { start: 1, end: 0 }, frequency: 180, tint: [0xf2e070, 0xd8f080], blendMode: 'ADD',
@@ -86,18 +91,24 @@ export class FarmLife {
       frequency: s === 1 ? 700 : 500, quantity: 1,
     }).setDepth(9003);
     // бабочки
-    for (const [cx, cy] of [[6 * T, 4 * T], [19 * T, 13 * T], [27 * T, 15 * T]]) {
+    for (const [cx, cy] of [[12 * T, 13 * T], [20 * T, 16 * T], [30 * T, 15 * T]]) {
       const b = add.sprite(cx, cy, 'butterfly', 0).setDepth(8000).setTint([0xffffff, 0xf2c230, 0xf2a7b8][this.butterflies.length]);
       this.butterflies.push({ s: b, cx, cy, ph: Math.random() * 10 });
     }
     // кошка Моти
-    this.mochi = add.sprite(5 * T, 5 * T, 'mochi-walk', 2).setOrigin(0.5, 1);
+    this.mochi = add.sprite(LAYOUT.doorHouse[0] + 30, LAYOUT.doorHouse[1] + 12, 'mochi-walk', 2).setOrigin(0.5, 1).setScale(0.5);
     this.mochiNext();
     // рыбак (бывает у пруда после обеда)
-    this.fisher = add.sprite(8, 178, 'fisher', 0).setOrigin(0).setDepth(178 + 24).setVisible(false);
-    sc.time.addEvent({ delay: 900, loop: true, callback: () => this.fisher.setFrame(Math.random() < 0.15 ? 1 : 0) });
+    // рыбак сидит на берегу лицом к воде, удочка — линия с поплавком
+    const [fx, fy] = LAYOUT.fisher;
+    this.fisher = add.sprite(fx + 4, fy + 4, 'fisher', 3).setOrigin(0.5, 1).setScale(0.5).setDepth(fy + 4).setVisible(false);
+    this.rod = add.graphics().setDepth(fy + 5);
+    sc.time.addEvent({ delay: 900, loop: true, callback: () => this.fisher.setFrame(Math.random() < 0.15 ? 4 : 3) });
+    // Огава подметает у входа в лавку днём (поглядывает по сторонам)
+    this.ogawa = add.sprite(LAYOUT.doorShop[0] + 24, LAYOUT.doorShop[1] + 8, 'ogawa-lpc', 2 * 9).setOrigin(0.5, 62 / 64).setScale(0.5).setDepth(LAYOUT.doorShop[1] + 8);
+    sc.time.addEvent({ delay: 2600, loop: true, callback: () => this.ogawa.setFrame([2, 2, 1, 3][Math.floor(Math.random() * 4)] * 9) });
     // автобус
-    this.bus = add.sprite(MAPW + 40, 16 * T + 12, 'bus', 0).setOrigin(0.5, 1).setDepth(16 * T + 14).setVisible(false);
+    this.bus = add.sprite(MAPW + 40, LAYOUT.road + 10, 'bus-hd', 0).setOrigin(0.5, 1).setScale(0.5).setDepth(LAYOUT.road + 12).setVisible(false);
     this.apply(true);
   }
 
@@ -105,10 +116,10 @@ export class FarmLife {
   private mochiNext() {
     const h = hourNow();
     if (h >= 21 || h < 6.5) {   // ночью спит у крыльца
-      this.walkMochi(2 * T + 44, 64, () => { this.mochi.setFrame(3); this.sc.time.delayedCall(8000, () => this.mochiNext()); });
+      this.walkMochi(LAYOUT.doorHouse[0] + 26, LAYOUT.doorHouse[1] + 8, () => { this.mochi.setFrame(3); this.sc.time.delayedCall(8000, () => this.mochiNext()); });
       return;
     }
-    const spots = [[5, 5], [10, 4], [14, 5], [19, 8], [21, 12], [24, 9], [26, 13], [16, 17], [10, 17], [3, 8], [20, 17], [25, 4]];
+    const spots = [[8, 11], [14, 12], [12, 10], [24, 11], [26, 14], [28, 18], [30, 21], [13, 20], [11, 23], [22, 22], [32, 10], [17, 9], [10, 14]];
     const [tx, ty] = spots[Math.floor(Math.random() * spots.length)];
     this.walkMochi(tx * T + 8, ty * T + 10, () => {
       this.mochi.setFrame(2);
@@ -118,7 +129,7 @@ export class FarmLife {
   private walkMochi(x: number, y: number, done: () => void) {
     this.mochiAnim?.remove();
     const d = Math.hypot(x - this.mochi.x, y - this.mochi.y);
-    this.mochi.setFlipX(x > this.mochi.x);
+    this.mochi.setFlipX(x > this.mochi.x);   // кадры смотрят влево
     this.mochiAnim = this.sc.time.addEvent({ delay: 180, loop: true, callback: () => this.mochi.setFrame(this.mochi.frame.name === '0' ? 1 : 0) });
     this.sc.tweens.add({ targets: this.mochi, x, y, duration: (d / 22) * 1000, onComplete: () => { this.mochiAnim?.remove(); done(); } });
   }
@@ -128,7 +139,7 @@ export class FarmLife {
     sound.play('meow');
     this.sc.tweens.killTweensOf(this.mochi); this.mochiAnim?.remove();
     this.mochi.setFrame(2);
-    const heart = this.sc.add.text(this.mochi.x, this.mochi.y - 14, '♥', { fontSize: '10px', color: '#ff4f9a' }).setOrigin(0.5).setDepth(9500).setResolution(4);
+    const heart = this.sc.add.text(this.mochi.x, this.mochi.y - 16, '♥', { fontSize: '10px', color: '#ff4f9a' }).setOrigin(0.5).setDepth(9500).setResolution(4);
     this.sc.tweens.add({ targets: heart, y: heart.y - 12, alpha: 0, duration: 1200, onComplete: () => heart.destroy() });
     this.sc.time.delayedCall(2500, () => this.mochiNext());
     if (d.mochiDay === d.totalDays) return 'Моти мурчит и трётся о сапоги.';
@@ -173,13 +184,13 @@ export class FarmLife {
   }
 
   runBus() {
-    const b = this.bus.setVisible(true).setAlpha(1).setPosition(MAPW + 40, 16 * T + 12).setFlipX(true);
+    const b = this.bus.setVisible(true).setAlpha(1).setPosition(MAPW + 40, LAYOUT.road + 10).setFlipX(true);
     const wheels = this.sc.time.addEvent({ delay: 120, loop: true, callback: () => b.setFrame(b.frame.name === '0' ? 1 : 0) });
-    this.sc.tweens.add({ targets: b, x: 25 * T + 6, duration: 3200, ease: 'Quad.out', onComplete: () => {
+    this.sc.tweens.add({ targets: b, x: LAYOUT.busstop[0] + 16, duration: 3200, ease: 'Quad.out', onComplete: () => {
       wheels.paused = true; sound.play('bus');
       this.sc.time.delayedCall(3500, () => {
         wheels.paused = false;
-        this.sc.tweens.add({ targets: b, x: 2 * T, duration: 5200, ease: 'Quad.in', onComplete: () => this.sc.tweens.add({ targets: b, alpha: 0, duration: 400, onComplete: () => { wheels.remove(); b.setVisible(false); } }) });
+        this.sc.tweens.add({ targets: b, x: -60, duration: 6200, ease: 'Quad.in', onComplete: () => this.sc.tweens.add({ targets: b, alpha: 0, duration: 400, onComplete: () => { wheels.remove(); b.setVisible(false); } }) });
       });
     } });
   }
@@ -199,7 +210,16 @@ export class FarmLife {
     const fogA = h < 9 ? (9 - h) / 3 * (d.season === 3 ? 0.9 : 0.6) : d.rain ? 0.25 : 0;
     this.fog.forEach((f) => f.setAlpha(Math.min(0.9, fogA)));
     if (this.season) this.season.emitting = !d.rain;
-    this.fisher.setVisible(h >= 15 && h < 20.5 && !d.rain);
+    this.ogawa.setVisible(h >= 8 && h < 19 && !d.rain);
+    const fish = h >= 15 && h < 20.5 && !d.rain;
+    this.fisher.setVisible(fish);
+    this.rod.clear();
+    if (fish) {   // удочка: от рук к воде, поплавок
+      const x0 = this.fisher.x - 6, y0 = this.fisher.y - 14;
+      this.rod.lineStyle(1, 0x6a4329, 1).lineBetween(x0, y0, x0 - 18, y0 - 12);
+      this.rod.lineStyle(0.5, 0xf6e7c1, 0.7).lineBetween(x0 - 18, y0 - 12, x0 - 26, y0 + 10);
+      this.rod.fillStyle(0xc8323c, 1).fillRect(x0 - 27, y0 + 9, 2, 2);
+    }
     sound.setAmbient({ rain: d.rain, night: h > 20 || h < 5.5, morning: h > 6 && h < 9 && !d.rain });
   }
 }

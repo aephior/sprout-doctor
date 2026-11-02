@@ -81,7 +81,7 @@ export class Hud extends Phaser.Scene {
     const t = text(this, 960 - 14 - w + 54, 24, s, 16, HEX.ink, { wordWrap: { width: w - 70 }, lineSpacing: 2 });
     const h = Math.max(56, t.height + 20);
     const g = paperPanel(this, 960 - 14 - w, 14, w, h);
-    const icon = this.add.sprite(960 - 14 - w + 26, 14 + 28, 'fuku', 0).setScale(2.4).play('fuku-idle');
+    const icon = this.add.sprite(960 - 14 - w + 26, 14 + 30, 'fuku', 0).setScale(0.34).play('fuku-idle');
     this.bubble.add([g, icon, t]).setVisible(true).setAlpha(0);
     this.tweens.add({ targets: this.bubble, alpha: 1, duration: 150 });
     this.bubbleTimer?.remove();

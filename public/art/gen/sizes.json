@@ -1,0 +1,118 @@
+{
+"diary_book": [
+480,
+270
+],
+"mochi_sit": [
+137,
+150
+],
+"aoi_sheet": [
+331,
+153
+],
+"ogawa_happy": [
+165,
+195
+],
+"mochi_walk": [
+206,
+130
+],
+"fisher": [
+264,
+156
+],
+"home_bg": [
+480,
+270
+],
+"shop_bg": [
+480,
+270
+],
+"aoi_sleep": [
+277,
+227
+],
+"haikabi_rage": [
+252,
+177
+],
+"home_fg": [
+345,
+184
+],
+"fuku_scan": [
+103,
+151
+],
+"aphid_dash": [
+165,
+108
+],
+"haikabi_idle": [
+155,
+175
+],
+"ogawa_neutral": [
+165,
+195
+],
+"fuku_alert": [
+104,
+152
+],
+"evening": [
+480,
+270
+],
+"mochi_sleep": [
+180,
+146
+],
+"fuku_idle": [
+103,
+123
+],
+"aphid_idle": [
+95,
+109
+],
+"fuku_damaged": [
+103,
+143
+],
+"haikabi_defeated": [
+248,
+175
+],
+"title": [
+480,
+270
+],
+"ogawa_talk": [
+212,
+195
+],
+"aoi_chibi": [
+98,
+167
+],
+"shop_counter": [
+361,
+172
+],
+"aoi_home": [
+312,
+151
+],
+"fuku_happy": [
+137,
+152
+],
+"haru_photo": [
+227,
+192
+]
+}

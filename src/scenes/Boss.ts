@@ -56,9 +56,9 @@ export class Boss extends Phaser.Scene {
       scale: { start: 3, end: 0 }, alpha: { start: 0.6, end: 0 }, frequency: 60, tint: [0x6b4e8c, 0x9a9a9a, 0xff4f9a],
     });
 
-    this.boss = this.add.image(480, 318, 'haikabi').setScale(3.6);
+    this.boss = this.add.image(480, 318, 'g-haikabi_idle').setScale(1.85);
     this.tweens.add({ targets: this.boss, y: 328, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    this.fuku = this.add.sprite(140, 120, 'fuku', 3).setScale(3.5);
+    this.fuku = this.add.sprite(140, 120, 'fuku', 3).setScale(0.55);
     this.tweens.add({ targets: this.fuku, y: 128, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.ui = this.add.container(0, 0).setDepth(20);
     this.ghost = this.add.graphics().setDepth(30);
@@ -95,7 +95,7 @@ export class Boss extends Phaser.Scene {
       this.time.delayedCall(800, () => this.spawnSporon());
     }
     if (n === 3) {
-      this.boss.setTexture('haikabi-rage');
+      this.boss.setTexture('g-haikabi_rage');
       this.cameras.main.shake(400, 0.01);
       const pool: Action[] = ['water', 'spray', 'prune'];
       this.need = Array.from({ length: 3 }, () => pool[Math.floor(Math.random() * 3)]);
@@ -168,7 +168,7 @@ export class Boss extends Phaser.Scene {
     this.time.delayedCall(1700, () => {
       vhs.destroy();
       if (this.hp <= 0) { this.hp = 60; this.bossHp = Math.min(100, this.bossHp + 20); this.say('Теплица едва держится… Фуку перезапустил защиту. Ещё раз!'); }
-      if (this.phase === 3) this.boss.setTexture('haikabi-rage');
+      if (this.phase === 3) this.boss.setTexture('g-haikabi_rage');
       this.startPhase(this.phase);
     });
     this.redraw();
@@ -177,6 +177,9 @@ export class Boss extends Phaser.Scene {
   victory() {
     sound.setMood('evening'); sound.play('win');
     this.done = true;
+    this.tweens.killTweensOf(this.boss);
+    this.boss.setTexture('g-haikabi_defeated');
+    this.tweens.add({ targets: this.boss, y: 360, alpha: 0.85, duration: 1600, ease: 'Quad.out' });
     const d = game.data;
     d.bossDone = true;
     const avg = this.grades.reduce((a, b) => a + b, 0) / Math.max(1, this.grades.length);

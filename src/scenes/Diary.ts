@@ -23,8 +23,10 @@ export class Diary extends Phaser.Scene {
   }
 
   create() {
+    // стол Хару (кисть, веер, счёты) — фон под раскрытым дневником
+    this.add.image(0, 0, 'g-diary_book').setOrigin(0).setScale(2);
     const g = this.add.graphics();
-    g.fillStyle(0x000000, 0.6).fillRect(0, 0, 960, 540);
+    g.fillStyle(0x1e1b2e, 0.45).fillRect(0, 0, 960, 540);
     // обложка и две страницы
     g.fillStyle(0x5a2a2a, 1).fillRoundedRect(50, 30, 860, 480, 10);
     g.fillStyle(0x8e2230, 1).fillRoundedRect(56, 36, 848, 468, 8);

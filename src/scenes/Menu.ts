@@ -12,20 +12,14 @@ export class Menu extends Phaser.Scene {
     sound.setMood('menu'); sound.setAmbient({ rain: false, night: false, morning: false });
     gestures.stop();   // в меню камера выключена
     const { width: W, height: H } = this.scale;
-    // закатное небо
-    const g = this.add.graphics();
-    const sky = [0x2b2a4c, 0x4a3a6b, 0x8a4f7a, 0xc8655e, 0xe8833a, 0xf2b45a];
-    sky.forEach((c, i) => g.fillStyle(c, 1).fillRect(0, i * (H * 0.62 / sky.length), W, H * 0.62 / sky.length + 1));
-    g.fillStyle(0xf6e7c1, 1).fillCircle(W * 0.72, H * 0.55, 46);
-    g.fillStyle(0x2e3a4a, 1).fillTriangle(0, H * 0.62, 260, H * 0.3, 520, H * 0.62);
-    g.fillStyle(0x3a4658, 1).fillTriangle(380, H * 0.62, 700, H * 0.36, 980, H * 0.62);
-    g.fillStyle(0x2f5f2a, 1).fillRect(0, H * 0.62, W, H * 0.38);
-    for (let i = 0; i < 40; i++) g.fillStyle(0x4f8a3c, 1).fillRect((i * 97) % W, H * 0.62 + ((i * 53) % 190), 18, 3);
-
-    const aoi = this.add.sprite(W * 0.5 - 60, H * 0.62 + 40, 'aoi', 0).setScale(5);
-    const fuku = this.add.sprite(W * 0.5 + 20, H * 0.62 - 10, 'fuku', 0).setScale(4).play('fuku-idle');
-    this.tweens.add({ targets: fuku, y: fuku.y - 8, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    void aoi;
+    // заставка: деревня в горах на закате, Аой и Фуку на огороде
+    const bg = this.add.image(W / 2, H / 2, 'g-title').setScale(2.02);
+    this.tweens.add({ targets: bg, scale: 2.08, duration: 18000, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.add.rectangle(0, 0, W, 190, 0x1e1b2e, 0.25).setOrigin(0);
+    this.add.particles(0, 0, 'pixel', {
+      x: { min: 0, max: W }, y: { min: 250, max: H }, lifespan: 3500, speedX: { min: -6, max: 6 }, speedY: { min: -5, max: 5 },
+      scale: { start: 2.4, end: 0 }, alpha: { start: 0.9, end: 0 }, frequency: 260, tint: [0xf2e070, 0xd8f080], blendMode: 'ADD',
+    });
 
     text(this, W / 2, 70, 'SPROUT DOCTOR', 64, HEX.teal, { stroke: HEX.ink, strokeThickness: 8 }).setOrigin(0.5);
     text(this, W / 2, 128, 'スプラウト・ドクター', 26, HEX.magenta, { stroke: HEX.ink, strokeThickness: 5 }).setOrigin(0.5);
@@ -57,7 +51,7 @@ export class Menu extends Phaser.Scene {
     const demo = this.add.graphics();
     demo.fillStyle(full ? C.teal : C.magenta, 1).fillRect(W - 170, 20, 150, 30);
     text(this, W - 95, 35, full ? 'ПОЛНАЯ ВЕРСИЯ' : 'ДЕМО', 16, full ? HEX.ink : HEX.white).setOrigin(0.5);
-    text(this, W - 16, H - 16, 'v0.5 · бета', 14, HEX.paper).setOrigin(1, 1);
+    text(this, W - 16, H - 16, 'v0.6 · бета', 14, HEX.paper).setOrigin(1, 1);
   }
 
   startGame() {
@@ -87,8 +81,8 @@ export class Menu extends Phaser.Scene {
     const { width: W, height: H } = this.scale;
     const box = this.add.container(0, 0);
     const shade = this.add.rectangle(0, 0, W, H, 0x000000, 0.6).setOrigin(0).setInteractive();
-    const p = paperPanel(this, 140, 70, W - 280, H - 140);
-    const t = text(this, 170, 95, [
+    const p = paperPanel(this, 140, 40, W - 280, H - 80);
+    const t = text(this, 170, 60, [
       'Как играть',
       '',
       'WASD / стрелки — ходить по ферме',
@@ -104,8 +98,9 @@ export class Menu extends Phaser.Scene {
       'H — собрать урожай (созревшее здоровое растение)',
       '',
       'Нейросеть может ошибаться. Смотрите на уверенность!',
+      'Графика: LPC (CC-BY-SA/GPL) и ИИ — авторы в CREDITS.md',
     ].join('\n'), 18, HEX.ink, { lineSpacing: 4 });
-    const close = text(this, W - 170, H - 100, '[ закрыть ]', 18, '#c8323c').setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    const close = text(this, W - 170, H - 72, '[ закрыть ]', 18, '#c8323c').setOrigin(1, 0).setInteractive({ useHandCursor: true });
     box.add([shade, p, t, close]);
     const done = () => box.destroy();
     close.on('pointerdown', done);

@@ -51,6 +51,7 @@ export function gridToCanvas(grid: Grid, pal: Pal = PAL): HTMLCanvasElement {
 
 /** Склеивает несколько сеток одинакового размера в горизонтальный спрайт-лист. */
 export function addSheet(scene: Phaser.Scene, key: string, frames: Grid[], pal: Pal = PAL) {
+  if (scene.textures.exists(key)) return;   // готовый арт загружен в Boot — заглушка не нужна
   const fw = Math.max(...frames[0].map((r) => r.length)), fh = frames[0].length;
   const cv = document.createElement('canvas');
   cv.width = fw * frames.length; cv.height = fh;

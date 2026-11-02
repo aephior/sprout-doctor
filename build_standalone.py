@@ -5,7 +5,7 @@ import base64, json, os, re
 D = 'dist'
 MIME = {'.js': 'text/javascript', '.json': 'application/json', '.txt': 'text/plain', '.jpg': 'image/jpeg',
         '.wasm': 'application/wasm', '.data': 'application/octet-stream', '.tflite': 'application/octet-stream',
-        '.binarypb': 'application/octet-stream'}
+        '.binarypb': 'application/octet-stream', '.png': 'image/png'}
 assets = {}
 for root, _, files in os.walk(D):
     for f in files:

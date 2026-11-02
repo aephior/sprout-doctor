@@ -2,11 +2,14 @@
 import { sound } from '../audio/sound';
 import { game, Bed } from '../state/game';
 import { isHealthy } from '../data/diseases';
-import { rng } from '../art/pixel';
 import { events } from '../state/events';
 import { FarmLife } from '../world/life';
+import { LAYOUT } from '../world/layout';
 
-const T = 16, MW = 30, MH = 20;
+const T = 16, MW = LAYOUT.MW, MH = LAYOUT.MH;
+const CROP_ROW: Record<string, number> = { tomato: 0, potato: 1, pepper: 2 };
+/** Позиция грядки в мире (левый верх клетки). */
+export const bedXY = (b: Bed) => ({ x: (b.tx + LAYOUT.bedOffset[0]) * T, y: (b.ty + LAYOUT.bedOffset[1]) * T });
 
 type Interact = { kind: 'bed'; bed: Bed } | { kind: 'mochi' } | { kind: 'fisher' } | { kind: 'house' } | { kind: 'shop' } | { kind: 'busstop' } | { kind: 'vending' };
 
@@ -15,6 +18,7 @@ export class World extends Phaser.Scene {
   fuku!: Phaser.GameObjects.Sprite;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
   beds = new Map<number, { plant: Phaser.GameObjects.Sprite; soil: Phaser.GameObjects.Image; spores: Phaser.GameObjects.Particles.ParticleEmitter }>();
+  facingSide: 'left' | 'right' = 'right';
   solids!: Phaser.Physics.Arcade.StaticGroup;
   facing: 'down' | 'up' | 'side' = 'down';
   marker!: Phaser.GameObjects.Graphics;
@@ -32,18 +36,19 @@ export class World extends Phaser.Scene {
     this.solids = this.physics.add.staticGroup();
     this.buildMap();
 
-    this.aoi = this.physics.add.sprite(12 * T + 8, 16 * T + 4, 'aoi', 0).setOrigin(0.5, 1);
-    (this.aoi.body as Phaser.Physics.Arcade.Body).setSize(10, 6).setOffset(3, 17);
+    // Аой — LPC-спрайт 64×64, в мире масштаб 0.5 (1 ед. мира = 2 px арта)
+    this.aoi = this.physics.add.sprite(LAYOUT.doorHouse[0], LAYOUT.doorHouse[1] + 22, 'aoi-lpc', 2 * 9).setOrigin(0.5, 62 / 64).setScale(0.5);
+    (this.aoi.body as Phaser.Physics.Arcade.Body).setSize(20, 10).setOffset(22, 52);
     this.aoi.setCollideWorldBounds(true);
     this.physics.world.setBounds(0, 0, MW * T, MH * T);
     this.physics.add.collider(this.aoi, this.solids);
-    this.fuku = this.add.sprite(this.aoi.x + 14, this.aoi.y - 30, 'fuku', 0).play('fuku-idle').setDepth(8500);
+    this.fuku = this.add.sprite(this.aoi.x + 14, this.aoi.y - 30, 'fuku-s', 0).setScale(0.5).play('fukus-idle').setDepth(8500);
     this.life = new FarmLife(this, this.aoi);
 
     this.marker = this.add.graphics().setDepth(9600);
 
     const cam = this.cameras.main;
-    cam.setZoom(3).setBounds(0, 0, MW * T, MH * T).startFollow(this.aoi, true, 0.12, 0.12).setRoundPixels(true);
+    cam.setZoom(4).setBounds(0, 0, MW * T, MH * T).startFollow(this.aoi, true, 0.12, 0.12).setRoundPixels(true);
     cam.setBackgroundColor('#2f5f2a');
     // эффект выцветания доступен только с видеоускорением (WebGL); без него игра работает без эффекта
     if (this.game.renderer.type === Phaser.WEBGL) {
@@ -93,48 +98,30 @@ export class World extends Phaser.Scene {
   }
 
   buildMap() {
-    const r = rng(42);
-    const isPath = (x: number, y: number) => (y === 16 && x >= 3) || (x === 12 && y >= 6 && y <= 16) || (x === 23 && y >= 6 && y <= 16) || (y === 6 && x >= 4 && x <= 25);
-    const isWater = (x: number, y: number) => Math.hypot((x - 4.5) / 3.2, (y - 12.5) / 2.4) < 1;
-    for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
-      const key = isWater(x, y) ? 'water' : isPath(x, y) ? 'path' : (r() < 0.3 ? 'grass2' : 'grass');
-      this.add.image(x * T, y * T, key).setOrigin(0).setDepth(-10);
-      if (key === 'water') this.solid(x * T, y * T, T, T);
+    // фон (земля, трава, тропы, огород, пруд) — одна картинка; объекты — отдельно, с сортировкой по глубине
+    this.add.image(0, 0, 'ground').setOrigin(0).setScale(0.5).setDepth(-10);
+    for (const o of LAYOUT.objs) {
+      this.add.image(o.x, o.y, 'w-' + o.key).setOrigin(0).setScale(0.5).setDepth(o.depth);
+      if (o.solid) this.solid(o.solid[0], o.solid[1], o.solid[2], o.solid[3]);
     }
-    // ограда огорода (проход снизу по тропе x=12)
-    for (let x = 7; x <= 17; x++) for (const y of [7, 15]) {
-      if (y === 15 && (x === 12)) continue;
-      if (y === 7 && x === 12) continue;
-      this.add.image(x * T, y * T, 'fence').setOrigin(0).setDepth(y * T + 12);
-      this.solid(x * T, y * T + 6, T, 6);
-    }
-    for (let y = 8; y <= 14; y++) for (const x of [7, 17]) {
-      this.add.image(x * T, y * T, 'fence').setOrigin(0).setDepth(y * T + 12);
-      this.solid(x * T + 4, y * T, 8, T);
-    }
-    // дом бабушки Хару
-    this.add.image(2 * T, 0, 'house').setOrigin(0).setDepth(56);
-    this.solid(2 * T + 4, 24, 56, 30);
-    // лавка Огавы, автомат, остановка
-    this.add.image(20 * T, 0, 'shop').setOrigin(0).setDepth(44);
-    this.solid(20 * T + 2, 12, 44, 30);
-    this.add.image(26 * T, 1 * T, 'vending').setOrigin(0).setDepth(1 * T + 28);
-    this.solid(26 * T, 1 * T + 16, 16, 12);
-    this.add.image(24 * T, 14 * T, 'busstop').setOrigin(0).setDepth(14 * T + 30);
-    // деревья по краям
-    const trees = [[0, 3], [8, 1], [15, 0], [17, 3], [27, 6], [28, 11], [26, 17], [18, 17], [0, 16], [8, 17], [14, 17]];
-    for (const [tx, ty] of trees) {
-      this.add.image(tx * T, ty * T, 'tree').setOrigin(0).setDepth(ty * T + 38);
-      this.solid(tx * T + 12, ty * T + 30, 8, 8);
-    }
+    const [px, py, pw, ph] = LAYOUT.pond;
+    this.solid(px + 6, py + 6, pw - 12, ph - 12);
+    // торговый автомат и остановка (свои спрайты)
+    const [vx, vy] = LAYOUT.vending;
+    this.add.image(vx, vy, 'vending-hd').setOrigin(0).setScale(0.5).setDepth(vy + 28);
+    this.solid(vx, vy + 16, 16, 12);
+    const [bx, by] = LAYOUT.busstop;
+    this.add.image(bx, by, 'busstop-hd').setOrigin(0).setScale(0.5).setDepth(by + 32);
+    this.solid(bx + 3, by + 26, 24, 6);
     // грядки
     for (const b of game.data.beds) {
-      const soil = this.add.image(b.tx * T, b.ty * T, 'soil').setOrigin(0).setDepth(-5);
-      const plant = this.add.sprite(b.tx * T + 8, b.ty * T + 14, 'plant', 1).setOrigin(0.5, 1).setDepth(b.ty * T + 14);
-      const spores = this.add.particles(b.tx * T + 8, b.ty * T + 4, 'pixel', {
+      const { x, y } = bedXY(b);
+      const soil = this.add.image(x, y, 'bed-soil-wet').setOrigin(0).setScale(0.5).setDepth(-5).setAlpha(0.85);
+      const plant = this.add.sprite(x + 8, y + 15, 'crops', 1).setOrigin(0.5, 1).setScale(0.5).setDepth(y + 15);
+      const spores = this.add.particles(x + 8, y + 2, 'pixel', {
         speed: { min: 3, max: 10 }, angle: { min: 230, max: 310 }, lifespan: 1800, frequency: 140, quantity: 1,
-        scale: { start: 2.2, end: 0.6 }, alpha: { start: 0.9, end: 0 }, tint: [0x6b4e8c, 0x9a9a9a, 0xff4f9a],
-      }).setDepth(b.ty * T + 20);
+        scale: { start: 1.6, end: 0.4 }, alpha: { start: 0.9, end: 0 }, tint: [0x6b4e8c, 0x9a9a9a, 0xff4f9a],
+      }).setDepth(y + 20);
       this.beds.set(b.id, { plant, soil, spores });
     }
   }
@@ -143,33 +130,36 @@ export class World extends Phaser.Scene {
     this.applySeasonLook();
     for (const b of game.data.beds) {
       const v = this.beds.get(b.id); if (!v) continue;
-      v.soil.setTexture(b.watered ? 'soil-wet' : 'soil');
+      v.soil.setVisible(b.watered);
       const sick = b.crop && !b.dead && !isHealthy(game.cls(b));
       v.spores.emitting = !!sick;
-      if (b.dead || !b.crop) { v.plant.setFrame(4).setVisible(!!b.dead && !!b.crop); continue; }
+      // кадры crops: 0 лунка, 1 росток, 2 молодое, 3 растёт, 4 созрело, 5 больное, 6 тяжело больное, 7 погибшее
+      const row = CROP_ROW[b.crop || 'tomato'] * 8;
+      if (!b.crop) { v.plant.setFrame(0).setVisible(true); continue; }
       v.plant.setVisible(true);
-      if (sick) v.plant.setFrame(b.health > 50 ? 2 : 3);
-      else v.plant.setFrame(b.stage === 0 ? 0 : 1);
-      v.plant.setScale(b.stage === 2 ? 1.1 : 1);
+      if (b.dead) v.plant.setFrame(row + 7);
+      else if (sick) v.plant.setFrame(row + (b.health > 50 ? 5 : 6));
+      else v.plant.setFrame(row + (b.stage === 0 ? 1 : b.stage === 1 ? 3 : 4));
     }
   }
 
   findInteract(): Interact | null {
-    const fx = this.aoi.x + (this.facing === 'side' ? (this.aoi.flipX ? -10 : 10) : 0);
+    const fx = this.aoi.x + (this.facing === 'side' ? (this.facingSide === 'left' ? -10 : 10) : 0);
     const fy = this.aoi.y - 4 + (this.facing === 'down' ? 10 : this.facing === 'up' ? -12 : 0);
     let best: Bed | null = null, bd = 14;
     for (const b of game.data.beds) {
-      const d = Math.hypot(b.tx * T + 8 - fx, b.ty * T + 8 - fy);
+      const p = bedXY(b);
+      const d = Math.hypot(p.x + 8 - fx, p.y + 8 - fy);
       if (d < bd) { bd = d; best = b; }
     }
     if (best) return { kind: 'bed', bed: best };
     const near = (x: number, y: number, rad = 18) => Math.hypot(x - this.aoi.x, y - this.aoi.y) < rad;
     if (this.life.nearMochi(this.aoi.x, this.aoi.y)) return { kind: 'mochi' };
-    if (this.life.fisher.visible && near(22, 214, 36)) return { kind: 'fisher' };
-    if (near(2 * T + 32, 58)) return { kind: 'house' };
-    if (near(20 * T + 24, 46)) return { kind: 'shop' };
-    if (near(26 * T + 8, 1 * T + 32)) return { kind: 'vending' };
-    if (near(24 * T + 16, 14 * T + 30, 22)) return { kind: 'busstop' };
+    if (this.life.fisher.visible && near(this.life.fisher.x, this.life.fisher.y, 30)) return { kind: 'fisher' };
+    if (near(LAYOUT.doorHouse[0], LAYOUT.doorHouse[1] + 6, 20)) return { kind: 'house' };
+    if (near(LAYOUT.doorShop[0], LAYOUT.doorShop[1] + 6, 20)) return { kind: 'shop' };
+    if (near(LAYOUT.vending[0] + 8, LAYOUT.vending[1] + 34, 16)) return { kind: 'vending' };
+    if (near(LAYOUT.busstop[0] + 16, LAYOUT.busstop[1] + 34, 24)) return { kind: 'busstop' };
     return null;
   }
 
@@ -190,7 +180,7 @@ export class World extends Phaser.Scene {
 
   update(_t: number, dt: number) {
     // Фуку парит рядом с Аой
-    const tx = this.aoi.x + (this.aoi.flipX ? 14 : -14), ty = this.aoi.y - 30 + Math.sin(this.time.now / 300) * 2;
+    const tx = this.aoi.x + (this.facingSide === 'left' ? 14 : -14), ty = this.aoi.y - 34 + Math.sin(this.time.now / 300) * 2;
     this.fuku.x += (tx - this.fuku.x) * Math.min(1, dt / 220);
     this.fuku.y += (ty - this.fuku.y) * Math.min(1, dt / 220);
 
@@ -203,12 +193,12 @@ export class World extends Phaser.Scene {
     this.aoi.setVelocity(vx * sp * n, vy * sp * n);
     if (vx || vy) {
       if (this.time.now - this.lastStep > 300) { this.lastStep = this.time.now; sound.play('step'); this.life.footstep(); }
-      if (vx) { this.facing = 'side'; this.aoi.setFlipX(vx < 0); this.aoi.anims.play('aoi-side', true); }
-      else if (vy < 0) { this.facing = 'up'; this.aoi.setFlipX(false); this.aoi.anims.play('aoi-up', true); }
-      else { this.facing = 'down'; this.aoi.setFlipX(false); this.aoi.anims.play('aoi-down', true); }
+      if (vx) { this.facing = 'side'; this.facingSide = vx < 0 ? 'left' : 'right'; this.aoi.anims.play('aoil-' + this.facingSide, true); }
+      else if (vy < 0) { this.facing = 'up'; this.aoi.anims.play('aoil-up', true); }
+      else { this.facing = 'down'; this.aoi.anims.play('aoil-down', true); }
     } else {
       this.aoi.anims.stop();
-      this.aoi.setFrame(this.facing === 'down' ? 0 : this.facing === 'up' ? 3 : 6);
+      this.aoi.setFrame((this.facing === 'down' ? 2 : this.facing === 'up' ? 0 : this.facingSide === 'left' ? 1 : 3) * 9);
     }
     this.aoi.setDepth(this.aoi.y);
 
@@ -216,8 +206,8 @@ export class World extends Phaser.Scene {
     this.current = this.findInteract();
     this.marker.clear();
     if (this.current?.kind === 'bed') {
-      const b = this.current.bed;
-      this.marker.lineStyle(1, 0x3fd0c9, 0.9).strokeRect(b.tx * T + 0.5, b.ty * T + 0.5, T - 1, T - 1);
+      const p = bedXY(this.current.bed);
+      this.marker.lineStyle(1, 0x3fd0c9, 0.9).strokeRect(p.x + 0.5, p.y + 0.5, T - 1, T - 1);
     }
     events.emit('hint', this.current);
   }

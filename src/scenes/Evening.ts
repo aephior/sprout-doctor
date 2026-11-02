@@ -4,6 +4,7 @@ import { game } from '../state/game';
 import { isHealthy } from '../data/diseases';
 import { text, HEX } from '../ui/ui';
 import { sound } from '../audio/sound';
+import { makeGlow } from '../art/interiors';
 
 const LINES: Record<string, string[]> = {
   good: [
@@ -36,36 +37,21 @@ export class Evening extends Phaser.Scene {
   create() {
     const W = 960, H = 540, g = this.add.graphics();
     sound.setMood('evening');
-    // небо — полосы заката (без градиентов, пиксельно)
+    makeGlow(this);
+    // веранда на закате: Аой сидит спиной к нам, рядом парит Фуку-фонарик
     g.fillStyle(0x2a2443, 1).fillRect(0, 0, W, H);   // сплошной фон: мир под сценой не просвечивает
-    const sky = [0x2b2a4c, 0x3e3260, 0x5d3a6e, 0x8a4f7a, 0xb85f6b, 0xd9735a, 0xe8833a, 0xf2a95c];
-    sky.forEach((c, i) => g.fillStyle(c, 1).fillRect(0, 60 + i * 40, W, i === sky.length - 1 ? 60 : 41));
-    g.fillStyle(0xf6e7c1, 1).fillCircle(680, 318, 34);
-    // горы в два плана
-    g.fillStyle(0x3b3358, 1).fillTriangle(-40, 402, 220, 230, 500, 402).fillTriangle(280, 402, 560, 250, 840, 402);
-    g.fillStyle(0x2a2443, 1).fillTriangle(560, 390, 820, 270, 1060, 390).fillTriangle(-60, 395, 120, 300, 360, 395);
-    // провода и столб (Ringo — сельская Япония)
-    g.fillStyle(0x1e1b2e, 1).fillRect(180, 160, 6, 260);
-    g.lineStyle(2, 0x1e1b2e, 1).lineBetween(0, 205, 183, 175).lineBetween(183, 175, 960, 230).lineBetween(0, 215, 183, 190).lineBetween(183, 190, 960, 245);
-    // веранда
-    g.fillStyle(0x6a4329, 1).fillRect(0, 400, W, 80);
-    g.fillStyle(0x8a5a3b, 1).fillRect(0, 400, W, 8);
-    for (let x = 0; x < W; x += 48) g.fillStyle(0x5a3820, 1).fillRect(x, 408, 3, 72);
-    g.fillStyle(0x1e1b2e, 0.9).fillRect(40, 250, 14, 160).fillRect(900, 250, 14, 160);   // столбы веранды
-    g.fillStyle(0x1e1b2e, 0.85).fillRect(0, 240, W, 12);
-
-    const aoi = this.add.sprite(430, 402, 'aoi', 3).setOrigin(0.5, 1).setScale(5);    // сидит спиной к нам, смотрит на закат
-    const fuku = this.add.sprite(500, 330, 'fuku', 0).setScale(3.5).play('fuku-idle');
-    this.tweens.add({ targets: fuku, y: 338, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    void aoi;
+    const bg = this.add.image(W / 2, H / 2, 'g-evening').setScale(2.04);
+    this.tweens.add({ targets: bg, scale: 2.1, x: W / 2 - 14, duration: 16000, ease: 'Sine.inOut' });   // медленный «наезд» камеры
+    const lamp = this.add.image(525, 322, 'glow').setScale(2.6).setAlpha(0.55).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffd27a);
+    this.tweens.add({ targets: lamp, alpha: 0.35, scale: 2.4, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     // светлячки
     this.add.particles(0, 0, 'pixel', {
       x: { min: 0, max: W }, y: { min: 250, max: 400 }, lifespan: 3000, speedX: { min: -8, max: 8 }, speedY: { min: -6, max: 6 },
       scale: { start: 3, end: 0 }, alpha: { start: 0.9, end: 0 }, frequency: 220, tint: [0xf2c230, 0xf6e7c1],
     });
     // летербокс + зерно
-    this.add.rectangle(0, 0, W, 60, 0x000000).setOrigin(0);
-    this.add.rectangle(0, H - 60, W, 60, 0x000000).setOrigin(0);
+    this.add.rectangle(0, 0, W, 48, 0x000000).setOrigin(0);
+    this.add.rectangle(0, H - 56, W, 56, 0x000000).setOrigin(0);
     const grain = this.add.graphics().setAlpha(0.06);
     this.time.addEvent({ delay: 90, loop: true, callback: () => {
       grain.clear().fillStyle(0xffffff, 1);

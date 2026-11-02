@@ -24,7 +24,7 @@ export class GardenView {
     this.plant = scene.add.image(this.baseX, this.baseY, '__DEFAULT').setOrigin(0.5, 78 / 80).setScale(GS);
     this.fx = scene.add.container(0, 0).setDepth(20);
     // маску не используем: она дорогая в отрисовке; эффекты рассчитаны так, чтобы оставаться в окне
-    this.fuku = scene.add.sprite(x + GW - 46, y + 74, 'fuku', 0).setScale(3).play('fuku-idle').setDepth(21);
+    this.fuku = scene.add.sprite(x + GW - 46, y + 74, 'fuku', 0).setScale(0.42).play('fuku-idle').setDepth(21);
     scene.tweens.add({ targets: this.fuku, y: this.fuku.y + 8, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.frame = scene.add.graphics().setDepth(22);
     this.frame.lineStyle(4, C.ink, 1).strokeRect(x - 2, y - 2, GW + 4, GH + 4).lineStyle(2, C.wood, 1).strokeRect(x - 5, y - 5, GW + 10, GH + 10);
