@@ -166,7 +166,13 @@ export class FarmLife {
       return;
     }
     const spots = [[9, 7], [13, 8], [16, 6], [19, 6], [27, 15], [16, 18], [6, 16], [9, 14], [12, 12], [20, 18], [25, 6]];
-    const [tx, ty] = spots[Math.floor(Math.random() * spots.length)];
+    // L-образный путь не должен проходить через пруд и огород: подбираем точку, куда можно дойти
+    const [px, py, pw, ph] = LAYOUT.pond, g = LAYOUT.garden;
+    const rects = [[px - 4, py - 4, pw + 8, ph + 8], [g[0] * T, g[1] * T - 8, (g[2] - g[0]) * T, (g[3] - g[1]) * T + 8]];
+    const hits = (x0: number, y0: number, x1: number, y1: number) => rects.some(([rx, ry, rw, rh]) =>
+      Math.max(x0, x1) >= rx && Math.min(x0, x1) <= rx + rw && Math.max(y0, y1) >= ry && Math.min(y0, y1) <= ry + rh);
+    const ok = spots.filter(([sx, sy]) => { const x = sx * T + 8, y = sy * T + 10; return !hits(this.mochi.x, this.mochi.y, x, this.mochi.y) && !hits(x, this.mochi.y, x, y); });
+    const [tx, ty] = ok.length ? ok[Math.floor(Math.random() * ok.length)] : [Math.round((this.mochi.x - 8) / T), Math.round((this.mochi.y - 10) / T)];
     this.cat.go(tx * T + 8, ty * T + 10, () => {
       this.mochi.setFrame(Math.random() < 0.3 ? 9 : 8);
       this.sc.time.delayedCall(2500 + Math.random() * 4500, () => this.mochiNext());
@@ -235,7 +241,7 @@ export class FarmLife {
     for (const p of this.people) {
       p.w.s.setDepth(p.w.s.y);
       // жители не проходят сквозь Аой: останавливаются, пока она рядом
-      const close = Math.hypot(p.w.s.x - this.aoi.x, p.w.s.y - this.aoi.y) < 13;
+      const close = Math.hypot(p.w.s.x - this.aoi.x, (p.w.s.y - this.aoi.y) * 1.5) < 20;
       for (const tw of this.sc.tweens.getTweensOf(p.w.s)) { if (close && tw.isPlaying()) { tw.pause(); p.w.s.anims.pause(); } else if (!close && tw.isPaused()) { tw.resume(); p.w.s.anims.resume(); } }
     }
     // бабочки — днём, весной и летом

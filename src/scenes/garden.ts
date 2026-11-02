@@ -54,14 +54,35 @@ export class GardenView {
     } else this.plant.setVisible(false);
   }
 
-  /** Случайная точка на листве (экранные координаты). */
+  private bbCache = new Map<number, { l: number; t: number; r: number; b: number }>();
+  /** Непрозрачные границы текущего кадра растения (в пикселях кадра 48×60), без земляного холмика. */
+  bounds() {
+    const f = Number(this.plant.frame.name);
+    let bb = this.bbCache.get(f);
+    if (!bb) {
+      bb = { l: 48, t: 60, r: 0, b: 0 };
+      const tex = this.scene.textures;
+      for (let y = 0; y < 52; y++) for (let x = 0; x < 48; x++) {
+        const p = tex.getPixel(x, y, 'crops-hd', f);
+        if (p && p.alpha > 0) { bb.l = Math.min(bb.l, x); bb.r = Math.max(bb.r, x); bb.t = Math.min(bb.t, y); bb.b = Math.max(bb.b, y); }
+      }
+      if (bb.r < bb.l) bb = { l: 16, t: 40, r: 32, b: 52 };
+      this.bbCache.set(f, bb);
+    }
+    // экранные координаты: origin (0.5, 1) в точке (baseX, baseY + 10), масштаб PS
+    const x0 = this.baseX - 24 * PS, y0 = this.baseY + 10 - 60 * PS;
+    return { l: x0 + bb.l * PS, r: x0 + (bb.r + 1) * PS, t: y0 + bb.t * PS, b: y0 + (bb.b + 1) * PS };
+  }
+  /** Случайная точка на листве текущего растения (экранные координаты). */
   leafPoint() {
-    return { x: this.baseX + (Math.random() - 0.5) * 130, y: this.baseY - 40 - Math.random() * 160 };   // в пределах листвы (куст ~190×230)
+    const b = this.bounds();
+    return { x: b.l + 8 + Math.random() * Math.max(4, b.r - b.l - 16), y: b.t + 6 + Math.random() * Math.max(4, (b.b - b.t) * 0.7) };
   }
 
   private particles(px: number, py: number, cfg: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig, ms: number) {
     const e = this.scene.add.particles(px, py, cfg.texture as string ?? 'pixel', cfg);
     this.fx.add(e);
+    if (cfg.frequency === -1) e.explode(Number(cfg.quantity ?? 10));   // «взрывные» эмиттеры сами не стреляют
     this.scene.time.delayedCall(ms, () => e.stop());
     this.scene.time.delayedCall(ms + 2500, () => e.destroy());
     return e;
@@ -85,21 +106,21 @@ export class GardenView {
 
   /** Анимация действия ухода. Возвращает длительность в мс. */
   act(a: Action): number {
-    const sc = this.scene, bx = this.baseX, by = this.baseY;
+    const sc = this.scene, bx = this.baseX, by = this.baseY, pb = this.bounds(), mid = (pb.t + pb.b) / 2;
     if (a === 'water') {
-      const can = sc.add.image(bx - 120, by - 230, 'tool-can').setScale(GS).setAngle(0); this.fx.add(can);
-      sc.tweens.add({ targets: can, angle: 32, x: bx - 90, duration: 300, ease: 'Quad.out' });
-      sc.time.delayedCall(250, () => this.particles(bx - 30, by - 200, { texture: 'drop', speedY: { min: 220, max: 300 }, speedX: { min: -40, max: 40 }, gravityY: 400, lifespan: 700, frequency: 18, quantity: 2, scale: GS / 1.5 }, 900));
+      const can = sc.add.image(pb.l - 50, pb.t - 40, 'tool-can').setScale(GS).setAngle(0); this.fx.add(can);
+      sc.tweens.add({ targets: can, angle: 32, x: pb.l - 26, duration: 300, ease: 'Quad.out' });
+      sc.time.delayedCall(250, () => this.particles(pb.l - 4, pb.t - 34, { texture: 'drop', speedY: { min: 220, max: 300 }, speedX: { min: -40, max: 40 }, gravityY: 400, lifespan: 700, frequency: 18, quantity: 2, scale: GS / 1.5 }, 900));
       sc.time.delayedCall(1100, () => { sc.tweens.add({ targets: can, angle: 0, alpha: 0, x: bx - 140, duration: 300, onComplete: () => can.destroy() }); this.bed.watered = true; this.refresh(); });
       return 1400;
     }
     if (a === 'spray') {
-      const bottle = sc.add.sprite(bx + 125, by - 130, 'tool-spray', 0).setScale(GS).setFlipX(true); this.fx.add(bottle);
+      const bottle = sc.add.sprite(pb.r + 40, mid, 'tool-spray', 0).setScale(GS).setFlipX(true); this.fx.add(bottle);
       for (let i = 0; i < 4; i++) sc.time.delayedCall(150 + i * 220, () => {
         bottle.setFrame(1); sc.time.delayedCall(100, () => bottle.setFrame(0));
-        this.particles(bx + 97, by - 134 - i * 18, { texture: 'pixel', speedX: { min: -200, max: -110 }, speedY: { min: -40, max: 40 }, lifespan: 900, quantity: 14, frequency: -1, scale: { start: 7, end: 1 }, alpha: { start: 0.7, end: 0 }, tint: [0xf2a7b8, 0xffffff, 0xff4f9a] }, 50);
+        this.particles(pb.r + 14, mid - 4 - i * 12, { texture: 'pixel', speedX: { min: -200, max: -110 }, speedY: { min: -40, max: 40 }, lifespan: 900, quantity: 14, frequency: -1, scale: { start: 7, end: 1 }, alpha: { start: 0.7, end: 0 }, tint: [0xf2a7b8, 0xffffff, 0xff4f9a] }, 50);
       });
-      sc.time.delayedCall(1200, () => sc.tweens.add({ targets: bottle, alpha: 0, x: bx + 160, duration: 250, onComplete: () => bottle.destroy() }));
+      sc.time.delayedCall(1200, () => sc.tweens.add({ targets: bottle, alpha: 0, x: pb.r + 80, duration: 250, onComplete: () => bottle.destroy() }));
       return 1400;
     }
     if (a === 'prune') {
@@ -133,6 +154,7 @@ export class GardenView {
   heal() {
     const sc = this.scene;
     this.refresh();
+    if (!this.bed.crop) return;   // растение удалено — искры над пустой землёй не нужны
     sc.tweens.add({ targets: this.plant, scaleX: PS * 1.06, scaleY: PS * 0.95, duration: 120, yoyo: true, repeat: 1 });
     this.particles(this.baseX, this.baseY - 110, { texture: 'sparkle', x: { min: -90, max: 90 }, y: { min: -90, max: 90 }, speedY: { min: -60, max: -20 }, lifespan: 1100, quantity: 2, frequency: 40, scale: { start: GS, end: 0 } }, 700);
   }

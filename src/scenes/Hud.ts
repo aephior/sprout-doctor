@@ -114,7 +114,7 @@ export class Hud extends Phaser.Scene {
     const who = SPEAKERS.find(([re]) => re.test(s));
     const icon = who
       ? this.add.sprite(960 - 14 - w + 28, 14 + 32, who[1], who[2]).setScale(3)
-      : this.add.sprite(960 - 14 - w + 28, 14 + 30, 'fuku-px', 0).setScale(2);   // пиксельный Фуку без «лесенки» от уменьшения
+      : this.add.sprite(960 - 14 - w + 28, 14 + 30, 'fuku-na', 0).setScale(3).play('fukuna-idle');   // тот же пиксельный Фуку, что на ферме
     this.bubble.add([g, icon, t]).setVisible(true).setAlpha(0);
     this.tweens.add({ targets: this.bubble, alpha: 1, duration: 150 });
     this.bubbleTimer?.remove();

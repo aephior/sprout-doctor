@@ -233,7 +233,7 @@ export class Boss extends Phaser.Scene {
       this.time.delayedCall(1600, () => e.destroy());
     };
     this.time.addEvent({ delay: 1400, loop: true, callback: burst }); this.time.delayedCall(300, burst);
-    const fk = this.add.sprite(820, 300, 'fuku-na', 0).setScale(4).play('fukuna-idle'); add(fk);
+    const fk = this.add.image(830, 290, 'g-fuku_happy').setScale(0.6); add(fk);   // рисованный Фуку — в стиле рисованной веранды
     this.tweens.add({ targets: fk, y: 320, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     add(paperPanel(this, 24, 110, 470, 400));
     add(text(this, 259, 132, full ? 'Фестиваль урожая спасён!' : 'Хайкаби повержена', 26).setOrigin(0.5, 0));

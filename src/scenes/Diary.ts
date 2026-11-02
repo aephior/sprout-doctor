@@ -93,7 +93,7 @@ export class Diary extends Phaser.Scene {
     }
     add(photo);
     const c = cls[0];
-    add(text(this, 684, 268, c.name, 22, '#3a2a1a').setOrigin(0.5, 0));
+    add(text(this, 684, 268, c.name, 22, '#3a2a1a', { wordWrap: { width: 340 }, align: 'center' }).setOrigin(0.5, 0));
     add(text(this, 684, 296, cls.map((x) => CROP_NAME[x.crop]).join(' · '), 13, '#8a6a4a').setOrigin(0.5, 0));
     add(text(this, 508, 322, `«${PAGES[k]}»`, 15, '#4a3a2a', { wordWrap: { width: 352 }, lineSpacing: 4, fontStyle: 'italic' }));
     const g2 = this.add.graphics(); g2.fillStyle(0x8e2230, 0.12).fillRect(504, 436, 360, 40); add(g2);
@@ -101,8 +101,8 @@ export class Diary extends Phaser.Scene {
     add(text(this, 864, 412, '— Хару', 14, '#8a6a4a').setOrigin(1, 0));
     // засушенный цветок в углу
     const f = this.add.graphics();
-    f.fillStyle(C.green, 1).fillRect(840, 260, 2, 30);
-    [[841, 258], [835, 262], [847, 262], [841, 266]].forEach(([x, y]) => f.fillStyle(0xf2a7b8, 1).fillCircle(x, y, 4));
+    f.fillStyle(C.green, 1).fillRect(840, 112, 2, 30);   // в углу у фото — не мешает заголовку
+    [[841, 110], [835, 114], [847, 114], [841, 118]].forEach(([x, y]) => f.fillStyle(0xf2a7b8, 1).fillCircle(x, y, 4));
     add(f);
   }
 

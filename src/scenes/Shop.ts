@@ -42,8 +42,8 @@ export class Shop extends Phaser.Scene {
     // прилавок из того же фона — поверх Огавы, чтобы он стоял за ним
     this.add.image(0, 0, bgKey).setOrigin(0).setScale(2).setCrop(168, 176, 230, 50);
     // днём комната светлее, вечером — тёплый полумрак (слой под интерфейсом, поверх сцены)
-    if (day) this.add.rectangle(0, 0, 960, 540, 0xfff4e0, 0.06).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD);
-    else this.add.rectangle(0, 0, 960, 540, 0x2a1830, 0.16).setOrigin(0);
+    if (day) this.add.rectangle(0, 0, 960, 540, 0xeaf4ff, 0.1).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD);
+    else { this.add.rectangle(0, 0, 960, 540, 0x2a1830, 0.3).setOrigin(0); this.add.image(486, 165, 'glow').setScale(4.2).setAlpha(0.35).setBlendMode(Phaser.BlendModes.ADD).setTint(0xff9a50); }
     // тень под прилавком и тёплый свет на лице
     // кошка Моти дремлет на табурете (она нарисована в фоне) — её можно погладить
     const mochi = this.add.zone(140, 365, 100, 60).setOrigin(0).setInteractive({ useHandCursor: true });

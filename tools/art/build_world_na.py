@@ -61,7 +61,7 @@ for (x0, y0, x1, y1) in plateaus:
     def nine_(x0, y0, x1, y1):
         for y in range(y0, y1):
             for x in range(x0, x1):
-                cx = 14 if x == x0 else 17 if x == x1 - 1 else 15
+                cx = 15 if x == x0 else 17 if x == x1 - 1 else 16
                 cy = 15 if y == y0 else 17 if y == y1 - 1 else 16
                 put(t(cx, cy), x, y)
     nine_(x0, y0, x1, y1)
@@ -85,6 +85,13 @@ GARDEN = (17, 8, 27, 15)
 nine(*GARDEN, 20, 21, 22, 15, 16, 17)
 POND = (4, 10, 9, 14)
 nine(*POND, 19, 20, 21, 7, 8, 9)
+# углы пруда были рассчитаны на песок — меняем оранжевые пиксели на траву
+A = np.asarray(bg).copy()
+for py in range(POND[1] * 16, POND[3] * 16):
+    for px in range(POND[0] * 16, POND[2] * 16):
+        r, g, b, al = A[py, px]
+        if r > 200 and g > 100 and b < 150: A[py, px] = GR[py % 16, px % 16]
+bg = Image.fromarray(A, 'RGBA')
 bg.alpha_composite(t(23, 8), (5 * 16, 11 * 16)); bg.alpha_composite(t(23, 8), (7 * 16 + 4, 12 * 16))
 # мелочь на траве: травка, цветочки (не на тропинках)
 DECO = [t(0, 5), t(2, 8), t(0, 8), t(1, 8), t(0, 5)]

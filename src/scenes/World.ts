@@ -94,7 +94,7 @@ export class World extends Phaser.Scene {
     const ratio = sick / beds.length, season = game.data.season;
     this.fx.reset();
     if (season === 2) this.fx.brightness(1.03, true);
-    this.fx.saturate(-Math.min(0.85, ratio * (season === 3 ? 1.3 : 0.7)), true);
+    this.fx.saturate(-Math.min(0.5, ratio * (season === 3 ? 0.9 : 0.6)), true);   // выцветание от болезни — заметно, но без серого мира
   }
 
   /** Мир стоит: интерьер/процедурная (locked) или модальное окно Hud. */
