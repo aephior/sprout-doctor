@@ -1,0 +1,1013 @@
+<title>Sprout Doctor Art Prompts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* Макет: одна колонка карточек «полевого дневника», наверху — общие правила и навигация по разделам */
+:root {
+  --bg: #f4efe3; --surface: #fffaf0; --ink: #1e1b2e; --ink2: #5a5470; --line: #e0d6bf;
+  --accent: #127a74; --accent-ink: #ffffff; --magenta: #b0245f; --code-bg: #f1e8d4;
+  --high: #b0245f; --mid: #a8531a; --opt: #6b6886;
+  --display: "Pixelify Sans", "Courier New", monospace; --body: "Golos Text", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #1c1a33; --surface: #26244a; --ink: #f2ecdc; --ink2: #b9b4d4; --line: #3a3766; --accent: #3fd0c9; --accent-ink: #12102a;
+  --magenta: #ff6fae; --code-bg: #1a1830; --high: #ff6fae; --mid: #f2a95c; --opt: #9a97bd; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #1c1a33; --surface: #26244a; --ink: #f2ecdc; --ink2: #b9b4d4; --line: #3a3766; --accent: #3fd0c9; --accent-ink: #12102a;
+  --magenta: #ff6fae; --code-bg: #1a1830; --high: #ff6fae; --mid: #f2a95c; --opt: #9a97bd; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body); margin: 0; }
+.wrap { max-width: 920px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2 { font-family: var(--display); font-weight: 700; text-wrap: balance; margin: 0; letter-spacing: 0.01em; }
+h1 { font-size: clamp(30px, 6vw, 44px); line-height: 1.05; }
+h1 span { color: var(--accent); }
+h2 { font-size: 26px; margin-top: 48px; }
+.lede { color: var(--ink2); max-width: 64ch; margin: 12px 0 0; }
+.progress { display: flex; align-items: center; gap: 12px; margin-top: 20px; font-variant-numeric: tabular-nums; color: var(--ink2); }
+.bar { flex: 1; max-width: 320px; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+.steps { margin: 28px 0 0; padding: 20px 20px 20px 44px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.steps li { margin: 6px 0; max-width: 70ch; }
+.steps b { color: var(--accent); font-weight: 600; }
+.rules { display: grid; gap: 12px; margin-top: 16px; }
+.rule { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; min-width: 0; }
+.rule h3 { font: 600 14px var(--body); margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink2); }
+nav.toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); padding-block: 10px; z-index: 5; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+nav.toc a { font: 500 14px var(--body); color: var(--ink); text-decoration: none; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+nav.toc a:hover, nav.toc a:focus-visible { border-color: var(--accent); outline: none; }
+nav.toc .filters { margin-left: auto; display: flex; gap: 8px; align-items: center; color: var(--ink2); font-size: 14px; }
+.section-intro { color: var(--ink2); max-width: 70ch; margin: 8px 0 16px; }
+.items { display: grid; gap: 14px; }
+.item { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; min-width: 0; }
+.item.is-done { opacity: 0.55; }
+.item-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.done { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.done input { width: 18px; height: 18px; margin-top: 3px; accent-color: var(--accent); flex: none; }
+.item-title { font-weight: 600; font-size: 17px; }
+.pill { font: 600 12px var(--body); padding: 3px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; letter-spacing: 0.02em; }
+.pr-high { color: var(--high); } .pr-mid { color: var(--mid); } .pr-opt { color: var(--opt); }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 12px 28px; }
+.chip { font: 13px var(--mono); color: var(--ink2); background: var(--code-bg); padding: 2px 8px; border-radius: 4px; overflow-wrap: anywhere; }
+.prompt { position: relative; }
+pre { margin: 0; font: 13px/1.55 var(--mono); background: var(--code-bg); border: 1px solid var(--line); border-radius: 4px; padding: 12px 12px 44px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
+.copy { position: absolute; right: 8px; bottom: 8px; font: 600 13px var(--body); background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 4px; padding: 7px 14px; cursor: pointer; }
+.copy:focus-visible { outline: 2px solid var(--magenta); outline-offset: 2px; }
+.copy.ok { background: var(--magenta); color: #fff; }
+.note { margin: 10px 0 0 28px; color: var(--ink2); font-size: 14px; max-width: 70ch; }
+select { font: 14px var(--body); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; }
+.hidden-by-filter { display: none; }
+footer { margin-top: 56px; color: var(--ink2); font-size: 14px; border-top: 1px solid var(--line); padding-top: 16px; }
+@media (max-width: 560px) { nav.toc { position: static; } nav.toc .filters { margin-left: 0; width: 100%; } .meta, .note { margin-left: 0; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Sprout Doctor<br><span>промпты для генерации</span></h1>
+    <p class="lede">Всё, что можно сгенерировать нейросетью, чтобы заменить нарисованный кодом пиксель-арт: персонажи, противники, ферма, растения, интерьеры, иконки и музыка. Промпты на английском — генераторы понимают его лучше. Игра уже работает без этих файлов: каждый готовый файл просто заменяет временную графику.</p>
+    <div class="progress"><div class="bar"><i id="bar"></i></div><span id="count">Готово 0 из 93</span></div>
+  </header>
+
+  <ol class="steps">
+    <li>Начните с пунктов <b>«Важно»</b>: Аой, Фуку, Огава, Хайкаби, дом, лавка и фоны сцен. Остальное — по желанию.</li>
+    <li>Одна картинка — один предмет или одна поза. Персонажей и предметы — <b>на ярко-зелёном фоне</b> (#00FF00): его я вырежу автоматически.</li>
+    <li>Сначала сгенерируйте «главную» картинку персонажа, затем остальные позы делайте <b>с ней в качестве референса</b> (загрузите её в генератор), чтобы лицо и одежда совпадали.</li>
+    <li>Если в генераторе есть поле «негативный промпт» — вставьте туда текст из блока ниже.</li>
+    <li>Сохраняйте файлы с именами из серых плашек и пришлите архивом в чат. Я уменьшу их до игрового размера, приведу к палитре игры и встрою.</li>
+  </ol>
+
+  <div class="rules">
+    <div class="rule"><h3>Негативный промпт (для всех)</h3><div class="prompt"><pre id="p-neg">text, letters, numbers, watermark, signature, logo, frame, border, UI, blurry, smooth gradient, 3D render, photorealistic, extra limbs, cropped, multiple characters</pre><button class="copy" type="button" data-target="p-neg">Копировать</button></div></div>
+    <div class="rule"><h3>Общий стиль (уже включён в каждый промпт)</h3><div class="prompt"><pre id="p-style">cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing</pre><button class="copy" type="button" data-target="p-style">Копировать</button></div></div>
+  </div>
+
+  <nav class="toc" aria-label="Разделы">
+    <a href="#sec-characters">Персонажи</a>
+    <a href="#sec-enemies">Противники</a>
+    <a href="#sec-world">Ферма: здания и предметы</a>
+    <a href="#sec-plants">Растения крупным планом</a>
+    <a href="#sec-scenes">Сцены и интерьеры</a>
+    <a href="#sec-ui">Интерфейс и иконки</a>
+    <a href="#sec-music">Музыка (по желанию)</a>
+    <span class="filters"><label for="flt">Показать</label><select id="flt"><option value="all">все</option><option value="1">только «Важно»</option><option value="2">«Важно» и «Желательно»</option><option value="todo">не готовые</option></select></span>
+  </nav>
+
+  <section id="sec-characters">
+    <h2>Персонажи</h2>
+    <p class="section-intro">Внешность Аой утверждена по вашей картинке (соломенная шляпа с гогглами, коса с бантиком, круглые очки, горчичная куртка, комбинезон с клубничкой, красные сапоги). Прикладывайте эту картинку как референс к каждому промпту с Аой. Начните с листа Аой и используйте его как референс для остальных её поз (функция «референс персонажа» / загрузка картинки в генератор) — так лицо и одежда останутся одинаковыми.</p>
+    <div class="items">
+      <article class="item" id="aoi_sheet" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-aoi_sheet" data-id="aoi_sheet"><span class="item-title">Аой — лист персонажа (4 стороны)</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/aoi_sheet.png</code><span class="chip">1536×1024, 4 вида в ряд</span></div>
+        <div class="prompt"><pre id="p-aoi_sheet">character reference sheet of Aoi, a young Japanese woman, cute chibi proportions (big head, small body), wavy chestnut-brown hair with soft bangs and a single braid over her right shoulder tied with a small red bow, thin round gold-rimmed glasses, warm brown eyes, gentle smile, light rosy cheeks, wide-brimmed straw hat with a dark blue band, a small red bow and a tiny green sprout on the band, aviator goggles with teal lenses resting on the hat, short loose mustard-yellow jacket open over a white t-shirt, sage-green overalls with a small strawberry patch on the bib, coral-red rubber boots, friendly and a little shy, four full-body views in one row with equal spacing: front, back, left side, right side, standing idle, same scale, same pixel size, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-aoi_sheet">Копировать</button></div>
+        <p class="note">Из него вырежу стойки «вниз / вверх / вбок» для фермы. Это главный референс для всех её поз.</p>
+      </article>
+      <article class="item" id="aoi_walk" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-aoi_walk" data-id="aoi_walk"><span class="item-title">Аой — шаг (анимация)</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/aoi_walk_side.png</code><span class="chip">1536×512, 4 кадра в ряд</span></div>
+        <div class="prompt"><pre id="p-aoi_walk">walk cycle animation sprite sheet of Aoi, a young Japanese woman, cute chibi proportions (big head, small body), wavy chestnut-brown hair with soft bangs and a single braid over her right shoulder tied with a small red bow, thin round gold-rimmed glasses, warm brown eyes, gentle smile, light rosy cheeks, wide-brimmed straw hat with a dark blue band, a small red bow and a tiny green sprout on the band, aviator goggles with teal lenses resting on the hat, short loose mustard-yellow jacket open over a white t-shirt, sage-green overalls with a small strawberry patch on the bib, coral-red rubber boots, friendly and a little shy, side view facing right, 4 frames in one row, evenly spaced, same scale, legs clearly alternating, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-aoi_walk">Копировать</button></div>
+        <p class="note">Если генератор путает кадры — пропустите, я дорисую шаги сам.</p>
+      </article>
+      <article class="item" id="aoi_scan" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-aoi_scan" data-id="aoi_scan"><span class="item-title">Аой — поза «скан»</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/aoi_scan.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-aoi_scan">Aoi, a young Japanese woman, cute chibi proportions (big head, small body), wavy chestnut-brown hair with soft bangs and a single braid over her right shoulder tied with a small red bow, thin round gold-rimmed glasses, warm brown eyes, gentle smile, light rosy cheeks, wide-brimmed straw hat with a dark blue band, a small red bow and a tiny green sprout on the band, aviator goggles with teal lenses resting on the hat, short loose mustard-yellow jacket open over a white t-shirt, sage-green overalls with a small strawberry patch on the bib, coral-red rubber boots, friendly and a little shy, holding up a small lantern-shaped drone that glows teal, scanning a leaf, teal light on her face, full body, front three-quarter view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-aoi_scan">Копировать</button></div>
+        <p class="note">Для заставок, финального экрана и листа персонажа в отчёте.</p>
+      </article>
+      <article class="item" id="aoi_water" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-aoi_water" data-id="aoi_water"><span class="item-title">Аой — поза «полив»</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/aoi_water.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-aoi_water">Aoi, a young Japanese woman, cute chibi proportions (big head, small body), wavy chestnut-brown hair with soft bangs and a single braid over her right shoulder tied with a small red bow, thin round gold-rimmed glasses, warm brown eyes, gentle smile, light rosy cheeks, wide-brimmed straw hat with a dark blue band, a small red bow and a tiny green sprout on the band, aviator goggles with teal lenses resting on the hat, short loose mustard-yellow jacket open over a white t-shirt, sage-green overalls with a small strawberry patch on the bib, coral-red rubber boots, friendly and a little shy, watering plants with a tin watering can, water drops falling, full body, front three-quarter view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-aoi_water">Копировать</button></div>
+        <p class="note">Для заставок, финального экрана и листа персонажа в отчёте.</p>
+      </article>
+      <article class="item" id="aoi_victory" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-aoi_victory" data-id="aoi_victory"><span class="item-title">Аой — поза «победа»</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/aoi_victory.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-aoi_victory">Aoi, a young Japanese woman, cute chibi proportions (big head, small body), wavy chestnut-brown hair with soft bangs and a single braid over her right shoulder tied with a small red bow, thin round gold-rimmed glasses, warm brown eyes, gentle smile, light rosy cheeks, wide-brimmed straw hat with a dark blue band, a small red bow and a tiny green sprout on the band, aviator goggles with teal lenses resting on the hat, short loose mustard-yellow jacket open over a white t-shirt, sage-green overalls with a small strawberry patch on the bib, coral-red rubber boots, friendly and a little shy, jumping with both arms raised in joy, sakura petals and coins around, full body, front three-quarter view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-aoi_victory">Копировать</button></div>
+        <p class="note">Для заставок, финального экрана и листа персонажа в отчёте.</p>
+      </article>
+      <article class="item" id="aoi_damage" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-aoi_damage" data-id="aoi_damage"><span class="item-title">Аой — поза «урон»</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/aoi_damage.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-aoi_damage">Aoi, a young Japanese woman, cute chibi proportions (big head, small body), wavy chestnut-brown hair with soft bangs and a single braid over her right shoulder tied with a small red bow, thin round gold-rimmed glasses, warm brown eyes, gentle smile, light rosy cheeks, wide-brimmed straw hat with a dark blue band, a small red bow and a tiny green sprout on the band, aviator goggles with teal lenses resting on the hat, short loose mustard-yellow jacket open over a white t-shirt, sage-green overalls with a small strawberry patch on the bib, coral-red rubber boots, friendly and a little shy, sneezing, covering her face, small gray spore clouds around her, full body, front three-quarter view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-aoi_damage">Копировать</button></div>
+        <p class="note">Для заставок, финального экрана и листа персонажа в отчёте.</p>
+      </article>
+      <article class="item" id="aoi_home" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-aoi_home" data-id="aoi_home"><span class="item-title">Аой дома (без шляпы)</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/aoi_home.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-aoi_home">Aoi, a young Japanese woman, cute chibi proportions (big head, small body), wavy chestnut-brown hair with soft bangs and a single braid over her right shoulder tied with a small red bow, thin round gold-rimmed glasses, warm brown eyes, gentle smile, light rosy cheeks, no hat, cozy orange knitted cardigan over a white t-shirt, blue home trousers, barefoot, holding a cup of tea, standing, full body, front view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-aoi_home">Копировать</button></div>
+        <p class="note">Для сцены «Дом бабушки Хару».</p>
+      </article>
+      <article class="item" id="aoi_sleep" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-aoi_sleep" data-id="aoi_sleep"><span class="item-title">Аой спит под одеялом</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">characters/aoi_sleep.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-aoi_sleep">top-down view of a young woman with wavy chestnut-brown hair and a braid with a small red bow sleeping on a white pillow, round glasses on the pillow next to her, only her head visible above a blue futon blanket with a white flower pattern, eyes closed, peaceful, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-aoi_sleep">Копировать</button></div>
+        <p class="note">Необязательно: сейчас это нарисовано кодом.</p>
+      </article>
+      <article class="item" id="fuku_idle" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-fuku_idle" data-id="fuku_idle"><span class="item-title">Фуку — «ожидание»</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/fuku_idle.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-fuku_idle">Fuku, a small flying robot drone shaped like a Japanese paper lantern (chouchin), woven beige paper body with dark ribs, one large round camera lens as its single eye, four tiny teal propellers on top, soft teal glow outline, cute, NOT an owl, NOT a bird, hovering calmly, lens dark blue, front view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-fuku_idle">Копировать</button></div>
+        <p class="note">Сгенерируйте первым и используйте как референс для остальных четырёх.</p>
+      </article>
+      <article class="item" id="fuku_scan" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-fuku_scan" data-id="fuku_scan"><span class="item-title">Фуку — «скан»</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/fuku_scan.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-fuku_scan">Fuku, a small flying robot drone shaped like a Japanese paper lantern (chouchin), woven beige paper body with dark ribs, one large round camera lens as its single eye, four tiny teal propellers on top, soft teal glow outline, cute, NOT an owl, NOT a bird, lens glowing bright teal, a teal scanning beam cone pointing down, front view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-fuku_scan">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="fuku_alert" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-fuku_alert" data-id="fuku_alert"><span class="item-title">Фуку — «тревога»</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/fuku_alert.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-fuku_alert">Fuku, a small flying robot drone shaped like a Japanese paper lantern (chouchin), woven beige paper body with dark ribs, one large round camera lens as its single eye, four tiny teal propellers on top, soft teal glow outline, cute, NOT an owl, NOT a bird, lens glowing red, red outline, a small red warning light on top, front view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-fuku_alert">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="fuku_happy" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-fuku_happy" data-id="fuku_happy"><span class="item-title">Фуку — «радость»</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/fuku_happy.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-fuku_happy">Fuku, a small flying robot drone shaped like a Japanese paper lantern (chouchin), woven beige paper body with dark ribs, one large round camera lens as its single eye, four tiny teal propellers on top, soft teal glow outline, cute, NOT an owl, NOT a bird, a cute smiling eye shape on the lens, little leaves and sparkles around, front view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-fuku_happy">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="fuku_damaged" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-fuku_damaged" data-id="fuku_damaged"><span class="item-title">Фуку — «повреждение»</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/fuku_damaged.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-fuku_damaged">Fuku, a small flying robot drone shaped like a Japanese paper lantern (chouchin), woven beige paper body with dark ribs, one large round camera lens as its single eye, four tiny teal propellers on top, soft teal glow outline, cute, NOT an owl, NOT a bird, darkened gray, propellers drooping, a small puff of smoke, low battery, front view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-fuku_damaged">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="ogawa_neutral" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-ogawa_neutral" data-id="ogawa_neutral"><span class="item-title">Огава — спокоен</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/ogawa_neutral.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-ogawa_neutral">Mr. Ogawa, a kind elderly Japanese village shopkeeper about 70 years old, navy blue cap, round glasses, gray sideburns and a small gray mustache, dark blue work apron over a white shirt, white towel around his neck, gentle smile, eyes open, bust portrait from the chest up, front view, as if standing behind a shop counter, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-ogawa_neutral">Копировать</button></div>
+        <p class="note">Встанет за прилавок в лавке. Остальные два — референсом с этого.</p>
+      </article>
+      <article class="item" id="ogawa_talk" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-ogawa_talk" data-id="ogawa_talk"><span class="item-title">Огава — говорит</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/ogawa_talk.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-ogawa_talk">Mr. Ogawa, a kind elderly Japanese village shopkeeper about 70 years old, navy blue cap, round glasses, gray sideburns and a small gray mustache, dark blue work apron over a white shirt, white towel around his neck, talking, mouth open, one hand raised, bust portrait from the chest up, front view, as if standing behind a shop counter, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-ogawa_talk">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="ogawa_happy" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-ogawa_happy" data-id="ogawa_happy"><span class="item-title">Огава — радуется</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/ogawa_happy.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-ogawa_happy">Mr. Ogawa, a kind elderly Japanese village shopkeeper about 70 years old, navy blue cap, round glasses, gray sideburns and a small gray mustache, dark blue work apron over a white shirt, white towel around his neck, laughing with eyes closed in a happy curve, bust portrait from the chest up, front view, as if standing behind a shop counter, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-ogawa_happy">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="mochi_walk" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-mochi_walk" data-id="mochi_walk"><span class="item-title">Кошка Моти — идёт</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/mochi_walk.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-mochi_walk">Mochi, a small plump white cat with orange calico patches, walking, side view facing right, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-mochi_walk">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="mochi_sit" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-mochi_sit" data-id="mochi_sit"><span class="item-title">Кошка Моти — сидит</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/mochi_sit.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-mochi_sit">Mochi, a small plump white cat with orange calico patches, sitting upright, tail curled around paws, front view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-mochi_sit">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="mochi_sleep" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-mochi_sleep" data-id="mochi_sleep"><span class="item-title">Кошка Моти — спит</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">characters/mochi_sleep.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-mochi_sleep">Mochi, a small plump white cat with orange calico patches, sleeping curled into a ball, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-mochi_sleep">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="fisher" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-fisher" data-id="fisher"><span class="item-title">Рыбак у пруда</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">characters/fisher.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-fisher">old Japanese fisherman in a beige bucket hat and a faded blue jacket sitting on a small folding stool, holding a long bamboo fishing rod with a red float, a small blue bucket next to him, side view facing right, calm, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-fisher">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="haru_photo" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-haru_photo" data-id="haru_photo"><span class="item-title">Бабушка Хару (фото в рамке)</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">characters/haru_photo.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-haru_photo">small framed photograph of grandmother Haru, an elderly Japanese woman with a gray hair bun, purple cardigan, gentle wise smile, standing in a vegetable garden, wooden photo frame, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-haru_photo">Копировать</button></div>
+        <p class="note">Для полки в доме и титров.</p>
+      </article>
+    </div>
+  </section>
+  <section id="sec-enemies">
+    <h2>Противники</h2>
+    <p class="section-intro">Стиль тот же: милые, но зловещие. Размер в игре: тля и спороны маленькие, Хайкаби — крупный босс.</p>
+    <div class="items">
+      <article class="item" id="aphid_idle" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-aphid_idle" data-id="aphid_idle"><span class="item-title">Тля-ниндзя — стойка</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">enemies/aphid_idle.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-aphid_idle">Ninja Aphid, a small round green aphid insect dressed as a ninja, dark outfit, purple headband, tiny katana on its back, big shiny black eyes, standing, ready, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-aphid_idle">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="aphid_dash" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-aphid_dash" data-id="aphid_dash"><span class="item-title">Тля-ниндзя — рывок</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">enemies/aphid_dash.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-aphid_dash">Ninja Aphid, a small round green aphid insect dressed as a ninja, dark outfit, purple headband, tiny katana on its back, big shiny black eyes, dashing fast to the right with a teal speed trail, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-aphid_dash">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="sporon_idle" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-sporon_idle" data-id="sporon_idle"><span class="item-title">Спорон — стойка</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">enemies/sporon_idle.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-sporon_idle">Sporon, a tiny cute but sinister mushroom creature, gray-purple cap with pale speckles, small red eyes, stubby legs, standing, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-sporon_idle">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="sporon_attack" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-sporon_attack" data-id="sporon_attack"><span class="item-title">Спорон — атака</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">enemies/sporon_attack.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-sporon_attack">Sporon, a tiny cute but sinister mushroom creature, gray-purple cap with pale speckles, small red eyes, stubby legs, puffing a cloud of gray-purple spores, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-sporon_attack">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="haikabi_idle" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-haikabi_idle" data-id="haikabi_idle"><span class="item-title">Хайкаби — стойка</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">enemies/haikabi_idle.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-haikabi_idle">Haikabi, a giant gray-purple jellyfish-like mushroom boss with a wide speckled cap, a glowing core in the center and many long curling tentacles, drifting spores, floating menacingly, glowing pale core, teal outline, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-haikabi_idle">Копировать</button></div>
+        <p class="note">Главный босс — сгенерируйте первым, остальные два референсом.</p>
+      </article>
+      <article class="item" id="haikabi_rage" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-haikabi_rage" data-id="haikabi_rage"><span class="item-title">Хайкаби — ярость</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">enemies/haikabi_rage.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-haikabi_rage">Haikabi, a giant gray-purple jellyfish-like mushroom boss with a wide speckled cap, a glowing core in the center and many long curling tentacles, drifting spores, enraged, core glowing hot orange, red outline, tentacles spread wide, spore burst, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-haikabi_rage">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="haikabi_defeated" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-haikabi_defeated" data-id="haikabi_defeated"><span class="item-title">Хайкаби — поражение</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">enemies/haikabi_defeated.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-haikabi_defeated">Haikabi, a giant gray-purple jellyfish-like mushroom boss with a wide speckled cap, a glowing core in the center and many long curling tentacles, drifting spores, withered and faded to gray, collapsing, losing color, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-haikabi_defeated">Копировать</button></div>
+        
+      </article>
+    </div>
+  </section>
+  <section id="sec-world">
+    <h2>Ферма: здания и предметы</h2>
+    <p class="section-intro">Вид сверху под углом, как в Stardew Valley. Каждый предмет — отдельной картинкой на зелёном фоне.</p>
+    <div class="items">
+      <article class="item" id="house" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-house" data-id="house"><span class="item-title">Дом бабушки Хару</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">world/house.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-house">small traditional Japanese countryside house, dark gray kawara tiled roof, cream plaster walls with dark wooden beams, a sliding wooden entrance door, two paper windows glowing warmly, a small engawa veranda with a potted plant, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-house">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="shop" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-shop" data-id="shop"><span class="item-title">Лавка Огавы (снаружи)</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">world/shop.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-shop">tiny rural Japanese general store, red-and-cream striped fabric awning, wooden facade, a blank sign board without any text, sliding glass door, crates of vegetables and potted plants in front, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-shop">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="vending" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-vending" data-id="vending"><span class="item-title">Торговый автомат</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">world/vending.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-vending">white Japanese drink vending machine, rows of colorful bottles behind glass, glowing teal and pink buttons, slightly worn, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-vending">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="busstop" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-busstop" data-id="busstop"><span class="item-title">Остановка</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">world/busstop.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-busstop">small rural Japanese bus stop shelter, light blue metal roof, wooden bench, a blank round bus stop sign on a pole without text, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-busstop">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="bus" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-bus" data-id="bus"><span class="item-title">Автобус</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">world/bus.png</code><span class="chip">1536×768</span></div>
+        <div class="prompt"><pre id="p-bus">small rural Japanese community bus, cream and light-blue livery with a thin red stripe, side view facing left, rounded retro shape, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-bus">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="lamp" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-lamp" data-id="lamp"><span class="item-title">Уличный фонарь</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">world/lamp.png</code><span class="chip">768×1024</span></div>
+        <div class="prompt"><pre id="p-lamp">old street lamp on a dark metal pole, square lamp head glowing warm yellow, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-lamp">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="tree_spring" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-tree_spring" data-id="tree_spring"><span class="item-title">Дерево — весна</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">world/tree_spring.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-tree_spring">round deciduous tree, lush green leaves with a few pink sakura blossoms, thick brown trunk, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-tree_spring">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="tree_summer" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-tree_summer" data-id="tree_summer"><span class="item-title">Дерево — лето</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">world/tree_summer.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-tree_summer">round deciduous tree, dense deep green leaves, thick brown trunk, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-tree_summer">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="tree_autumn" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-tree_autumn" data-id="tree_autumn"><span class="item-title">Дерево — осень</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">world/tree_autumn.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-tree_autumn">round deciduous tree, orange and red maple leaves, a few falling, thick brown trunk, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-tree_autumn">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="fence" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-fence" data-id="fence"><span class="item-title">Забор (секция)</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">world/fence.png</code><span class="chip">1024×512</span></div>
+        <div class="prompt"><pre id="p-fence">one section of a weathered wooden picket fence, two posts and two horizontal rails, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-fence">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="raised_bed" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-raised_bed" data-id="raised_bed"><span class="item-title">Грядка (на карте)</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">world/raised_bed.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-raised_bed">small square raised garden bed with a wooden border and dark tilled soil with straw mulch, empty, seen from 3/4 top-down, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-raised_bed">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="tile_grass" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-tile_grass" data-id="tile_grass"><span class="item-title">Тайл — трава</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">tiles/grass.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-tile_grass">seamless tileable top-down texture of short green grass with a few tiny flowers, 16x16 pixel art tile scaled up, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, fills the whole image edge to edge, no background</pre><button class="copy" type="button" data-target="p-tile_grass">Копировать</button></div>
+        <p class="note">Тайлы генераторы делают хуже всего. Если швы видны — оставим мои.</p>
+      </article>
+      <article class="item" id="tile_path" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-tile_path" data-id="tile_path"><span class="item-title">Тайл — тропинка</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">tiles/path.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-tile_path">seamless tileable top-down texture of packed sandy dirt path with small pebbles, 16x16 pixel art tile scaled up, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, fills the whole image edge to edge, no background</pre><button class="copy" type="button" data-target="p-tile_path">Копировать</button></div>
+        <p class="note">Тайлы генераторы делают хуже всего. Если швы видны — оставим мои.</p>
+      </article>
+      <article class="item" id="tile_soil_dry" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-tile_soil_dry" data-id="tile_soil_dry"><span class="item-title">Тайл — земля сухая</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">tiles/soil_dry.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-tile_soil_dry">seamless tileable top-down texture of dry tilled brown soil in neat furrows, 16x16 pixel art tile scaled up, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, fills the whole image edge to edge, no background</pre><button class="copy" type="button" data-target="p-tile_soil_dry">Копировать</button></div>
+        <p class="note">Тайлы генераторы делают хуже всего. Если швы видны — оставим мои.</p>
+      </article>
+      <article class="item" id="tile_soil_wet" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-tile_soil_wet" data-id="tile_soil_wet"><span class="item-title">Тайл — земля мокрая</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">tiles/soil_wet.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-tile_soil_wet">seamless tileable top-down texture of wet dark tilled soil in furrows, slightly shiny, 16x16 pixel art tile scaled up, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, fills the whole image edge to edge, no background</pre><button class="copy" type="button" data-target="p-tile_soil_wet">Копировать</button></div>
+        <p class="note">Тайлы генераторы делают хуже всего. Если швы видны — оставим мои.</p>
+      </article>
+      <article class="item" id="tile_water" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-tile_water" data-id="tile_water"><span class="item-title">Тайл — вода</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">tiles/water.png</code><span class="chip">1024×1024</span></div>
+        <div class="prompt"><pre id="p-tile_water">seamless tileable top-down texture of calm pond water with small light ripples, 16x16 pixel art tile scaled up, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, fills the whole image edge to edge, no background</pre><button class="copy" type="button" data-target="p-tile_water">Копировать</button></div>
+        <p class="note">Тайлы генераторы делают хуже всего. Если швы видны — оставим мои.</p>
+      </article>
+    </div>
+  </section>
+  <section id="sec-plants">
+    <h2>Растения крупным планом</h2>
+    <p class="section-intro">Для окна «Процедурной». Сначала 9 здоровых (3 культуры × 3 стадии), потом больные — по одному на каждую болезнь из таблицы.</p>
+    <div class="items">
+      <article class="item" id="plant_tomato_sprout" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-plant_tomato_sprout" data-id="plant_tomato_sprout"><span class="item-title">Томат — росток</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">plants/tomato_sprout.png</code><span class="chip">768×1024 (вертикально)</span></div>
+        <div class="prompt"><pre id="p-plant_tomato_sprout">close-up of a tomato plant tied to a wooden stake, tiny sprout with two leaves, growing from soil, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-plant_tomato_sprout">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="plant_tomato_young" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-plant_tomato_young" data-id="plant_tomato_young"><span class="item-title">Томат — растёт</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">plants/tomato_young.png</code><span class="chip">768×1024 (вертикально)</span></div>
+        <div class="prompt"><pre id="p-plant_tomato_young">close-up of a tomato plant tied to a wooden stake, young plant without fruit, growing from soil, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-plant_tomato_young">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="plant_tomato_mature" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-plant_tomato_mature" data-id="plant_tomato_mature"><span class="item-title">Томат — созрел</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">plants/tomato_mature.png</code><span class="chip">768×1024 (вертикально)</span></div>
+        <div class="prompt"><pre id="p-plant_tomato_mature">close-up of a tomato plant tied to a wooden stake, mature plant with ripe red tomatoes, growing from soil, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-plant_tomato_mature">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="plant_potato_sprout" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-plant_potato_sprout" data-id="plant_potato_sprout"><span class="item-title">Картофель — росток</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">plants/potato_sprout.png</code><span class="chip">768×1024 (вертикально)</span></div>
+        <div class="prompt"><pre id="p-plant_potato_sprout">close-up of a bushy potato plant, tiny sprout with two leaves, growing from soil, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-plant_potato_sprout">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="plant_potato_young" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-plant_potato_young" data-id="plant_potato_young"><span class="item-title">Картофель — растёт</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">plants/potato_young.png</code><span class="chip">768×1024 (вертикально)</span></div>
+        <div class="prompt"><pre id="p-plant_potato_young">close-up of a bushy potato plant, young plant without fruit, growing from soil, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-plant_potato_young">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="plant_potato_mature" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-plant_potato_mature" data-id="plant_potato_mature"><span class="item-title">Картофель — созрел</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">plants/potato_mature.png</code><span class="chip">768×1024 (вертикально)</span></div>
+        <div class="prompt"><pre id="p-plant_potato_mature">close-up of a bushy potato plant, mature plant with small white-yellow flowers, growing from soil, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-plant_potato_mature">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="plant_pepper_sprout" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-plant_pepper_sprout" data-id="plant_pepper_sprout"><span class="item-title">Перец — росток</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">plants/pepper_sprout.png</code><span class="chip">768×1024 (вертикально)</span></div>
+        <div class="prompt"><pre id="p-plant_pepper_sprout">close-up of a bell pepper plant, tiny sprout with two leaves, growing from soil, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-plant_pepper_sprout">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="plant_pepper_young" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-plant_pepper_young" data-id="plant_pepper_young"><span class="item-title">Перец — растёт</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">plants/pepper_young.png</code><span class="chip">768×1024 (вертикально)</span></div>
+        <div class="prompt"><pre id="p-plant_pepper_young">close-up of a bell pepper plant, young plant without fruit, growing from soil, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-plant_pepper_young">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="plant_pepper_mature" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-plant_pepper_mature" data-id="plant_pepper_mature"><span class="item-title">Перец — созрел</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">plants/pepper_mature.png</code><span class="chip">768×1024 (вертикально)</span></div>
+        <div class="prompt"><pre id="p-plant_pepper_mature">close-up of a bell pepper plant, mature plant with ripe red, green and orange bell peppers, growing from soil, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-plant_pepper_mature">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="plant_sick_early_blight" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-plant_sick_early_blight" data-id="plant_sick_early_blight"><span class="item-title">Больной томат — альтернариоз</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">plants/sick_early_blight.png</code><span class="chip">768×1024</span></div>
+        <div class="prompt"><pre id="p-plant_sick_early_blight">close-up of a young tomato plant with brown leaf spots with concentric rings and yellow halos (early blight), growing from soil, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-plant_sick_early_blight">Копировать</button></div>
+        <p class="note">Тот же промпт подходит для картофеля и перца — замените «tomato».</p>
+      </article>
+      <article class="item" id="plant_sick_late_blight" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-plant_sick_late_blight" data-id="plant_sick_late_blight"><span class="item-title">Больной томат — фитофтороз</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">plants/sick_late_blight.png</code><span class="chip">768×1024</span></div>
+        <div class="prompt"><pre id="p-plant_sick_late_blight">close-up of a young tomato plant with large dark brown water-soaked blotches, wilting leaves (late blight), growing from soil, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-plant_sick_late_blight">Копировать</button></div>
+        <p class="note">Тот же промпт подходит для картофеля и перца — замените «tomato».</p>
+      </article>
+      <article class="item" id="plant_sick_bacterial_spot" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-plant_sick_bacterial_spot" data-id="plant_sick_bacterial_spot"><span class="item-title">Больной томат — бакт. пятнистость</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">plants/sick_bacterial_spot.png</code><span class="chip">768×1024</span></div>
+        <div class="prompt"><pre id="p-plant_sick_bacterial_spot">close-up of a young tomato plant with many small dark spots with yellow edges (bacterial spot), growing from soil, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-plant_sick_bacterial_spot">Копировать</button></div>
+        <p class="note">Тот же промпт подходит для картофеля и перца — замените «tomato».</p>
+      </article>
+      <article class="item" id="plant_sick_leaf_mold" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-plant_sick_leaf_mold" data-id="plant_sick_leaf_mold"><span class="item-title">Больной томат — кладоспориоз</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">plants/sick_leaf_mold.png</code><span class="chip">768×1024</span></div>
+        <div class="prompt"><pre id="p-plant_sick_leaf_mold">close-up of a young tomato plant with yellow patches on leaves with olive-gray fuzzy mold underneath (leaf mold), growing from soil, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-plant_sick_leaf_mold">Копировать</button></div>
+        <p class="note">Тот же промпт подходит для картофеля и перца — замените «tomato».</p>
+      </article>
+      <article class="item" id="plant_sick_septoria" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-plant_sick_septoria" data-id="plant_sick_septoria"><span class="item-title">Больной томат — септориоз</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">plants/sick_septoria.png</code><span class="chip">768×1024</span></div>
+        <div class="prompt"><pre id="p-plant_sick_septoria">close-up of a young tomato plant with many small round spots with dark borders and pale centers (septoria leaf spot), growing from soil, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-plant_sick_septoria">Копировать</button></div>
+        <p class="note">Тот же промпт подходит для картофеля и перца — замените «tomato».</p>
+      </article>
+      <article class="item" id="plant_sick_spider_mites" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-plant_sick_spider_mites" data-id="plant_sick_spider_mites"><span class="item-title">Больной томат — паутинный клещ</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">plants/sick_spider_mites.png</code><span class="chip">768×1024</span></div>
+        <div class="prompt"><pre id="p-plant_sick_spider_mites">close-up of a young tomato plant with stippled pale speckled leaves with fine white spider webs (spider mites), growing from soil, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-plant_sick_spider_mites">Копировать</button></div>
+        <p class="note">Тот же промпт подходит для картофеля и перца — замените «tomato».</p>
+      </article>
+      <article class="item" id="plant_sick_ylcv" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-plant_sick_ylcv" data-id="plant_sick_ylcv"><span class="item-title">Больной томат — вирус YLCV</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">plants/sick_ylcv.png</code><span class="chip">768×1024</span></div>
+        <div class="prompt"><pre id="p-plant_sick_ylcv">close-up of a young tomato plant with curled, cupped, yellow-edged small leaves, stunted (yellow leaf curl virus), growing from soil, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-plant_sick_ylcv">Копировать</button></div>
+        <p class="note">Тот же промпт подходит для картофеля и перца — замените «tomato».</p>
+      </article>
+      <article class="item" id="bed_spring" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-bed_spring" data-id="bed_spring"><span class="item-title">Фон грядки — весна</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">backgrounds/bed_spring.png</code><span class="chip">1024×1152 (почти квадрат)</span></div>
+        <div class="prompt"><pre id="p-bed_spring">close-up of an empty raised wooden garden bed with dark soil and straw mulch in the foreground, a weathered picket fence and green field behind, distant mountains, spring sunset, sakura petals in the air, no plants in the bed, cozy pixel art game background, looks like a 320x180 pixel image scaled up, Japanese countryside, Stardew Valley meets The Friends of Ringo Ishikawa, limited warm palette (indigo #2B2A4C, sunset orange #E8833A, sakura pink #F2A7B8, cream #F6E7C1, forest green #4F8A3C), subtle dithering, crisp pixels, no anti-aliasing</pre><button class="copy" type="button" data-target="p-bed_spring">Копировать</button></div>
+        <p class="note">Фон окна «Процедурной»; растение я поставлю поверх.</p>
+      </article>
+      <article class="item" id="bed_summer" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-bed_summer" data-id="bed_summer"><span class="item-title">Фон грядки — лето</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">backgrounds/bed_summer.png</code><span class="chip">1024×1152 (почти квадрат)</span></div>
+        <div class="prompt"><pre id="p-bed_summer">close-up of an empty raised wooden garden bed with dark soil and straw mulch in the foreground, a weathered picket fence and green field behind, distant mountains, bright clear summer day, blue sky, puffy clouds, no plants in the bed, cozy pixel art game background, looks like a 320x180 pixel image scaled up, Japanese countryside, Stardew Valley meets The Friends of Ringo Ishikawa, limited warm palette (indigo #2B2A4C, sunset orange #E8833A, sakura pink #F2A7B8, cream #F6E7C1, forest green #4F8A3C), subtle dithering, crisp pixels, no anti-aliasing</pre><button class="copy" type="button" data-target="p-bed_summer">Копировать</button></div>
+        <p class="note">Фон окна «Процедурной»; растение я поставлю поверх.</p>
+      </article>
+      <article class="item" id="bed_autumn" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-bed_autumn" data-id="bed_autumn"><span class="item-title">Фон грядки — осень</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">backgrounds/bed_autumn.png</code><span class="chip">1024×1152 (почти квадрат)</span></div>
+        <div class="prompt"><pre id="p-bed_autumn">close-up of an empty raised wooden garden bed with dark soil and straw mulch in the foreground, a weathered picket fence and green field behind, distant mountains, misty autumn evening, orange leaves, low fog, no plants in the bed, cozy pixel art game background, looks like a 320x180 pixel image scaled up, Japanese countryside, Stardew Valley meets The Friends of Ringo Ishikawa, limited warm palette (indigo #2B2A4C, sunset orange #E8833A, sakura pink #F2A7B8, cream #F6E7C1, forest green #4F8A3C), subtle dithering, crisp pixels, no anti-aliasing</pre><button class="copy" type="button" data-target="p-bed_autumn">Копировать</button></div>
+        <p class="note">Фон окна «Процедурной»; растение я поставлю поверх.</p>
+      </article>
+    </div>
+  </section>
+  <section id="sec-scenes">
+    <h2>Сцены и интерьеры</h2>
+    <p class="section-intro">Формат 16:9, без зелёного фона. Где персонаж или предмет должен быть отдельно — указано, что оставить пустым.</p>
+    <div class="items">
+      <article class="item" id="title_bg" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-title_bg" data-id="title_bg"><span class="item-title">Заставка главного меню</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">backgrounds/title.png</code><span class="chip">1920×1080</span></div>
+        <div class="prompt"><pre id="p-title_bg">wide key art: Japanese mountain village at sunset, terraced vegetable garden in the foreground, a small traditional house, Aoi, a young Japanese woman, cute chibi proportions (big head, small body), wavy chestnut-brown hair with soft bangs and a single braid over her right shoulder tied with a small red bow, thin round gold-rimmed glasses, warm brown eyes, gentle smile, light rosy cheeks, wide-brimmed straw hat with a dark blue band, a small red bow and a tiny green sprout on the band, aviator goggles with teal lenses resting on the hat, short loose mustard-yellow jacket open over a white t-shirt, sage-green overalls with a small strawberry patch on the bib, coral-red rubber boots, friendly and a little shy standing in the garden with a lantern-shaped flying drone beside her, power lines, warm nostalgic mood, large empty sky area in the upper half for the game logo, cozy pixel art game background, looks like a 320x180 pixel image scaled up, Japanese countryside, Stardew Valley meets The Friends of Ringo Ishikawa, limited warm palette (indigo #2B2A4C, sunset orange #E8833A, sakura pink #F2A7B8, cream #F6E7C1, forest green #4F8A3C), subtle dithering, crisp pixels, no anti-aliasing</pre><button class="copy" type="button" data-target="p-title_bg">Копировать</button></div>
+        <p class="note">Логотип и меню я наложу сверху.</p>
+      </article>
+      <article class="item" id="shop_bg" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-shop_bg" data-id="shop_bg"><span class="item-title">Лавка — помещение (без продавца и прилавка)</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">backgrounds/shop_bg.png</code><span class="chip">1920×1080</span></div>
+        <div class="prompt"><pre id="p-shop_bg">interior of a tiny cozy rural Japanese general store seen from the customer side, wooden plank walls, shelves with glass jars, seed packets and bottles, a red paper lantern hanging from the ceiling in the center, a window with sunset mountains on the left, a blank wooden menu board without text on the right, the center area empty for a shopkeeper, the bottom quarter is plain wooden wall, cozy pixel art game background, looks like a 320x180 pixel image scaled up, Japanese countryside, Stardew Valley meets The Friends of Ringo Ishikawa, limited warm palette (indigo #2B2A4C, sunset orange #E8833A, sakura pink #F2A7B8, cream #F6E7C1, forest green #4F8A3C), subtle dithering, crisp pixels, no anti-aliasing</pre><button class="copy" type="button" data-target="p-shop_bg">Копировать</button></div>
+        <p class="note">Огава и прилавок встанут поверх.</p>
+      </article>
+      <article class="item" id="shop_counter" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-shop_counter" data-id="shop_counter"><span class="item-title">Прилавок (отдельно)</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">backgrounds/shop_counter.png</code><span class="chip">1920×640</span></div>
+        <div class="prompt"><pre id="p-shop_counter">front view of a long wooden shop counter spanning the full width, a vintage cash register on the left, an abacus on the right, a small brass bell, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-shop_counter">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="home_bg" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-home_bg" data-id="home_bg"><span class="item-title">Комната бабушки Хару — ночь</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">backgrounds/home_bg.png</code><span class="chip">1920×1080</span></div>
+        <div class="prompt"><pre id="p-home_bg">interior of a grandmother's traditional Japanese room at night, tatami floor, a shoji window showing a full moon and a sakura branch, a tokonoma alcove with a hanging scroll and a vase with a flower, a wall shelf with a framed photo, an old red diary and a small charging dock, warm lamp light, empty floor area in the lower right for a futon, cozy pixel art game background, looks like a 320x180 pixel image scaled up, Japanese countryside, Stardew Valley meets The Friends of Ringo Ishikawa, limited warm palette (indigo #2B2A4C, sunset orange #E8833A, sakura pink #F2A7B8, cream #F6E7C1, forest green #4F8A3C), subtle dithering, crisp pixels, no anti-aliasing</pre><button class="copy" type="button" data-target="p-home_bg">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="home_fg" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-home_fg" data-id="home_fg"><span class="item-title">Футон, столик и лампа-андон (отдельно)</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">backgrounds/home_fg.png</code><span class="chip">1920×1080</span></div>
+        <div class="prompt"><pre id="p-home_fg">a cozy Japanese futon with a white pillow and a blue blanket with white flower pattern, a low wooden table with a cup of green tea and a red book, a paper floor lamp (andon) glowing softly, seen from 3/4 above, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-home_fg">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="home_morning" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-home_morning" data-id="home_morning"><span class="item-title">Та же комната — утро</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">backgrounds/home_morning.png</code><span class="chip">1920×1080</span></div>
+        <div class="prompt"><pre id="p-home_morning">same traditional Japanese room in early morning, soft golden sun rays coming through the shoji window, dust in the light, peaceful, cozy pixel art game background, looks like a 320x180 pixel image scaled up, Japanese countryside, Stardew Valley meets The Friends of Ringo Ishikawa, limited warm palette (indigo #2B2A4C, sunset orange #E8833A, sakura pink #F2A7B8, cream #F6E7C1, forest green #4F8A3C), subtle dithering, crisp pixels, no anti-aliasing</pre><button class="copy" type="button" data-target="p-home_morning">Копировать</button></div>
+        <p class="note">Сделайте по референсу home_bg.</p>
+      </article>
+      <article class="item" id="evening" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-evening" data-id="evening"><span class="item-title">Вечер на веранде (Ringo-вайб)</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">backgrounds/evening.png</code><span class="chip">1920×1080</span></div>
+        <div class="prompt"><pre id="p-evening">wide cinematic view from a wooden engawa veranda at sunset, a young woman with a chestnut braid, a mustard-yellow jacket, sage-green overalls and a straw hat with goggles sitting with her back to the viewer, a small lantern-shaped drone hovering next to her, layered mountains, power lines and a wooden pole, fireflies, melancholic but warm mood, cozy pixel art game background, looks like a 320x180 pixel image scaled up, Japanese countryside, Stardew Valley meets The Friends of Ringo Ishikawa, limited warm palette (indigo #2B2A4C, sunset orange #E8833A, sakura pink #F2A7B8, cream #F6E7C1, forest green #4F8A3C), subtle dithering, crisp pixels, no anti-aliasing</pre><button class="copy" type="button" data-target="p-evening">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="boss_bg" data-pr="1">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-boss_bg" data-id="boss_bg"><span class="item-title">Заброшенная теплица (бой)</span></label>
+          <span class="pill pr-high">Важно</span>
+        </header>
+        <div class="meta"><code class="chip">backgrounds/boss_bg.png</code><span class="chip">1920×1080</span></div>
+        <div class="prompt"><pre id="p-boss_bg">interior of an abandoned greenhouse at dusk, broken glass panes, rusty metal frame, overgrown dead plants, drifting gray-purple spores, eerie purple and teal light, empty center for a giant boss, cozy pixel art game background, looks like a 320x180 pixel image scaled up, Japanese countryside, Stardew Valley meets The Friends of Ringo Ishikawa, limited warm palette (indigo #2B2A4C, sunset orange #E8833A, sakura pink #F2A7B8, cream #F6E7C1, forest green #4F8A3C), subtle dithering, crisp pixels, no anti-aliasing</pre><button class="copy" type="button" data-target="p-boss_bg">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="festival" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-festival" data-id="festival"><span class="item-title">Фестиваль урожая (финал)</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">backgrounds/festival.png</code><span class="chip">1920×1080</span></div>
+        <div class="prompt"><pre id="p-festival">Japanese village harvest festival at night, red paper lanterns on strings, food stalls with baskets of tomatoes and peppers, villagers silhouettes, fireworks in the sky, a girl in a yellow raincoat with a lantern drone celebrating, cozy pixel art game background, looks like a 320x180 pixel image scaled up, Japanese countryside, Stardew Valley meets The Friends of Ringo Ishikawa, limited warm palette (indigo #2B2A4C, sunset orange #E8833A, sakura pink #F2A7B8, cream #F6E7C1, forest green #4F8A3C), subtle dithering, crisp pixels, no anti-aliasing</pre><button class="copy" type="button" data-target="p-festival">Копировать</button></div>
+        <p class="note">Для экрана победы.</p>
+      </article>
+      <article class="item" id="diary_book" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-diary_book" data-id="diary_book"><span class="item-title">Раскрытый дневник (для экрана дневника)</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">ui/diary_book.png</code><span class="chip">1920×1080</span></div>
+        <div class="prompt"><pre id="p-diary_book">top-down view of an old open notebook with a dark red cloth cover and a red ribbon bookmark, blank cream paper pages with faint lines, a pressed sakura flower and a pencil lying on it, on a wooden desk, cozy pixel art game background, looks like a 320x180 pixel image scaled up, Japanese countryside, Stardew Valley meets The Friends of Ringo Ishikawa, limited warm palette (indigo #2B2A4C, sunset orange #E8833A, sakura pink #F2A7B8, cream #F6E7C1, forest green #4F8A3C), subtle dithering, crisp pixels, no anti-aliasing</pre><button class="copy" type="button" data-target="p-diary_book">Копировать</button></div>
+        <p class="note">Страницы должны быть пустыми — текст наложу сам.</p>
+      </article>
+    </div>
+  </section>
+  <section id="sec-ui">
+    <h2>Интерфейс и иконки</h2>
+    <p class="section-intro">Маленькие предметы: генерируйте крупно, я уменьшу до 16–32 пикселей.</p>
+    <div class="items">
+      <article class="item" id="icon_coin" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-icon_coin" data-id="icon_coin"><span class="item-title">Иконка — монета</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">ui/icon_coin.png</code><span class="chip">512×512</span></div>
+        <div class="prompt"><pre id="p-icon_coin">single game inventory icon of a golden Japanese coin with a square hole, bold simple shape, readable at 32x32 pixels, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-icon_coin">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="icon_fungicide" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-icon_fungicide" data-id="icon_fungicide"><span class="item-title">Иконка — фунгицид</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">ui/icon_fungicide.png</code><span class="chip">512×512</span></div>
+        <div class="prompt"><pre id="p-icon_fungicide">single game inventory icon of a small pink spray bottle of plant medicine, bold simple shape, readable at 32x32 pixels, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-icon_fungicide">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="icon_fertilizer" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-icon_fertilizer" data-id="icon_fertilizer"><span class="item-title">Иконка — удобрение</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">ui/icon_fertilizer.png</code><span class="chip">512×512</span></div>
+        <div class="prompt"><pre id="p-icon_fertilizer">single game inventory icon of a small burlap sack of compost, bold simple shape, readable at 32x32 pixels, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-icon_fertilizer">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="icon_seeds" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-icon_seeds" data-id="icon_seeds"><span class="item-title">Иконка — семена</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">ui/icon_seeds.png</code><span class="chip">512×512</span></div>
+        <div class="prompt"><pre id="p-icon_seeds">single game inventory icon of a paper seed packet with a sprout drawing, bold simple shape, readable at 32x32 pixels, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-icon_seeds">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="icon_lens" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-icon_lens" data-id="icon_lens"><span class="item-title">Иконка — заряд линзы</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">ui/icon_lens.png</code><span class="chip">512×512</span></div>
+        <div class="prompt"><pre id="p-icon_lens">single game inventory icon of a small teal glowing battery cell, bold simple shape, readable at 32x32 pixels, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-icon_lens">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="icon_heart" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-icon_heart" data-id="icon_heart"><span class="item-title">Иконка — сердечко</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">ui/icon_heart.png</code><span class="chip">512×512</span></div>
+        <div class="prompt"><pre id="p-icon_heart">single game inventory icon of a small pink heart, bold simple shape, readable at 32x32 pixels, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-icon_heart">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="icon_rain" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-icon_rain" data-id="icon_rain"><span class="item-title">Иконка — дождь</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">ui/icon_rain.png</code><span class="chip">512×512</span></div>
+        <div class="prompt"><pre id="p-icon_rain">single game inventory icon of a blue raindrop, bold simple shape, readable at 32x32 pixels, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-icon_rain">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="icon_sun" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-icon_sun" data-id="icon_sun"><span class="item-title">Иконка — солнце</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">ui/icon_sun.png</code><span class="chip">512×512</span></div>
+        <div class="prompt"><pre id="p-icon_sun">single game inventory icon of a warm yellow sun, bold simple shape, readable at 32x32 pixels, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-icon_sun">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="icon_moon" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-icon_moon" data-id="icon_moon"><span class="item-title">Иконка — луна</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">ui/icon_moon.png</code><span class="chip">512×512</span></div>
+        <div class="prompt"><pre id="p-icon_moon">single game inventory icon of a pale crescent moon, bold simple shape, readable at 32x32 pixels, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-icon_moon">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="icon_page" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-icon_page" data-id="icon_page"><span class="item-title">Иконка — страница дневника</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">ui/icon_page.png</code><span class="chip">512×512</span></div>
+        <div class="prompt"><pre id="p-icon_page">single game inventory icon of a torn diary page with a pressed leaf, bold simple shape, readable at 32x32 pixels, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-icon_page">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="tool_can" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-tool_can" data-id="tool_can"><span class="item-title">Инструмент — лейка</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">ui/tool_can.png</code><span class="chip">512×512</span></div>
+        <div class="prompt"><pre id="p-tool_can">a gray tin watering can, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-tool_can">Копировать</button></div>
+        <p class="note">Для анимаций в «Процедурной».</p>
+      </article>
+      <article class="item" id="tool_spray" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-tool_spray" data-id="tool_spray"><span class="item-title">Инструмент — спрей</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">ui/tool_spray.png</code><span class="chip">512×512</span></div>
+        <div class="prompt"><pre id="p-tool_spray">a pink plastic spray bottle, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-tool_spray">Копировать</button></div>
+        <p class="note">Для анимаций в «Процедурной».</p>
+      </article>
+      <article class="item" id="tool_shears" data-pr="2">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-tool_shears" data-id="tool_shears"><span class="item-title">Инструмент — ножницы</span></label>
+          <span class="pill pr-mid">Желательно</span>
+        </header>
+        <div class="meta"><code class="chip">ui/tool_shears.png</code><span class="chip">512×512</span></div>
+        <div class="prompt"><pre id="p-tool_shears">garden pruning shears with red handles, side view, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-tool_shears">Копировать</button></div>
+        <p class="note">Для анимаций в «Процедурной».</p>
+      </article>
+      <article class="item" id="logo" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-logo" data-id="logo"><span class="item-title">Логотип (по желанию)</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">ui/logo.png</code><span class="chip">1536×768</span></div>
+        <div class="prompt"><pre id="p-logo">game logo artwork: a small green sprout inside a round magnifying glass, teal and green glossy pixel style, with a red Japanese hanko stamp seal next to it, no letters, cozy pixel art, 16-bit Stardew Valley inspired game sprite, 3/4 top-down view, clean 1-pixel dark outline (#1e1b2e), limited palette: forest green #4F8A3C, warm earth #8A5A3B, cream #F6E7C1, sunset orange #E8833A, sakura pink #F2A7B8, indigo #2B2A4C, teal #3FD0C9, magenta #FF4F9A, soft golden-hour light, subtle dithering, crisp hard pixel edges, no anti-aliasing, isolated on a plain flat solid #00FF00 chroma-green background, no shadow on the background, centered, whole object visible with empty margin around it</pre><button class="copy" type="button" data-target="p-logo">Копировать</button></div>
+        <p class="note">Буквы SPROUT DOCTOR и катакану наложу сам: генераторы пишут текст с ошибками.</p>
+      </article>
+    </div>
+  </section>
+  <section id="sec-music">
+    <h2>Музыка (по желанию)</h2>
+    <p class="section-intro">Сейчас музыка синтезируется кодом и работает без файлов. Если хотите «живую» — сгенерируйте в Suno или Udio (инструментал, без голоса), формат mp3/ogg, 1–2 минуты, чтобы трек можно было зациклить.</p>
+    <div class="items">
+      <article class="item" id="m_day" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-m_day" data-id="m_day"><span class="item-title">День на ферме</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">music/day.mp3</code><span class="chip">1–2 мин, цикл</span></div>
+        <div class="prompt"><pre id="p-m_day">lofi city pop instrumental, 82 bpm, warm Rhodes electric piano, soft round bass, brushed drums, gentle guitar, Japanese countryside summer afternoon, nostalgic and cozy, seamless loop, no vocals</pre><button class="copy" type="button" data-target="p-m_day">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="m_evening" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-m_evening" data-id="m_evening"><span class="item-title">Вечер на веранде</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">music/evening.mp3</code><span class="chip">1–2 мин, цикл</span></div>
+        <div class="prompt"><pre id="p-m_evening">ambient lofi instrumental, 64 bpm, soft warm pads, sparse clean guitar, distant cicadas, melancholic but warm, quiet Japanese village at dusk, seamless loop, no vocals</pre><button class="copy" type="button" data-target="p-m_evening">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="m_scan" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-m_scan" data-id="m_scan"><span class="item-title">Скан Линзой</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">music/scan.mp3</code><span class="chip">30–60 с, цикл</span></div>
+        <div class="prompt"><pre id="p-m_scan">synthwave instrumental, 112 bpm, analog arpeggios, punchy synth bass, neon retro-futuristic, tense but stylish, short seamless loop, no vocals</pre><button class="copy" type="button" data-target="p-m_scan">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="m_shop" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-m_shop" data-id="m_shop"><span class="item-title">Лавка Огавы</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">music/shop.mp3</code><span class="chip">1 мин, цикл</span></div>
+        <div class="prompt"><pre id="p-m_shop">cozy shop music, 70 bpm, music box melody, acoustic guitar, soft bass, warm and friendly, small Japanese store, seamless loop, no vocals</pre><button class="copy" type="button" data-target="p-m_shop">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="m_boss" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-m_boss" data-id="m_boss"><span class="item-title">Бой с Хайкаби</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">music/boss.mp3</code><span class="chip">1–2 мин, цикл</span></div>
+        <div class="prompt"><pre id="p-m_boss">dark synthwave chiptune boss battle, 128 bpm, minor key, driving bass, glitchy arpeggios, ominous choir pads, intense, seamless loop, no vocals</pre><button class="copy" type="button" data-target="p-m_boss">Копировать</button></div>
+        
+      </article>
+      <article class="item" id="m_festival" data-pr="3">
+        <header class="item-head">
+          <label class="done"><input type="checkbox" id="chk-m_festival" data-id="m_festival"><span class="item-title">Фестиваль (победа)</span></label>
+          <span class="pill pr-opt">По желанию</span>
+        </header>
+        <div class="meta"><code class="chip">music/festival.mp3</code><span class="chip">30–60 с</span></div>
+        <div class="prompt"><pre id="p-m_festival">joyful Japanese matsuri festival chiptune, taiko drums and shamisen with 8-bit synths, celebratory and bright, triumphant ending, no vocals</pre><button class="copy" type="button" data-target="p-m_festival">Копировать</button></div>
+        
+      </article>
+    </div>
+  </section>
+
+  <footer>Sprout Doctor · тема №15 «AI-Умная ферма». Палитра игры: #4F8A3C, #8A5A3B, #F6E7C1, #E8833A, #F2A7B8, #2B2A4C, #3FD0C9, #FF4F9A.</footer>
+</div>
+
+<script>
+(function () {
+  var KEY = 'sd-art-done', done = {};
+  try { done = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { done = {}; }
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[data-id]'));
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(done)); } catch (e) {} }
+  function paint() {
+    var n = 0;
+    boxes.forEach(function (b) { var on = !!done[b.dataset.id]; b.checked = on; b.closest('.item').classList.toggle('is-done', on); if (on) n++; });
+    document.getElementById('count').textContent = 'Готово ' + n + ' из ' + boxes.length;
+    document.getElementById('bar').style.width = (100 * n / boxes.length) + '%';
+    filter();
+  }
+  function filter() {
+    var v = document.getElementById('flt').value;
+    document.querySelectorAll('.item').forEach(function (it) {
+      var pr = +it.dataset.pr, hide = (v === '1' && pr > 1) || (v === '2' && pr > 2) || (v === 'todo' && done[it.id]);
+      it.classList.toggle('hidden-by-filter', !!hide);
+    });
+  }
+  boxes.forEach(function (b) { b.addEventListener('change', function () { done[b.dataset.id] = b.checked; if (!b.checked) delete done[b.dataset.id]; save(); paint(); }); });
+  document.getElementById('flt').addEventListener('change', filter);
+  document.querySelectorAll('.copy').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pre = document.getElementById(btn.dataset.target), txt = pre.textContent;
+      function ok() { btn.textContent = 'Скопировано'; btn.classList.add('ok'); setTimeout(function () { btn.textContent = 'Копировать'; btn.classList.remove('ok'); }, 1600); }
+      function fallback() { var r = document.createRange(); r.selectNodeContents(pre); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = 'Выделено — Ctrl+C'; }
+      try { navigator.clipboard.writeText(txt).then(ok, fallback); } catch (e) { fallback(); }
+    });
+  });
+  paint();
+})();
+</script>
