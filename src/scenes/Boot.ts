@@ -8,7 +8,7 @@ import { LAYOUT } from '../world/layout';
 /** Персонажи фермы 16×20: столбцы — вниз/вверх/влево/вправо, строки — кадры шага. */
 export const CHARS = ['aoi-na', 'ogawa-na', 'fisher-na', 'villager2-na', 'villager16-na', 'villager25-na', 'villager12-na'];
 
-export const GEN = ['haikabi_idle_px', 'haikabi_rage_px', 'haikabi_defeated_px', 'ogawa_neutral_px', 'ogawa_talk_px', 'ogawa_happy_px', 'home_fg_px', 'aoi_home_px', 'title', 'shop_bg', 'shop_bg_day', 'home_bg_day', 'shop_counter', 'home_bg', 'home_fg', 'evening', 'diary_book', 'aoi_sleep', 'aoi_sheet', 'aoi_home', 'aoi_chibi',
+export const GEN = ['haikabi_idle_px', 'haikabi_rage_px', 'haikabi_defeated_px', 'home_fg_px', 'aoi_home_px', 'title', 'shop_bg', 'shop_bg_day', 'home_bg_day', 'shop_counter', 'home_bg', 'home_fg', 'evening', 'diary_book', 'aoi_sleep', 'aoi_sheet', 'aoi_home', 'aoi_chibi',
   'ogawa_neutral', 'ogawa_talk', 'ogawa_happy', 'haru_photo', 'fisher', 'mochi_sit', 'mochi_walk', 'mochi_sleep',
   'haikabi_idle', 'haikabi_rage', 'haikabi_defeated', 'aphid_idle', 'aphid_dash', 'fuku_happy', 'fuku_alert', 'fuku_damaged'];
 
@@ -34,6 +34,16 @@ export class Boot extends Phaser.Scene {
     this.load.image('closeup-dry', asset('art/naw/closeup_dry.png'));
     this.load.image('closeup-wet', asset('art/naw/closeup_wet.png'));
     this.load.image('boss-arena', asset('art/world/boss_arena.png'));
+    // лавка Огавы (tools/art/shop_import.py): слои сцены и товары
+    for (const p of ['idle', 'talk', 'happy', 'coins']) this.load.image(`shop-og-${p}`, asset(`art/shop/ogawa_${p}.png`));
+    this.load.image('shop-counter', asset('art/shop/counter_body.png'));
+    this.load.image('shop-drawer', asset('art/shop/drawer.png'));
+    this.load.image('shop-tag', asset('art/shop/tag.png'));
+    for (const m of ['0', '1']) this.load.image(`shop-mochi${m}`, asset(`art/shop/mochi${m}.png`));
+    for (const it of ['harvest', 'fungicide', 'seeds', 'fertilizer', 'lens']) {
+      this.load.image(`shop-item-${it}`, asset(`art/shop/item_${it}.png`));
+      this.load.image(`shop-item-${it}-s`, asset(`art/shop/item_${it}_s.png`));
+    }
     this.load.image('vending-px', asset('art/world/vending.png'));
     this.load.image('busstop-px', asset('art/world/busstop.png'));
     this.load.spritesheet('bus-px', asset('art/world/bus.png'), { frameWidth: 50, frameHeight: 28 });

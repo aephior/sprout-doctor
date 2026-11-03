@@ -21,16 +21,17 @@ def regrid(im, size, colors=40):
 def one(name, k):
     im = Image.open(G + name + '.png'); w, h = im.size
     regrid(im, (round(w * k), round(h * k))).save(G + name + '_px.png')
-for n in ['ogawa_neutral', 'ogawa_talk', 'ogawa_happy']: one(n, 0.5)
-one('home_fg', 0.56)
-# Аой дома: лист 4 кадра — по кадрам, чтобы кадры не «плыли»
-im = Image.open(G + 'aoi_home.png'); fw = im.width // 4
-fr = [regrid(im.crop((i * fw, 0, i * fw + fw, im.height)), (round(fw * 0.7), round(im.height * 0.7))) for i in range(4)]
-sh = Image.new('RGBA', (fr[0].width * 4, fr[0].height)); [sh.paste(f, (i * f.width, 0)) for i, f in enumerate(fr)]; sh.save(G + 'aoi_home_px.png')
-# Фуку (HD-лист 6×112×136) → кадры 24×29 для интерьеров ×2
-F = Image.open('/home/claude/sprout-doctor/public/art/chars/fuku_hd.png')
-fr = [regrid(F.crop((i * 112, 0, i * 112 + 112, 136)), (24, 29), 24) for i in range(F.width // 112)]
-sh = Image.new('RGBA', (24 * len(fr), 29)); [sh.paste(f, (i * 24, 0)) for i, f in enumerate(fr)]; sh.save('/home/claude/sprout-doctor/public/art/chars/fuku_px.png')
-print('ok', fr[0].size)
-# Хайкаби: на арене ×3 (фон 320×180) — пересэмплируем под ту же сетку
-for n in ['haikabi_idle', 'haikabi_rage', 'haikabi_defeated']: one(n, 1.85 / 3)
+if __name__ == '__main__':
+    for n in ['ogawa_neutral', 'ogawa_talk', 'ogawa_happy']: one(n, 0.5)
+    one('home_fg', 0.56)
+    # Аой дома: лист 4 кадра — по кадрам, чтобы кадры не «плыли»
+    im = Image.open(G + 'aoi_home.png'); fw = im.width // 4
+    fr = [regrid(im.crop((i * fw, 0, i * fw + fw, im.height)), (round(fw * 0.7), round(im.height * 0.7))) for i in range(4)]
+    sh = Image.new('RGBA', (fr[0].width * 4, fr[0].height)); [sh.paste(f, (i * f.width, 0)) for i, f in enumerate(fr)]; sh.save(G + 'aoi_home_px.png')
+    # Фуку (HD-лист 6×112×136) → кадры 24×29 для интерьеров ×2
+    F = Image.open('/home/claude/sprout-doctor/public/art/chars/fuku_hd.png')
+    fr = [regrid(F.crop((i * 112, 0, i * 112 + 112, 136)), (24, 29), 24) for i in range(F.width // 112)]
+    sh = Image.new('RGBA', (24 * len(fr), 29)); [sh.paste(f, (i * 24, 0)) for i, f in enumerate(fr)]; sh.save('/home/claude/sprout-doctor/public/art/chars/fuku_px.png')
+    print('ok', fr[0].size)
+    # Хайкаби: на арене ×3 (фон 320×180) — пересэмплируем под ту же сетку
+    for n in ['haikabi_idle', 'haikabi_rage', 'haikabi_defeated']: one(n, 1.85 / 3)

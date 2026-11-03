@@ -163,7 +163,7 @@ class Sound {
   }
 
   // ---------- эффекты ----------
-  play(name: 'meow' | 'bus' | 'page' | 'scan' | 'water' | 'spray' | 'prune' | 'remove' | 'confirm' | 'perfect' | 'good' | 'miss' | 'ok' | 'fail' | 'aphid' | 'swat' | 'rewind' | 'step' | 'click' | 'coin' | 'night' | 'boss' | 'win') {
+  play(name: 'meow' | 'bell' | 'drawer' | 'bus' | 'page' | 'scan' | 'water' | 'spray' | 'prune' | 'remove' | 'confirm' | 'perfect' | 'good' | 'miss' | 'ok' | 'fail' | 'aphid' | 'swat' | 'rewind' | 'step' | 'click' | 'coin' | 'night' | 'boss' | 'win') {
     if (!this.ctx || !this.enabled) return;
     const t = this.ctx.currentTime, S = this.sfx;
     const up = (a: number, b: number, dur: number, type: OscillatorType = 'square', vol = 0.2) => {
@@ -192,6 +192,8 @@ class Sound {
       case 'coin': this.tone('square', 988, t, 0.08, 0.1, 5000, 0.002, S); this.tone('square', 1319, t + 0.07, 0.2, 0.1, 5000, 0.002, S); break;
       case 'night': [12, 7, 3, 0].forEach((s, i) => this.tone('sine', hz(s, 330), t + i * 0.18, 0.8, 0.1, 2000, 0.05, S)); break;
       case 'boss': up(90, 40, 1.4, 'sawtooth', 0.3); this.noise(t, 1.2, 0.15, 300, 'lowpass', S); break;
+      case 'bell': this.tone('sine', 1568, t, 1.2, 0.14, 6000, 0.002, S); this.tone('sine', 2349, t, 0.8, 0.06, 6000, 0.002, S); break;
+      case 'drawer': this.noise(t, 0.35, 0.12, 700, 'lowpass', S); this.tone('triangle', 140, t + 0.3, 0.08, 0.12, 900, 0.005, S); break;
       case 'meow': up(700, 1100, 0.12, 'triangle', 0.12); this.tone('triangle', 900, t + 0.12, 0.25, 0.1, 3000, 0.02, S); break;
       case 'bus': [0, 4].forEach((sm, i) => this.tone('sine', hz(sm, 880), t + i * 0.25, 0.5, 0.12, 4000, 0.005, S)); this.noise(t, 0.8, 0.06, 300, 'lowpass', S); break;
       case 'page': this.noise(t, 0.25, 0.12, 2500, 'bandpass', S); [0, 7, 12].forEach((sm, i) => this.tone('triangle', hz(sm, 660), t + 0.15 + i * 0.08, 0.3, 0.1, 5000, 0.005, S)); break;
