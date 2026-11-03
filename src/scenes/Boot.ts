@@ -37,6 +37,8 @@ export class Boot extends Phaser.Scene {
     // лавка Огавы (tools/art/shop_import.py): слои сцены и товары
     for (const p of ['idle', 'talk', 'happy', 'coins']) this.load.image(`shop-og-${p}`, asset(`art/shop/ogawa_${p}.png`));
     this.load.image('shop-counter', asset('art/shop/counter_body.png'));
+    this.load.image('shop-room-day', asset('art/shop/room_day.png'));
+    this.load.image('shop-room-night', asset('art/shop/room_night.png'));
     this.load.image('shop-drawer', asset('art/shop/drawer.png'));
     this.load.image('shop-tag', asset('art/shop/tag.png'));
     for (const m of ['0', '1']) this.load.image(`shop-mochi${m}`, asset(`art/shop/mochi${m}.png`));

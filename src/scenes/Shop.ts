@@ -8,7 +8,8 @@ import { sound } from '../audio/sound';
 import { makeGlow } from '../art/interiors';
 import { hourNow } from '../world/life';
 
-const K = 2;                                   // масштаб всех слоёв лавки (сетка фона 480×270 ×2)
+const K = 2;                                   // единица раскладки (координаты заданы в «полупикселях» ×2)
+// все слои лавки нарисованы в полном экранном разрешении и показываются ×1 (tools/art/shop_import.py)
 const CX = 150, CY = 262;                      // прилавок 330×149 → 660×298, левый верх
 const DR_X = CX + 95 * K, DR_Y = CY + 73 * K;  // ящик в открытом положении
 const DR_SHUT = 29 * K;                        // насколько ящик «задвинут» в закрытом положении
@@ -44,18 +45,19 @@ export class Shop extends Phaser.Scene {
     sound.setMood('evening'); makeGlow(this);
     this.leaving = false; this.sel = 0; this.icons = []; this.badges = []; this.pose = 'idle'; this.hold = 0;
     const day = hourNow() < 17;
-    const bgKey = day ? 'g-shop_bg_day' : 'g-shop_bg';
-    this.add.image(0, 0, bgKey).setOrigin(0).setScale(K);
+    this.add.image(0, 0, day ? 'shop-room-day' : 'shop-room-night').setOrigin(0);
+    // настольная лампа у манэки-нэко — мягкий тёплый свет
+    this.add.image(588, 292, 'glow').setScale(1.2).setAlpha(day ? 0.15 : 0.35).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffc070);
     // тёплый свет красного фонаря
-    const glow = this.add.image(486, 165, 'glow').setScale(3.4).setAlpha(day ? 0.18 : 0.5).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffb070);
+    const glow = this.add.image(481, 110, 'glow').setScale(3.4).setAlpha(day ? 0.18 : 0.5).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffb070);
     this.tweens.add({ targets: glow, alpha: day ? 0.12 : 0.36, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
     // Огава: дышит (шаг в 1 пиксель сетки), говорит, радуется, считает монеты
-    this.ogawa = this.add.image(OG.x, OG.y, POSE.idle).setOrigin(0.5, 1).setScale(K);
+    this.ogawa = this.add.image(OG.x, OG.y, POSE.idle).setOrigin(0.5, 1);
     this.tweens.add({ targets: this.ogawa, y: OG.y - K, duration: 1700, yoyo: true, repeat: -1, ease: 'Stepped' });
 
     // прилавок (в нём ниша под ящик) и колокольчик — по нему можно позвонить
-    this.add.image(CX, CY, 'shop-counter').setOrigin(0).setScale(K);
+    this.add.image(CX, CY, 'shop-counter').setOrigin(0);
     this.add.zone(CX + 20 * K, CY + 26 * K, 30 * K, 24 * K).setOrigin(0).setInteractive({ useHandCursor: true })
       .on('pointerdown', () => { sound.play('bell'); this.speak(['Да-да, я здесь! Не так громко — Моти спит.', 'Иду-иду! Колокольчик ещё дедушкин.'][Math.floor(Math.random() * 2)]); });
     // пар над чаем
@@ -66,12 +68,12 @@ export class Shop extends Phaser.Scene {
 
     // ящик с товарами: выезжает из прилавка; виден только ниже кромки столешницы
     this.tray = this.add.container(DR_X, DR_Y - DR_SHUT);
-    this.tray.add(this.add.image(0, 0, 'shop-drawer').setOrigin(0).setScale(K));
+    this.tray.add(this.add.image(0, 0, 'shop-drawer').setOrigin(0));
     const mask = this.make.graphics({}, false); mask.fillStyle(0xffffff).fillRect(CX, DR_Y, 700, 200);
     this.tray.setMask(mask.createGeometryMask());
 
     // Моти дремлет на подушке на прилавке; иногда приоткрывает глаз; её можно погладить
-    this.mochi = this.add.image(CX + 218 * K, CY + 56 * K, 'shop-mochi0').setOrigin(0.5, 1).setScale(K).setInteractive({ useHandCursor: true });
+    this.mochi = this.add.image(CX + 218 * K, CY + 56 * K, 'shop-mochi0').setOrigin(0.5, 1).setInteractive({ useHandCursor: true });
     this.mochi.on('pointerdown', () => this.petMochi());
     const doze = () => {
       if (!this.scene.isActive()) return;
@@ -88,7 +90,7 @@ export class Shop extends Phaser.Scene {
     });
     // время суток: днём светлее, вечером тёплый полумрак и ярче фонарь
     if (day) this.add.rectangle(0, 0, 960, 540, 0xeaf4ff, 0.08).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD);
-    else { this.add.rectangle(0, 0, 960, 540, 0x2a1830, 0.26).setOrigin(0); this.add.image(486, 165, 'glow').setScale(4.2).setAlpha(0.35).setBlendMode(Phaser.BlendModes.ADD).setTint(0xff9a50); }
+    else { this.add.rectangle(0, 0, 960, 540, 0x2a1830, 0.26).setOrigin(0); this.add.image(481, 110, 'glow').setScale(4.2).setAlpha(0.35).setBlendMode(Phaser.BlendModes.ADD).setTint(0xff9a50); }
 
     this.buildItems();
     this.buildUi();
@@ -141,7 +143,7 @@ export class Shop extends Phaser.Scene {
         buy: () => { d.fukuMax++; d.fukuCharge++; return 'Батарейку для твоего фонарика я достал у внука в Осаке.'; } },
     ];
     this.items.forEach((it, i) => {
-      const ic = this.add.image(SLOT_X[i], SLOT_Y, `shop-item-${it.icon}-s`).setOrigin(0.5, 1).setScale(K);
+      const ic = this.add.image(SLOT_X[i], SLOT_Y, `shop-item-${it.icon}-s`).setOrigin(0.5, 1);
       this.tray.add(ic); this.icons.push(ic);
       const b = text(this, SLOT_X[i], -6, it.key, 13, HEX.paper, { stroke: HEX.ink, strokeThickness: 4 }).setOrigin(0.5, 1);
       this.tray.add(b); this.badges.push(b);
@@ -203,14 +205,14 @@ export class Shop extends Phaser.Scene {
     pad.fillStyle(0x5a0e1c, 1).fillRoundedRect(x + 18, y + 42, w - 36, 112, 10).fillStyle(0x8e1a2e, 1).fillRoundedRect(x + 22, y + 46, w - 44, 104, 8);
     pad.fillStyle(0x000000, 0.28).fillEllipse(x + w / 2, y + 142, 130, 14);
     this.show.add(pad);
-    const big = this.add.image(x + w / 2 - 12, y + 146, `shop-item-${it.icon}`).setOrigin(0.5, 1).setScale(K).setAlpha(ok ? 1 : 0.65);
+    const big = this.add.image(x + w / 2 - 12, y + 146, `shop-item-${it.icon}`).setOrigin(0.5, 1).setAlpha(ok ? 1 : 0.65);
     const fit = Math.min(1, (w - 84) / big.displayWidth, 100 / big.displayHeight);
-    big.setScale(K * fit);
+    big.setScale(fit);
     this.show.add(big);
     if (pop) { const s0 = big.scale; big.setScale(s0 * 0.8); this.tweens.add({ targets: big, scale: s0, duration: 260, ease: 'Back.out' }); }
     // ценник на верёвочке — покачивается
     const tag = this.add.container(x + w - 36, y + 48);
-    tag.add(this.add.image(0, 0, 'shop-tag').setOrigin(0.5, 0.06).setScale(K));
+    tag.add(this.add.image(0, 0, 'shop-tag').setOrigin(0.5, 0.06));
     const pt = it.key === '1' ? (d.harvest ? `+${d.harvest * 15}` : '0') : p === null ? '—' : String(p);
     tag.add(text(this, -3, 44, pt, 15, ok ? '#8e2230' : '#7a6a5a').setOrigin(0.5));
     this.show.add(tag);
@@ -307,8 +309,8 @@ export class Shop extends Phaser.Scene {
       this.coinsFly(purse, { x: OG.x + 60, y: 320 }, 3);
       this.floatText(purse.x + 30, 460, `−${price}`, '#ff8a8a');
       // копия товара перелетает из ящика к кошельку Аой
-      const fly = this.add.image(slot.x, slot.y, `shop-item-${it.icon}`).setScale(K * 0.5).setDepth(12);
-      this.tweens.add({ targets: fly, x: purse.x, y: purse.y - 10, scale: K * 0.35, angle: 360, duration: 700, ease: 'Quad.in', onComplete: () => { fly.destroy(); sound.play('ok'); } });
+      const fly = this.add.image(slot.x, slot.y, `shop-item-${it.icon}`).setScale(0.5).setDepth(12);
+      this.tweens.add({ targets: fly, x: purse.x, y: purse.y - 10, scale: 0.35, angle: 360, duration: 700, ease: 'Quad.in', onComplete: () => { fly.destroy(); sound.play('ok'); } });
       if (msg) this.speak(msg, 'happy', 1800);
     }
     game.save(); events.emit('stats');
