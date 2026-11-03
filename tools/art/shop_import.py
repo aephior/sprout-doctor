@@ -47,7 +47,7 @@ def load_solid(k):
     holes = nd.binary_fill_holes(a[..., 3] > 0) & (a[..., 3] == 0)
     a[holes, :3] = np.asarray(src)[holes]; a[holes, 3] = 255
     return G.trim(Image.fromarray(a, 'RGBA'))
-counter = load_solid('8dnvm28d'); fit(counter, w=660).save(OUT + 'counter.png')
+counter = load_solid('8dnvm28d'); fit(counter, w=660).save('/home/claude/sprout-doctor/art_src/shop/counter_full.png')
 im = Image.open(glob.glob(SRC + 't44rzjt4*.jpg')[0]).convert('RGB'); w = im.width
 for i, box in enumerate([(0, 0, w // 2 - 8, im.height), (w // 2 + 8, 0, w, im.height)]):
     fit(load('t44rzjt4', box), w=124).save(OUT + f'mochi{i}.png')
@@ -59,7 +59,7 @@ fit(load('qwfecpqw'), h=72).save(OUT + 'tag.png')
 for f in sorted(glob.glob(OUT + '*.png')): print(os.path.basename(f), Image.open(f).size)
 # ящик прилавка — отдельным спрайтом (выдвигается); в прилавке на его месте — тёмная ниша
 import numpy as np
-c = Image.open(OUT + 'counter.png').convert('RGBA'); a = np.asarray(c).copy()
+c = Image.open('/home/claude/sprout-doctor/art_src/shop/counter_full.png').convert('RGBA'); a = np.asarray(c).copy()
 DX0, DY0, DX1, DY1 = 190, 146, 472, 252
 Image.fromarray(a[DY0:DY1, DX0:DX1]).save(OUT + 'drawer.png')
 a[DY0:DY1, DX0 + 1:DX1 - 1, :3] = (58, 32, 24); a[DY0:DY0 + 6, DX0 + 2:DX1 - 2, :3] = (30, 16, 14)

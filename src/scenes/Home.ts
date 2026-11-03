@@ -1,60 +1,77 @@
-// Дом бабушки Хару: уютная комната с футоном и лампой-андон. Отсюда день заканчивается сном:
-// лампа гаснет, комната синеет, «Zzz», ночью развиваются болезни; утром — лучи сквозь сёдзи и записка с итогами ночи.
+// Дом бабушки Хару (слои в полном разрешении, tools/art/house_import.py): комната днём/вечером, футон
+// со столиком и лампой-андон, Аой дома (пьёт чай / зевает / потягивается), Фуку на зарядке.
+// День заканчивается сном прямо в комнате: Аой зевает и ложится, свет гаснет, «z»; ночью развиваются
+// болезни; утром комната светлеет, Аой потягивается, на записке — итоги ночи.
 import { game } from '../state/game';
 import { events } from '../state/events';
 import { makeGlow } from '../art/interiors';
 import { text, HEX, paperPanel } from '../ui/ui';
 import { sound } from '../audio/sound';
-import { CLASSES, CROP_NAME, isHealthy } from '../data/diseases';
-import { ritualText } from './Procedure';
+import { isHealthy, CROP_NAME } from '../data/diseases';
 
-const S = 3;
+const FUTON = { x: 590, y: 552 };        // левый низ футона
+const AOI = { x: 470, y: 520 };          // Аой: низ по центру
+const CARD_W = 372;                      // записки слева, не заслоняют Аой
 
 export class Home extends Phaser.Scene {
   aoi!: Phaser.GameObjects.Sprite;
-  glow!: Phaser.GameObjects.Image;
+  fuku!: Phaser.GameObjects.Sprite;
+  room!: Phaser.GameObjects.Image;
+  roomNight!: Phaser.GameObjects.Image;
+  futon!: Phaser.GameObjects.Image;
+  futonSleep!: Phaser.GameObjects.Image;
   lamps: Phaser.GameObjects.Image[] = [];
-  sleeper?: Phaser.GameObjects.Image;
-  ring?: Phaser.GameObjects.Graphics;
+  steam?: Phaser.GameObjects.Particles.ParticleEmitter;
   shade!: Phaser.GameObjects.Rectangle;
   ui!: Phaser.GameObjects.Container;
   state: 'idle' | 'sleeping' | 'morning' = 'idle';
   notes: string[] = [];
   zs: Phaser.GameObjects.Text[] = [];
-
   auto = false;
   early = false;
+  fukuAwake = true;
+
   constructor() { super('Home'); }
 
   init(data: { auto?: boolean; early?: boolean }) { this.auto = !!data?.auto; this.early = !!data?.early; }
 
   create() {
-    makeGlow(this);
-    this.state = 'idle'; this.notes = []; this.zs = [];
+    makeGlow(this); this.anims0();
+    this.state = 'idle'; this.notes = []; this.zs = []; this.lamps = [];
     sound.setMood('evening');
-    // днём за окном светлое небо и солнце, вечером/ночью — луна
-    this.add.image(0, 0, this.early ? 'g-home_bg_day' : 'g-home_bg').setOrigin(0).setScale(2);
-    // Фуку на зарядке на полке
-    const fuku = this.add.sprite(728, 214, 'fuku-px', 1).setOrigin(0.5, 1).setScale(2);
-    this.tweens.add({ targets: fuku, y: fuku.y - 3, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    // футон, столик и лампа-андон
-    this.add.image(960, 540, 'g-home_fg_px').setOrigin(1, 1).setScale(2);   // все слои — одна сетка пикселей (×2)
-    // Аой в домашнем (вид спереди — первый кадр листа)
-    const tex = this.textures.get('g-aoi_home_px');
-    if (!tex.has('front')) tex.add('front', 0, 0, 0, Math.floor(tex.getSourceImage().width / 4), tex.getSourceImage().height);
-    this.aoi = this.add.sprite(548, 500, 'g-aoi_home_px', 'front').setOrigin(0.5, 1).setScale(2);
-    // «дыхание» — смещение на 1 пиксель сетки, без дробного масштаба
-    this.tweens.add({ targets: this.aoi, y: 498, duration: 1600, yoyo: true, repeat: -1, ease: 'Stepped' });
-    // свет: бумажный фонарь под потолком и лампа-андон у футона
-    this.glow = this.add.image(548, 150, 'glow').setScale(5.5).setAlpha(0.55).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffc880);
-    this.tweens.add({ targets: this.glow, alpha: 0.45, scale: 5.3, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    const andon = this.add.image(910, 345, 'glow').setScale(3.2).setAlpha(0.5).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffd27a);
-    this.tweens.add({ targets: andon, alpha: 0.4, duration: 1200, yoyo: true, repeat: -1 });
-    this.lamps = [this.glow, andon];
-    if (this.early) this.lamps.forEach((l) => { this.tweens.killTweensOf(l); l.setAlpha(0.18); });   // днём лампы почти не видны
-    // пар над чашкой на столике
-    this.add.particles(724, 388, 'pixel', { speedY: { min: -14, max: -8 }, speedX: { min: -3, max: 3 }, lifespan: 1600, frequency: 260, scale: { start: 3, end: 0 }, alpha: { start: 0.5, end: 0 }, tint: 0xffffff });
-    // затемнение для ночи
+    const day = this.early;
+    // комната: дневная внизу, вечерняя поверх (при смене времени просто меняется прозрачность)
+    this.room = this.add.image(0, 0, 'home-room-day').setOrigin(0);
+    this.roomNight = this.add.image(0, 0, 'home-room-night').setOrigin(0).setAlpha(day ? 0 : 1);
+    // бумажный фонарь под потолком и пылинки в луче из окна
+    const lantern = this.add.image(563, 112, 'glow').setScale(3.2).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffc070).setAlpha(day ? 0 : 0.5);
+    this.tweens.add({ targets: lantern, scale: 3.05, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.add.particles(0, 0, 'pixel', {
+      x: { min: 330, max: 520 }, y: { min: 160, max: 440 }, lifespan: 5000, speedY: { min: 2, max: 6 }, speedX: { min: -3, max: 3 },
+      scale: { start: 2, end: 0 }, alpha: { start: day ? 0.7 : 0.25, end: 0 }, frequency: 260, tint: 0xfff2c0,
+    });
+    // Фуку заряжается на сундуке у стены; моргает, ночью спит
+    this.fuku = this.add.sprite(800, 340, 'home-fuku', 1).setOrigin(0.5, 1);
+    this.fukuAwake = true;
+    const blink = () => {
+      if (!this.scene.isActive()) return;
+      if (this.fukuAwake) { this.fuku.setFrame(0); this.time.delayedCall(170, () => this.fukuAwake && this.fuku.setFrame(1)); }
+      this.time.delayedCall(2500 + Math.random() * 3500, blink);
+    };
+    this.time.delayedCall(2000, blink);
+    // футон со столиком: днём лампа-андон погашена, вечером горит
+    this.futon = this.add.image(FUTON.x, FUTON.y, day ? 'home-futon-day' : 'home-futon-eve').setOrigin(0, 1);
+    this.futonSleep = this.add.image(FUTON.x, FUTON.y, 'home-futon-sleep').setOrigin(0, 1).setAlpha(0);
+    const andon = this.add.image(926, 374, 'glow').setScale(1.9).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffd27a).setAlpha(day ? 0 : 0.45);
+    this.tweens.add({ targets: andon, alpha: day ? 0 : 0.36, duration: 1100, yoyo: true, repeat: -1 });
+    this.lamps = [lantern, andon];
+    // Аой с чашкой чая: «дышит» кадрами, над чаем пар
+    this.aoi = this.add.sprite(AOI.x, AOI.y, 'home-aoi-idle', 0).setOrigin(0.5, 1).play('home-aoi-idle');
+    this.steam = this.add.particles(AOI.x + 8, AOI.y - 118, 'pixel', {
+      speedY: { min: -14, max: -8 }, speedX: { min: -3, max: 3 }, lifespan: 1500, frequency: 260, scale: { start: 3, end: 1 },
+      alpha: { start: 0.5, end: 0 }, tint: 0xffffff,
+    });
+    // ночь — синеватое затемнение поверх комнаты
     this.shade = this.add.rectangle(0, 0, 960, 540, 0x141432, 0).setOrigin(0).setDepth(5);
     this.ui = this.add.container(0, 0).setDepth(10);
     this.menu();
@@ -63,6 +80,14 @@ export class Home extends Phaser.Scene {
     if (this.auto) this.time.delayedCall(600, () => this.sleep());
     events.on('diary-closed', this.diaryClosed, this);
     this.events.once('shutdown', () => events.off('diary-closed', this.diaryClosed, this));
+  }
+
+  /** Анимации слоёв дома (создаются один раз на всю игру). */
+  anims0() {
+    const a = this.anims;
+    if (!a.exists('home-aoi-idle')) a.create({ key: 'home-aoi-idle', frames: a.generateFrameNumbers('home-aoi-idle', { frames: [0, 1, 0, 2] }), frameRate: 1.6, repeat: -1 });
+    if (!a.exists('home-aoi-yawn')) a.create({ key: 'home-aoi-yawn', frames: a.generateFrameNumbers('home-aoi-yawn', { frames: [0, 1, 1, 2, 2] }), frameRate: 4 });
+    if (!a.exists('home-aoi-stretch')) a.create({ key: 'home-aoi-stretch', frames: a.generateFrameNumbers('home-aoi-stretch', { frames: [0, 1, 1, 2] }), frameRate: 3 });
   }
 
   diaryClosed() { this.input.keyboard!.enabled = true; this.menu(); }
@@ -75,15 +100,18 @@ export class Home extends Phaser.Scene {
     } else if (this.state === 'morning' && (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape' || e.key === '1')) this.leave(true);
   }
 
-  card(lines: string[], options: [string, string, () => void][], x = 24, w = 460) {
+  card(lines: string[], options: [string, string, () => void][], x = 24, w = CARD_W) {
     this.ui.removeAll(true);
     const body = text(this, x + 18, 0, lines.join('\n'), 16, HEX.ink, { wordWrap: { width: w - 36 }, lineSpacing: 5 });
-    const h = body.height + 30 + options.length * 30;
+    const opts = options.map(([k, label, fn]) => text(this, x + 18, 0, `[${k}] ${label}`, 17, '#c8323c', { wordWrap: { width: w - 36 } })
+      .setInteractive({ useHandCursor: true }).on('pointerdown', fn));
+    const h = body.height + 30 + opts.reduce((s, o) => s + o.height + 10, 0);
     const y = 540 - 24 - h;
     this.ui.add(paperPanel(this, x, y, w, h));
     body.setY(y + 14); this.ui.add(body);
-    options.forEach(([k, label, fn], i) => this.ui.add(text(this, x + 18, y + body.height + 22 + i * 30, `[${k}] ${label}`, 17, '#c8323c')
-      .setInteractive({ useHandCursor: true }).on('pointerdown', fn)));
+    let oy = y + body.height + 22;
+    opts.forEach((o) => { o.setY(oy); oy += o.height + 10; this.ui.add(o); });
+    this.ui.setAlpha(0); this.tweens.add({ targets: this.ui, alpha: 1, duration: 250 });
   }
 
   menu() {
@@ -92,7 +120,7 @@ export class Home extends Phaser.Scene {
       ['1', this.early ? 'Вздремнуть до утра (день закончится)' : 'Лечь спать', () => this.sleep()],
       ['2', 'Перечитать дневник Хару', () => this.diary()],
     ];
-    if (!this.auto) opts.push(['Esc', 'Ещё не время — вернуться во двор', () => this.leave(false)]);
+    if (!this.auto) opts.push(['Esc', 'Ещё не время — во двор', () => this.leave(false)]);
     this.card([`Дом бабушки Хару. ${['', 'Весна', 'Лето', 'Осень'][d.season]}, день ${Math.min(d.day, 5)}.`,
       this.auto ? 'Уже полночь — глаза слипаются.' : this.early ? 'Ещё светло. Можно вздремнуть до утра — но тогда день закончится.' : 'Тихо тикают часы. Чай ещё тёплый.'], opts);
   }
@@ -100,6 +128,7 @@ export class Home extends Phaser.Scene {
   diary() {
     this.ui.removeAll(true);
     this.input.keyboard!.enabled = false;
+    this.fuku.setFrame(1);   // Фуку просыпается, когда открывают дневник
     this.scene.launch('Diary', { returnTo: 'Home' });
   }
 
@@ -108,34 +137,33 @@ export class Home extends Phaser.Scene {
     this.state = 'sleeping';
     this.ui.removeAll(true);
     sound.play('night');
-    // Аой ложится: крупный план — спит под одеялом
-    this.tweens.add({ targets: this.aoi, alpha: 0, duration: 400 });
-    // круглое «окно сна»: картинка в круглой маске с бумажной каймой
-    const ring = this.add.graphics().setDepth(6).setAlpha(0);
-    ring.fillStyle(0x1e1b2e, 0.55).fillCircle(480, 262, 214).fillStyle(0x6f86b8, 1).fillCircle(480, 262, 198).lineStyle(6, 0xf6e7c1, 0.9).strokeCircle(480, 262, 200);
-    const mask = this.make.graphics({}, false); mask.fillStyle(0xffffff).fillCircle(480, 262, 197);
-    // картинка сна заполняет круг целиком (без полос и прямых краёв внутри)
-    const sl = this.textures.get('g-aoi_sleep').getSourceImage() as HTMLImageElement;
-    const sc0 = Math.max(400 / sl.width, 400 / sl.height) * 1.04;
-    this.sleeper = this.add.image(480, 262, 'g-aoi_sleep').setScale(sc0).setAlpha(0).setDepth(6).setMask(mask.createGeometryMask());
-    this.tweens.add({ targets: [this.sleeper, ring], alpha: 1, duration: 900, delay: 900 });
-    this.ring = ring;
-    this.tweens.add({ targets: this.sleeper, scale: sc0 * 1.02, duration: 1600, yoyo: true, repeat: -1, delay: 1800, ease: 'Sine.inOut' });
-    // лампы гаснут, комната синеет
-    this.lamps.forEach((l) => { this.tweens.killTweensOf(l); this.tweens.add({ targets: l, alpha: 0, duration: 1600, delay: 600 }); });
-    this.tweens.add({ targets: this.shade, fillAlpha: 0.62, duration: 1800, delay: 600 });
-    // Zzz
-    this.time.delayedCall(1600, () => {
-      for (let i = 0; i < 6; i++) this.time.delayedCall(i * 700, () => {
+    // Аой зевает и ложится: её слой сменяется футоном со спящей Аой
+    this.steam?.stop();
+    this.aoi.play('home-aoi-yawn');
+    this.time.delayedCall(1300, () => {
+      this.tweens.add({ targets: this.aoi, alpha: 0, duration: 450 });
+      this.tweens.add({ targets: this.futonSleep, alpha: 1, duration: 700, delay: 200 });
+      this.tweens.add({ targets: this.futon, alpha: 0, duration: 700, delay: 200 });
+    });
+    // свет гаснет, за окном — ночь; Фуку засыпает
+    this.time.delayedCall(1500, () => {
+      this.lamps.forEach((l) => { this.tweens.killTweensOf(l); this.tweens.add({ targets: l, alpha: 0, duration: 1500 }); });
+      this.tweens.add({ targets: this.roomNight, alpha: 1, duration: 1500 });
+      this.tweens.add({ targets: this.shade, fillAlpha: 0.55, duration: 1800 });
+      this.fukuAwake = false; this.fuku.setFrame(0);
+    });
+    // «z» над спящей Аой
+    this.time.delayedCall(2300, () => {
+      for (let i = 0; i < 6; i++) this.time.delayedCall(i * 650, () => {
         if (this.state !== 'sleeping') return;
-        const z = text(this, 560 + (i % 4) * 10, 230, 'z', 18 + (i % 4) * 6, HEX.paper).setDepth(7).setAlpha(0.9);   // внутри круга сна
+        const z = text(this, 724 + (i % 3) * 8, 384, 'z', 18 + (i % 3) * 6, HEX.paper, { stroke: HEX.ink, strokeThickness: 3 }).setDepth(7).setAlpha(0.95);
         this.zs.push(z);
-        this.tweens.add({ targets: z, y: z.y - 80, x: z.x + 30, alpha: 0, duration: 2200 });
+        this.tweens.add({ targets: z, y: z.y - 80, x: z.x + 26, alpha: 0, duration: 2200 });
       });
       sound.setMood('off');
     });
-    // ночь: развитие болезней (сцена сна держится ~5 с, чтобы ночь ощущалась)
-    this.time.delayedCall(5200, () => {
+    // ночь: развитие болезней
+    this.time.delayedCall(6200, () => {
       this.notes = game.endDay();
       events.emit('refresh-beds');
       this.morning();
@@ -146,16 +174,22 @@ export class Home extends Phaser.Scene {
     this.state = 'morning';
     this.zs.forEach((z) => z.active && this.tweens.add({ targets: z, alpha: 0, duration: 300, onComplete: () => z.destroy() })); this.zs = [];
     const d = game.data;
-    // утро: за окном светлеет (дневной вариант комнаты проявляется), лучи сквозь сёдзи
-    const w = this.add.image(0, 0, 'g-home_bg_day').setOrigin(0).setScale(2).setAlpha(0).setDepth(4).setCrop(150, 55, 75, 100);
-    const rays = this.add.graphics().setDepth(7).setAlpha(0).setBlendMode(Phaser.BlendModes.ADD);
-    rays.fillStyle(0xffd27a, 0.16);
-    for (let i = 0; i < 3; i++) rays.fillPoints([{ x: 320 + i * 42, y: 124 }, { x: 352 + i * 42, y: 124 }, { x: 520 + i * 70, y: 540 }, { x: 440 + i * 70, y: 540 }], true);
+    // утро: комната светлеет (дневной слой), солнечная вспышка из окна
     this.tweens.add({ targets: this.shade, fillAlpha: 0, duration: 1600 });
-    this.tweens.add({ targets: [w, rays], alpha: 1, duration: 1600 });
-    if (this.sleeper) this.tweens.add({ targets: [this.sleeper, this.ring], alpha: 0, duration: 900 });
+    this.tweens.add({ targets: this.roomNight, alpha: 0, duration: 1600 });
+    const sun = this.add.rectangle(0, 0, 960, 540, 0xfff0c0, 0).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(6);
+    this.tweens.add({ targets: sun, fillAlpha: 0.22, duration: 900, yoyo: true, onComplete: () => sun.destroy() });
+    this.futon.setTexture('home-futon-day');
+    this.tweens.add({ targets: this.futon, alpha: 1, duration: 800, delay: 600 });
+    this.tweens.add({ targets: this.futonSleep, alpha: 0, duration: 800, delay: 600 });
     sound.setMood('day'); sound.play('ok');
-    this.time.delayedCall(1000, () => this.tweens.add({ targets: this.aoi, alpha: 1, duration: 500 }));   // сначала гаснет «сон», потом встаёт Аой
+    // Аой встаёт и потягивается, потом снова с чаем; Фуку просыпается
+    this.time.delayedCall(900, () => {
+      this.aoi.setAlpha(1).play('home-aoi-stretch');
+      this.aoi.once('animationcomplete', () => { this.aoi.play('home-aoi-idle'); this.steam?.start(); });
+      this.fukuAwake = true; this.fuku.setFrame(1);
+      this.tweens.add({ targets: this.fuku, y: this.fuku.y - 6, duration: 160, yoyo: true });
+    });
     const sick = d.beds.filter((b) => b.crop && !b.dead && !isHealthy(game.cls(b))).length;
     const lines = [`Утро. ${['', 'Весна', 'Лето', 'Осень'][d.season]}, день ${Math.min(d.day, 5)}.`];
     const events_ = this.notes.filter((n) => n !== 'season-end');
@@ -163,7 +197,7 @@ export class Home extends Phaser.Scene {
     lines.push(`Больных грядок: ${sick}. Влажность ${d.weather.humidity}%. Заряд Фуку восстановлен.`);
     const first = d.beds.find((b) => b.crop && !b.dead && !isHealthy(game.cls(b)));
     if (first) lines.push(`Фуку: «Начнём с грядки ${first.id + 1} (${CROP_NAME[first.crop!]}) — там споры».`);
-    this.time.delayedCall(1200, () => this.card(lines, [['Enter', 'Выйти во двор', () => this.leave(true)]], 24, 440));   // карточка не заслоняет Аой
+    this.time.delayedCall(2200, () => this.card(lines, [['Enter', 'Выйти во двор', () => this.leave(true)]]));
   }
 
   leave(slept: boolean) {
@@ -178,4 +212,3 @@ export class Home extends Phaser.Scene {
     });
   }
 }
-

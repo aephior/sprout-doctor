@@ -8,9 +8,7 @@ import { LAYOUT } from '../world/layout';
 /** Персонажи фермы 16×20: столбцы — вниз/вверх/влево/вправо, строки — кадры шага. */
 export const CHARS = ['aoi-na', 'ogawa-na', 'fisher-na', 'villager2-na', 'villager16-na', 'villager25-na', 'villager12-na'];
 
-export const GEN = ['haikabi_idle_px', 'haikabi_rage_px', 'haikabi_defeated_px', 'home_fg_px', 'aoi_home_px', 'title', 'shop_bg', 'shop_bg_day', 'home_bg_day', 'shop_counter', 'home_bg', 'home_fg', 'evening', 'diary_book', 'aoi_sleep', 'aoi_sheet', 'aoi_home', 'aoi_chibi',
-  'ogawa_neutral', 'ogawa_talk', 'ogawa_happy', 'haru_photo', 'fisher', 'mochi_sit', 'mochi_walk', 'mochi_sleep',
-  'haikabi_idle', 'haikabi_rage', 'haikabi_defeated', 'aphid_idle', 'aphid_dash', 'fuku_happy', 'fuku_alert', 'fuku_damaged'];
+export const GEN = ['title', 'evening', 'diary_book', 'aoi_sheet', 'aoi_chibi', 'haru_photo', 'fisher', 'mochi_sit', 'mochi_walk', 'mochi_sleep', 'aphid_idle', 'aphid_dash', 'fuku_happy', 'fuku_alert', 'fuku_damaged'];
 
 /** Объекты мира, у которых есть летний и осенний вариант. */
 export const SEASONAL = ['ground', 'grove', 'pines', 'sakura', 'bush', 'flowers'];
@@ -33,11 +31,22 @@ export class Boot extends Phaser.Scene {
     this.load.image('bed-wet', asset('art/naw/bed_wet.png'));
     this.load.image('closeup-dry', asset('art/naw/closeup_dry.png'));
     this.load.image('closeup-wet', asset('art/naw/closeup_wet.png'));
-    this.load.image('boss-arena', asset('art/world/boss_arena.png'));
     // лавка Огавы (tools/art/shop_import.py): слои сцены и товары
     for (const p of ['idle', 'talk', 'happy', 'coins']) this.load.image(`shop-og-${p}`, asset(`art/shop/ogawa_${p}.png`));
     this.load.image('shop-counter', asset('art/shop/counter_body.png'));
     this.load.image('shop-room-day', asset('art/shop/room_day.png'));
+    // дом бабушки Хару (tools/art/house_import.py)
+    this.load.image('home-room-day', asset('art/home/room_day.png'));
+    this.load.image('home-room-night', asset('art/home/room_night.png'));
+    for (const f of ['day', 'eve', 'sleep']) this.load.image(`home-futon-${f}`, asset(`art/home/futon_${f}.png`));
+    this.load.spritesheet('home-aoi-idle', asset('art/home/aoi_idle.png'), { frameWidth: 130, frameHeight: 251 });
+    this.load.spritesheet('home-aoi-yawn', asset('art/home/aoi_yawn.png'), { frameWidth: 138, frameHeight: 251 });
+    this.load.spritesheet('home-aoi-stretch', asset('art/home/aoi_stretch.png'), { frameWidth: 155, frameHeight: 251 });
+    this.load.spritesheet('home-fuku', asset('art/home/fuku_charge.png'), { frameWidth: 57, frameHeight: 70 });
+    this.load.image('greenhouse', asset('art/world/greenhouse.png'));
+    for (const h of ['idle', 'rage', 'defeated']) this.load.image(`haikabi-${h}`, asset(`art/world/haikabi_${h}.png`));
+    this.load.image('boss-aoi', asset('art/world/boss_aoi.png'));
+    this.load.image('boss-fuku', asset('art/world/boss_fuku.png'));
     this.load.image('shop-room-night', asset('art/shop/room_night.png'));
     this.load.image('shop-drawer', asset('art/shop/drawer.png'));
     this.load.image('shop-tag', asset('art/shop/tag.png'));
@@ -53,7 +62,6 @@ export class Boot extends Phaser.Scene {
     this.load.spritesheet('mochi-na', asset('art/na/mochi.png'), { frameWidth: 16, frameHeight: 14 });
     this.load.spritesheet('fuku-na', asset('art/na/fuku.png'), { frameWidth: 12, frameHeight: 14 });
     this.load.spritesheet('fuku', asset('art/chars/fuku_hd.png'), { frameWidth: 112, frameHeight: 136 });
-    this.load.spritesheet('fuku-px', asset('art/chars/fuku_px.png'), { frameWidth: 24, frameHeight: 29 });   // для интерьеров ×2
     for (const g of GEN) this.load.image('g-' + g, asset(`art/gen/${g}.png`));
     this.load.on('filecomplete-json-cards', (_k: string, _t: string, data: Card[]) => {
       data.forEach((c) => this.load.image(`card:${c.file}`, asset(`cards/${c.file}`)));

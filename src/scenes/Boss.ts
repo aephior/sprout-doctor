@@ -45,8 +45,9 @@ export class Boss extends Phaser.Scene {
   create() {
     this.updateCam = undefined; this.hand = null; this.msg = ''; this.showSeq = true; this.locked = true;
     this.phase = 1; this.hp = 100; this.bossHp = 100; this.step = 0; this.rewinds = 0; this.sporons = []; this.done = false; this.grades = [];
-    // заброшенная теплица ночью (tools/art/boss_arena.py, 320×180 ×3): разбитое стекло, мёртвые грядки, плесень
-    this.add.image(0, 0, 'boss-arena').setOrigin(0).setScale(3);
+    // разрушенная теплица на закате (tools/art/house_import.py): все слои боя — в полном разрешении
+    this.add.image(0, 0, 'greenhouse').setOrigin(0);
+    this.add.rectangle(0, 0, 960, 540, 0x1e1440, 0.18).setOrigin(0);   // чуть сумрачнее — споры глушат свет
     const g = this.add.graphics();
     g.fillStyle(0x1e1830, 0.92).fillRect(0, 474, 960, 66);
     this.add.particles(0, 0, 'pixel', {
@@ -54,13 +55,13 @@ export class Boss extends Phaser.Scene {
       scale: { start: 3, end: 0 }, alpha: { start: 0.6, end: 0 }, frequency: 60, tint: [0x6b4e8c, 0x9a9a9a, 0xff4f9a],
     });
 
-    // Хайкаби пересэмплирована под сетку арены (×3); щупальца не уходят под нижнюю панель
-    this.boss = this.add.image(480, 290, 'g-haikabi_idle_px').setScale(3);
-    this.tweens.add({ targets: this.boss, y: 299, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    // Аой и Фуку — те же спрайты, что на ферме, ×3
-    this.add.ellipse(290, 464, 36, 10, 0x000000, 0.35);
-    this.aoi = this.add.sprite(290, 468, 'aoi-na', 3).setOrigin(0.5, 1).setScale(3);
-    this.fuku = this.add.sprite(124, 120, 'fuku-na', 0).setScale(4).play('fukuna-idle');
+    // Хайкаби парит над полом теплицы; щупальца не уходят под нижнюю панель
+    this.boss = this.add.image(500, 456, 'haikabi-idle').setOrigin(0.5, 1);
+    this.tweens.add({ targets: this.boss, y: 466, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    // Аой и Фуку — рисованные, в том же разрешении, что арена
+    this.add.ellipse(230, 466, 90, 16, 0x000000, 0.35);
+    this.aoi = this.add.sprite(230, 470, 'boss-aoi').setOrigin(0.5, 1);
+    this.fuku = this.add.sprite(124, 120, 'boss-fuku');
     this.tweens.add({ targets: this.fuku, y: 129, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.ui = this.add.container(0, 0).setDepth(20);
     this.ghost = this.add.graphics().setDepth(30);
@@ -97,7 +98,7 @@ export class Boss extends Phaser.Scene {
       this.time.delayedCall(800, () => this.spawnSporon());
     }
     if (n === 3) {
-      this.boss.setTexture('g-haikabi_rage_px');
+      this.boss.setTexture('haikabi-rage');
       this.cameras.main.shake(400, 0.01);
       const pool: Action[] = ['water', 'spray', 'prune'];
       this.need = Array.from({ length: 3 }, () => pool[Math.floor(Math.random() * 3)]);
@@ -173,7 +174,7 @@ export class Boss extends Phaser.Scene {
     this.time.delayedCall(1700, () => {
       vhs.destroy();
       if (this.hp <= 0) { this.hp = 60; this.bossHp = Math.min(100, this.bossHp + 20); this.say('Теплица едва держится… Фуку перезапустил защиту. Ещё раз!'); }
-      if (this.phase === 3) this.boss.setTexture('g-haikabi_rage_px');
+      if (this.phase === 3) this.boss.setTexture('haikabi-rage');
       this.startPhase(this.phase);
     });
     this.redraw();
@@ -183,8 +184,8 @@ export class Boss extends Phaser.Scene {
     sound.setMood('evening'); sound.play('win');
     this.done = true;
     this.tweens.killTweensOf(this.boss);
-    this.boss.setTexture('g-haikabi_defeated_px');
-    this.tweens.add({ targets: this.boss, y: 360, alpha: 0.85, duration: 1600, ease: 'Quad.out' });
+    this.boss.setTexture('haikabi-defeated');
+    this.tweens.add({ targets: this.boss, y: 490, alpha: 0.85, duration: 1600, ease: 'Quad.out' });
     const d = game.data;
     d.bossDone = true; d.completed = true;   // финал пройден: «Продолжить» больше не ведёт в бой
     const avg = this.grades.reduce((a, b) => a + b, 0) / Math.max(1, this.grades.length);
