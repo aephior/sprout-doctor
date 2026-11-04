@@ -6,7 +6,7 @@
 
 **Играть онлайн:** https://aephior.github.io/sprout-doctor/ (Chrome или Edge; для управления жестами разрешите доступ к камере).
 
-**Офлайн:** скачайте `SproutDoctor.html` из раздела Releases и откройте в Chrome/Edge (файл ~50 МБ, первая загрузка 10–20 с).
+**Офлайн:** скачайте [SproutDoctor.html](https://aephior.github.io/sprout-doctor/SproutDoctor.html) (правая кнопка → «Сохранить ссылку как…») и откройте в Chrome/Edge (файл ~50 МБ, первая загрузка 10–20 с).
 
 **Сборка из исходников:**
 
