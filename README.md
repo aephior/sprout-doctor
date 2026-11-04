@@ -4,12 +4,19 @@
 
 ## Запуск
 
+**Играть онлайн:** https://aephior.github.io/sprout-doctor/ (Chrome или Edge; для управления жестами разрешите доступ к камере).
+
+**Офлайн:** скачайте `SproutDoctor.html` из раздела Releases и откройте в Chrome/Edge (файл ~50 МБ, первая загрузка 10–20 с).
+
+**Сборка из исходников:**
+
 ```sh
-./build.sh                       # TypeScript → dist/ (нужны tsc и bun)
-python3 -m http.server -d dist   # открыть http://localhost:8000
+npm i -g typescript bun        # один раз
+./build.sh                     # TypeScript → dist/ (+ release/SproutDoctor.html)
+npx serve dist                 # или: python3 -m http.server -d dist → http://localhost:8000
 ```
 
-Игра работает офлайн: движок Phaser лежит в `vendor/`, нейросеть выполняется собственным движком в Web Worker.
+Движок Phaser 3.80 (MIT) лежит в `vendor/phaser/`, трекинг рук MediaPipe — в `vendor/mediapipe-hands/`; интернет во время игры не нужен.
 
 ## Структура
 
