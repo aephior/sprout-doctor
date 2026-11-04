@@ -94,7 +94,7 @@ export class GestureSetup extends Phaser.Scene {
     // превью камеры
     add(neonPanel(this, 24, 70, 400, 300, gestures.active ? C.teal : 0x55536e));
     if (gestures.active && this.textures.exists('cam-setup')) add(this.add.image(24, 70, 'cam-setup').setOrigin(0));
-    else add(text(this, 224, 200, gestures.possible ? 'Камера выключена' : 'Камера недоступна\nв веб-версии', 18, '#8a88b0', { align: 'center' }).setOrigin(0.5));
+    else if (!this.status) add(text(this, 224, 200, gestures.possible ? 'Камера выключена' : 'Камера недоступна\nв веб-версии', 18, '#8a88b0', { align: 'center' }).setOrigin(0.5));
 
     // распознавание
     const i = this.info;
@@ -137,7 +137,7 @@ export class GestureSetup extends Phaser.Scene {
     btn(480, 'Скачать датасет', () => this.download(), gestures.rec.knn.samples.length > 0 && !!window.__SD_STANDALONE);
     btn(700, 'Тест жестов', () => this.scene.start('GestureTest'), gestures.possible);
     btn(850, 'Назад', () => this.back());
-    if (this.status) add(text(this, 480, 50, this.status, 14, HEX.orange).setOrigin(0.5));
+    if (this.status) add(text(this, 224, 200, this.status, 14, HEX.orange, { wordWrap: { width: 380 }, align: 'center' }).setOrigin(0.5));   // внутри окна камеры, с переносом
   }
 
   download() {

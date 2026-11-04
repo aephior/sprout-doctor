@@ -45,10 +45,20 @@ export class HandTracker {
   private async doStart() {
     await loadScript();
     if (!this.hands) {
-      this.hands = new Hands({ locateFile: (f: string) => asset('mediapipe/' + f) });
-      this.hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5, selfieMode: false });
-      this.hands.onResults((r: any) => this.onResults(r));
-      await this.hands.initialize();
+      // MediaPipe считает руку на видеокарте (WebGL). Если браузер не даёт WebGL (выключено аппаратное
+      // ускорение, видеокарта в чёрном списке, исчерпан лимит контекстов), библиотека показывает системное
+      // окно alert и молча ломается. Проверяем заранее и подменяем alert на понятную ошибку.
+      if (!webglAvailable()) throw new Error(WEBGL_MSG);
+      let failed = false;
+      const alert0 = window.alert;
+      window.alert = (m?: unknown) => { failed = true; console.warn('[MediaPipe]', m); };
+      try {
+        this.hands = new Hands({ locateFile: (f: string) => asset('mediapipe/' + f) });
+        this.hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5, selfieMode: false });
+        this.hands.onResults((r: any) => this.onResults(r));
+        await this.hands.initialize();
+      } finally { window.alert = alert0; }
+      if (failed) { try { this.hands.close(); } catch { /* ignore */ } this.hands = null; throw new Error(WEBGL_MSG); }
     }
     this.stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
     this.video.srcObject = this.stream;
@@ -113,6 +123,18 @@ export class HandTracker {
   }
 
   get active() { return this.running && !this.paused; }
+}
+
+const WEBGL_MSG = 'Трекинг рук не запустился: браузер не дал WebGL. Включите «Аппаратное ускорение» в настройках браузера (Chrome: Настройки › Система) и перезапустите его. Играть можно клавишами.';
+/** Есть ли у браузера свободный WebGL-контекст (проверочный холст сразу освобождается). */
+function webglAvailable() {
+  try {
+    const c = document.createElement('canvas');
+    const gl = (c.getContext('webgl2') || c.getContext('webgl')) as WebGLRenderingContext | null;
+    if (!gl) return false;
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return true;
+  } catch { return false; }
 }
 
 export const tracker = new HandTracker();
