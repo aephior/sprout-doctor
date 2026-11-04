@@ -1,0 +1,80 @@
+[
+ {
+  "id": 0,
+  "folder": "Tomato___healthy",
+  "key": "tomato_healthy",
+  "name": "Томат: здоров"
+ },
+ {
+  "id": 1,
+  "folder": "Tomato___Early_blight",
+  "key": "tomato_early_blight",
+  "name": "Томат: альтернариоз"
+ },
+ {
+  "id": 2,
+  "folder": "Tomato___Late_blight",
+  "key": "tomato_late_blight",
+  "name": "Томат: фитофтороз"
+ },
+ {
+  "id": 3,
+  "folder": "Tomato___Bacterial_spot",
+  "key": "tomato_bacterial_spot",
+  "name": "Томат: бактериальная пятнистость"
+ },
+ {
+  "id": 4,
+  "folder": "Tomato___Leaf_Mold",
+  "key": "tomato_leaf_mold",
+  "name": "Томат: кладоспориоз"
+ },
+ {
+  "id": 5,
+  "folder": "Tomato___Septoria_leaf_spot",
+  "key": "tomato_septoria",
+  "name": "Томат: септориоз"
+ },
+ {
+  "id": 6,
+  "folder": "Tomato___Spider_mites Two-spotted_spider_mite",
+  "key": "tomato_spider_mites",
+  "name": "Томат: паутинный клещ"
+ },
+ {
+  "id": 7,
+  "folder": "Tomato___Tomato_Yellow_Leaf_Curl_Virus",
+  "key": "tomato_ylcv",
+  "name": "Томат: вирус жёлтой курчавости"
+ },
+ {
+  "id": 8,
+  "folder": "Potato___healthy",
+  "key": "potato_healthy",
+  "name": "Картофель: здоров"
+ },
+ {
+  "id": 9,
+  "folder": "Potato___Early_blight",
+  "key": "potato_early_blight",
+  "name": "Картофель: альтернариоз"
+ },
+ {
+  "id": 10,
+  "folder": "Potato___Late_blight",
+  "key": "potato_late_blight",
+  "name": "Картофель: фитофтороз"
+ },
+ {
+  "id": 11,
+  "folder": "Pepper,_bell___healthy",
+  "key": "pepper_healthy",
+  "name": "Перец: здоров"
+ },
+ {
+  "id": 12,
+  "folder": "Pepper,_bell___Bacterial_spot",
+  "key": "pepper_bacterial_spot",
+  "name": "Перец: бактериальная пятнистость"
+ }
+]
