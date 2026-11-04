@@ -201,7 +201,7 @@ export const LAYOUT = {
   },
   {
    "key": "torii",
-   "x": 224,
+   "x": 239,
    "y": 256,
    "depth": 276,
    "solid": null,
@@ -213,7 +213,7 @@ export const LAYOUT = {
    "y": 0,
    "depth": 0,
    "solid": [
-    226,
+    241,
     276,
     6,
     6
@@ -226,7 +226,7 @@ export const LAYOUT = {
    "y": 0,
    "depth": 0,
    "solid": [
-    266,
+    265,
     276,
     6,
     6
@@ -235,11 +235,11 @@ export const LAYOUT = {
   },
   {
    "key": "lantern",
-   "x": 208,
+   "x": 219,
    "y": 258,
    "depth": 273,
    "solid": [
-    209,
+    220,
     266.25,
     12,
     6.0
@@ -248,11 +248,11 @@ export const LAYOUT = {
   },
   {
    "key": "lantern",
-   "x": 276,
+   "x": 279,
    "y": 258,
    "depth": 273,
    "solid": [
-    277,
+    280,
     266.25,
     12,
     6.0
@@ -495,32 +495,6 @@ export const LAYOUT = {
   },
   {
    "key": "bush",
-   "x": 300,
-   "y": 100,
-   "depth": 114,
-   "solid": [
-    301,
-    107.7,
-    14,
-    5.6000000000000005
-   ],
-   "hidden": false
-  },
-  {
-   "key": "bush",
-   "x": 420,
-   "y": 160,
-   "depth": 174,
-   "solid": [
-    421,
-    167.7,
-    14,
-    5.6000000000000005
-   ],
-   "hidden": false
-  },
-  {
-   "key": "bush",
    "x": 380,
    "y": 290,
    "depth": 304,
@@ -534,12 +508,12 @@ export const LAYOUT = {
   },
   {
    "key": "bush",
-   "x": 250,
-   "y": 300,
-   "depth": 314,
+   "x": 190,
+   "y": 220,
+   "depth": 234,
    "solid": [
-    251,
-    307.7,
+    191,
+    227.7,
     14,
     5.6000000000000005
    ],
@@ -547,12 +521,38 @@ export const LAYOUT = {
   },
   {
    "key": "bush",
-   "x": 190,
-   "y": 220,
-   "depth": 234,
+   "x": 470,
+   "y": 172,
+   "depth": 186,
    "solid": [
-    191,
-    227.7,
+    471,
+    179.7,
+    14,
+    5.6000000000000005
+   ],
+   "hidden": false
+  },
+  {
+   "key": "bush",
+   "x": 20,
+   "y": 252,
+   "depth": 266,
+   "solid": [
+    21,
+    259.7,
+    14,
+    5.6000000000000005
+   ],
+   "hidden": false
+  },
+  {
+   "key": "bush",
+   "x": 300,
+   "y": 236,
+   "depth": 250,
+   "solid": [
+    301,
+    243.7,
     14,
     5.6000000000000005
    ],
@@ -584,25 +584,9 @@ export const LAYOUT = {
   },
   {
    "key": "flowers",
-   "x": 270,
-   "y": 80,
-   "depth": 80,
-   "solid": null,
-   "hidden": false
-  },
-  {
-   "key": "flowers",
-   "x": 180,
-   "y": 120,
-   "depth": 120,
-   "solid": null,
-   "hidden": false
-  },
-  {
-   "key": "flowers",
-   "x": 440,
-   "y": 280,
-   "depth": 280,
+   "x": 276,
+   "y": 82,
+   "depth": 82,
    "solid": null,
    "hidden": false
   },
@@ -611,6 +595,46 @@ export const LAYOUT = {
    "x": 60,
    "y": 220,
    "depth": 220,
+   "solid": null,
+   "hidden": false
+  },
+  {
+   "key": "flowers",
+   "x": 60,
+   "y": 252,
+   "depth": 252,
+   "solid": null,
+   "hidden": false
+  },
+  {
+   "key": "flowers",
+   "x": 334,
+   "y": 268,
+   "depth": 268,
+   "solid": null,
+   "hidden": false
+  },
+  {
+   "key": "flowers",
+   "x": 470,
+   "y": 204,
+   "depth": 204,
+   "solid": null,
+   "hidden": false
+  },
+  {
+   "key": "flowers",
+   "x": 204,
+   "y": 268,
+   "depth": 268,
+   "solid": null,
+   "hidden": false
+  },
+  {
+   "key": "flowers",
+   "x": 120,
+   "y": 250,
+   "depth": 250,
    "solid": null,
    "hidden": false
   },
@@ -652,6 +676,191 @@ export const LAYOUT = {
     5.6000000000000005
    ],
    "hidden": false
+  },
+  {
+   "key": "laundry",
+   "x": 178,
+   "y": 94,
+   "depth": 115,
+   "solid": [
+    179,
+    105.55,
+    30,
+    8.4
+   ],
+   "hidden": false
+  },
+  {
+   "key": "well",
+   "x": 30,
+   "y": 146,
+   "depth": 161,
+   "solid": [
+    31,
+    154.25,
+    14,
+    6.0
+   ],
+   "hidden": false
+  },
+  {
+   "key": "mailbox",
+   "x": 128,
+   "y": 100,
+   "depth": 128,
+   "solid": [
+    129,
+    115.4,
+    12,
+    11.200000000000001
+   ],
+   "hidden": false
+  },
+  {
+   "key": "signpost",
+   "x": 222,
+   "y": 116,
+   "depth": 130,
+   "solid": [
+    223,
+    123.7,
+    9,
+    5.6000000000000005
+   ],
+   "hidden": false
+  },
+  {
+   "key": "cart",
+   "x": 266,
+   "y": 66,
+   "depth": 93,
+   "solid": [
+    267,
+    80.85,
+    25,
+    10.8
+   ],
+   "hidden": false
+  },
+  {
+   "key": "pier",
+   "x": 104,
+   "y": 170,
+   "depth": 164,
+   "solid": null,
+   "hidden": false
+  },
+  {
+   "key": "boat",
+   "x": 82,
+   "y": 198,
+   "depth": 192,
+   "solid": null,
+   "hidden": false
+  },
+  {
+   "key": "jizo",
+   "x": 186,
+   "y": 248,
+   "depth": 279,
+   "solid": [
+    187,
+    265.05,
+    14,
+    12.4
+   ],
+   "hidden": false
+  },
+  {
+   "key": "jizo",
+   "x": 316,
+   "y": 250,
+   "depth": 281,
+   "solid": [
+    317,
+    267.05,
+    14,
+    12.4
+   ],
+   "hidden": false
+  },
+  {
+   "key": "stump",
+   "x": 40,
+   "y": 296,
+   "depth": 311,
+   "solid": [
+    41,
+    304.25,
+    14,
+    6.0
+   ],
+   "hidden": false
+  },
+  {
+   "key": "stump",
+   "x": 492,
+   "y": 232,
+   "depth": 247,
+   "solid": [
+    493,
+    240.25,
+    14,
+    6.0
+   ],
+   "hidden": false
+  },
+  {
+   "key": "tanuki",
+   "x": 496,
+   "y": 296,
+   "depth": 311,
+   "solid": [
+    497,
+    304.25,
+    14,
+    6.0
+   ],
+   "hidden": false
+  },
+  {
+   "key": "bench",
+   "x": 88,
+   "y": 230,
+   "depth": 245,
+   "solid": [
+    89,
+    238.25,
+    30,
+    6.0
+   ],
+   "hidden": false
+  },
+  {
+   "key": "pot",
+   "x": 74,
+   "y": 106,
+   "depth": 118,
+   "solid": [
+    75,
+    112.6,
+    10,
+    4.800000000000001
+   ],
+   "hidden": false
+  },
+  {
+   "key": "pot",
+   "x": 112,
+   "y": 106,
+   "depth": 118,
+   "solid": [
+    113,
+    112.6,
+    10,
+    4.800000000000001
+   ],
+   "hidden": false
   }
  ],
  "doorHouse": [
@@ -679,8 +888,8 @@ export const LAYOUT = {
   0
  ],
  "vending": [
-  406,
-  56
+  424,
+  282
  ],
  "busstop": [
   452,
@@ -692,8 +901,8 @@ export const LAYOUT = {
  ],
  "road": 328,
  "fisher": [
-  148,
-  170
+  146,
+  178
  ],
  "blocks": [
   [
@@ -705,7 +914,7 @@ export const LAYOUT = {
   [
    128,
    240,
-   96,
+   80,
    42
   ],
   [

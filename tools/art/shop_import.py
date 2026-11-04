@@ -61,10 +61,10 @@ for f in sorted(glob.glob(OUT + '*.png')): print(os.path.basename(f), Image.open
 import numpy as np
 c = Image.open('/home/claude/sprout-doctor/art_src/shop/counter_full.png').convert('RGBA'); a = np.asarray(c).copy()
 DX0, DY0, DX1, DY1 = 190, 146, 472, 252
-Image.fromarray(a[DY0:DY1, DX0:DX1]).save(OUT + 'drawer.png')
+Image.fromarray(a[DY0:DY1, DX0:DX1]).save('/home/claude/sprout-doctor/art_src/shop/drawer_v1.png')
 a[DY0:DY1, DX0 + 1:DX1 - 1, :3] = (58, 32, 24); a[DY0:DY0 + 6, DX0 + 2:DX1 - 2, :3] = (30, 16, 14)
 a[DY1 - 2:DY1, DX0:DX1, :3] = (30, 16, 14)
-Image.fromarray(a).save(OUT + 'counter_body.png')
+Image.fromarray(a).save('/home/claude/sprout-doctor/art_src/shop/counter_body_v1.png')
 print('drawer', DX1 - DX0, DY1 - DY0)
 
 # комната лавки: день и вечер, 960×540 (лёгкая резкость после уменьшения)
@@ -73,5 +73,26 @@ for n in ['day', 'night']:
     im = Image.open(f'/home/claude/sprout-doctor/art_src/shop/room_{n}.jpg').convert('RGB')
     w = round(im.height * 16 / 9); x0 = (im.width - w) // 2
     im = im.crop((x0, 0, x0 + w, im.height)).resize((960, 540), Image.LANCZOS).filter(ImageFilter.UnsharpMask(1.0, 50, 2))
-    im.save(OUT + f'room_{n}.png')
+    im.save('/home/claude/sprout-doctor/art_src/shop/' + f'room_{n}.png')   # v1, не используется
 print('rooms ok')
+
+# ---- v2: лавка одной сценой (комната и прилавок в одной перспективе) ----
+# сцена делится на фон (всё) и передний план (прилавок ниже кромки столешницы); ящик — отдельный спрайт
+V2 = '/home/claude/sprout-doctor/art_src/v2/Gemini_Generated_Image_'
+EDGE = 363                                  # задняя кромка столешницы: всё ниже — передний план
+DR = (276, 436, 690, 536)                   # ящик (x0, y0, x1, y1) в координатах экрана
+for n, k in [('day', 'k46e62k4'), ('night', '7m1fe67m')]:
+    im = Image.open(glob.glob(V2 + k + '*.jpg')[0]).convert('RGB')
+    w = round(im.height * 16 / 9); x0 = (im.width - w) // 2
+    sc = im.crop((x0, 0, x0 + w, im.height)).resize((960, 540), Image.LANCZOS).filter(ImageFilter.UnsharpMask(1.0, 50, 2)).convert('RGBA')
+    sc.save(OUT + f'scene_{n}.png')
+    a = np.asarray(sc).copy(); a[:EDGE, :, 3] = 0
+    drawer = Image.fromarray(a[DR[1]:DR[3], DR[0]:DR[2]].copy())
+    drawer.save(OUT + f'drawer_{n}.png')
+    # ниша на месте ящика
+    a[DR[1]:DR[3], DR[0] + 4:DR[2] - 4, :3] = (46, 24, 18); a[DR[1]:DR[1] + 5, DR[0] + 4:DR[2] - 4, :3] = (24, 12, 10)
+    Image.fromarray(a).save(OUT + f'front_{n}.png')
+# мелкие иконки товаров под ячейки нового ящика
+for nn, k in [('harvest', 'dqkrnodq'), ('fungicide', 'xov7iuxo'), ('seeds', 'lyczpuly'), ('fertilizer', 'cya11xcy'), ('lens', 'lo7elrlo')]:
+    fit(load(k), h=32).save(OUT + f'item_{nn}_s.png')
+print('scene v2 ok')

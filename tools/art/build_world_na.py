@@ -23,7 +23,7 @@ PATHS = [
     (6 * 16, 8 * 16 + 4, 10 * 16, 22),           # от дома на восток
     (15 * 16, 6 * 16 + 4, 14 * 16, 22),          # вдоль огорода к лавке
     (20 * 16, 5 * 16, 7 * 16, 2 * 16),           # двор у лавки
-    (15 * 16, 6 * 16 + 4, 26, 13 * 16),          # на юг к тории
+    (15 * 16, 6 * 16 + 4, 32, 13 * 16),          # на юг к тории (по оси ворот)
     (7 * 16, 9 * 16, 22, 26),                    # к пруду
     (0, 19 * 16 + 6, MW * 16, 2 * 16 + 10),     # дорога (автобус)
     (27 * 16, 17 * 16 + 8, 3 * 16, 2 * 16),      # площадка у остановки
@@ -56,7 +56,7 @@ A[grim] = [56, 125, 45, 255]
 bg = Image.fromarray(A, 'RGBA')
 PATHMASK = mask
 GRASS = (14, 15, 17, 15, 16, 17)
-plateaus = [(0, 0, MW, 4), (8, 15, 14, 18), (23, 16, 28, 19)]
+plateaus = [(0, 0, MW, 4), (8, 15, 13, 18), (23, 16, 28, 19)]
 for (x0, y0, x1, y1) in plateaus:
     def nine_(x0, y0, x1, y1):
         for y in range(y0, y1):
@@ -137,11 +137,13 @@ obj('sakura', sakura, 150, 40, 'tree'); obj('sakura', sakura, 300, 248, 'tree')
 
 
 # торий у входа в деревню, каменные фонари
-obj('torii', C('T', [0, 3, 3, 2]), 14 * 16, 16 * 16, 'none', depth=17 * 16 + 4)
-objs.append(dict(key='torii_post', x=0, y=0, depth=0, solid=[14 * 16 + 2, 17 * 16 + 4, 6, 6], hidden=True))
-objs.append(dict(key='torii_post', x=0, y=0, depth=0, solid=[16 * 16 + 10, 17 * 16 + 4, 6, 6], hidden=True))
+# ворота строго по оси тропинки (центр x = 256), фонари — симметрично
+TOR = C('T', [0, 3, 3, 2]); TX = 256 - TOR.width // 2
+obj('torii', TOR, TX, 16 * 16, 'none', depth=17 * 16 + 4)
+objs.append(dict(key='torii_post', x=0, y=0, depth=0, solid=[TX + 2, 17 * 16 + 4, 6, 6], hidden=True))
+objs.append(dict(key='torii_post', x=0, y=0, depth=0, solid=[TX + TOR.width - 8, 17 * 16 + 4, 6, 6], hidden=True))
 lan = C('T', [3, 3, 2, 4], 2)
-obj('lantern', lan, 13 * 16, 16 * 16 + 2); obj('lantern', lan, 17 * 16 + 4, 16 * 16 + 2)
+obj('lantern', lan, TX - lan.width - 6, 16 * 16 + 2); obj('lantern', lan, TX + TOR.width + 6, 16 * 16 + 2)
 # огород: ограда и пугало-фонарь
 fence = t(11, 5, 1, 1, TH)
 for x in range(GARDEN[0], GARDEN[2]):
@@ -154,13 +156,29 @@ obj('barrel', trim(t(16, 15, 1, 1, TH)), 19 * 16 + 4, 4 * 16 + 4); obj('barrel2'
 obj('crate', trim(t(20, 14, 1, 1, TH)), 9 * 16, 5 * 16 + 4); obj('sack', trim(t(19, 14, 1, 1, TH)), 10 * 16, 6 * 16)
 # цветы, кусты, камни
 bush, flowers, stone = C('T', [0, 20, 3, 2], 1), C('T', [0, 20, 3, 2], 2), C('T', [0, 5, 3, 4], 6)
-for (x, y) in [(56, 120), (140, 110), (220, 70), (300, 100), (420, 160), (380, 290), (250, 300), (190, 220)]: obj('bush', bush, x, y)
-for (x, y) in [(96, 70), (40, 140), (330, 60), (270, 80), (180, 120), (440, 280), (60, 220)]: obj('flowers', flowers, x, y, 'none', depth=y)
+for (x, y) in [(56, 120), (140, 110), (220, 70), (380, 290), (190, 220), (470, 172), (20, 252), (300, 236)]: obj('bush', bush, x, y)
+for (x, y) in [(96, 70), (40, 140), (330, 60), (276, 82), (60, 220), (60, 252), (334, 268), (470, 204), (204, 268), (120, 250)]: obj('flowers', flowers, x, y, 'none', depth=y)
 for (x, y) in [(150, 230), (350, 300), (470, 140)]: obj('stone', stone, x, y)
+# ---- жизнь деревни: бельё, колодец, почтовый ящик, указатель, тележка, мостки, лодка, дзидзо, пеньки, лавочка ----
+P = lambda x, y, w=1, h=1: trim(t(x, y, w, h))
+obj('laundry', P(8, 4, 2, 2), 178, 94)
+obj('well', P(4, 7), 30, 146)
+obj('mailbox', P(10, 4, 1, 2), 128, 100)
+obj('signpost', P(8, 7), 222, 116)
+obj('cart', P(5, 8, 2, 2), 266, 66)
+obj('pier', P(24, 8, 3, 1), 104, 170, 'none', depth=10 * 16 + 4)
+obj('boat', P(26, 10, 2, 1), 82, 198, 'none', depth=12 * 16)
+jizo = P(27, 6, 1, 2)
+obj('jizo', jizo, 186, 248); obj('jizo', jizo, 316, 250)
+obj('stump', P(9, 8), 40, 296); obj('stump', P(9, 8), 492, 232)
+obj('tanuki', P(10, 8), 496, 296)
+obj('bench', P(7, 3, 2, 1), 88, 230)
+pot = P(1, 6)
+obj('pot', pot, 74, 106); obj('pot', pot, 112, 106)
 layout = dict(MW=MW, MH=MH, scale=1, objs=objs, doorHouse=DOOR_HOUSE, doorShop=DOOR_SHOP,
               garden=list(GARDEN), pond=[POND[0] * 16 + 6, POND[1] * 16 + 6, (POND[2] - POND[0]) * 16 - 12, (POND[3] - POND[1]) * 16 - 12],
-              bedOffset=[GARDEN[0] + 2 - 9, GARDEN[1] + 1 - 9], vending=[25 * 16 + 6, 3 * 16 + 8], busstop=[28 * 16 + 4, 18 * 16 + 2],
-              lamp=[20 * 16, 18 * 16], road=20 * 16 + 8, fisher=[POND[2] * 16 + 4, 10 * 16 + 10],
+              bedOffset=[GARDEN[0] + 2 - 9, GARDEN[1] + 1 - 9], vending=[26 * 16 + 8, 17 * 16 + 10], busstop=[28 * 16 + 4, 18 * 16 + 2],
+              lamp=[20 * 16, 18 * 16], road=20 * 16 + 8, fisher=[POND[2] * 16 + 2, 10 * 16 + 18],
               blocks=[[x0 * 16, y0 * 16, (x1 - x0) * 16, (y1 - y0) * 16 - 6] for (x0, y0, x1, y1) in plateaus])
 ts = '// Сгенерировано tools/art/build_world_na.py — раскладка фермы (1 ед. мира = 1 px арта, тайл 16).\nexport const LAYOUT = ' + json.dumps(layout, indent=1) + ';\n'
 open('/home/claude/sprout-doctor/src/world/layout.ts', 'w').write(ts)

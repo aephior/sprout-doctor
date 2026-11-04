@@ -6,8 +6,9 @@ from regrid import regrid
 from PIL import Image, ImageFilter
 import numpy as np, scipy.ndimage as nd
 SRC = '/home/claude/sprout-doctor/art_src/house/Gemini_Generated_Image_'
-OUT = '/home/claude/sprout-doctor/public/art/home/'
-import os; os.makedirs(OUT, exist_ok=True)
+OUT = '/home/claude/sprout-doctor/art_src/house/out_v1/'   # v1 (вид спереди) — больше не в игре
+OUT2 = '/home/claude/sprout-doctor/public/art/home/'
+import os; os.makedirs(OUT, exist_ok=True); os.makedirs('/home/claude/sprout-doctor/public/art/home/', exist_ok=True)
 def src(k): return Image.open(glob.glob(SRC + k + '*.jpg')[0]).convert('RGB')
 def keyed(k, fill_holes=True):
     im = src(k); kk, _ = G.key_bg(im); a = np.asarray(kk).copy()
@@ -71,3 +72,13 @@ for n, im in hk.items():
     o = fit(im, w=round(im.width * s)); o.save(W2 + f'haikabi_{n}.png'); print('haikabi', n, o.size)
 fit(gsrc(24), h=150).save(W2 + 'boss_aoi.png'); fit(gsrc(18), h=84).save(W2 + 'boss_fuku.png')
 print('boss ok')
+
+# ---- v2: комната сверху (по ней ходит Аой), 640×540 — вся комната на экране, по бокам поля ----
+V2 = '/home/claude/sprout-doctor/art_src/v2/Gemini_Generated_Image_'
+for k, n in [('x56bl4x5', 'top_day'), ('sajb3nsa', 'top_night')]:
+    im = Image.open(glob.glob(V2 + k + '*.jpg')[0]).convert('RGB')
+    im.resize((640, 540), Image.LANCZOS).filter(ImageFilter.UnsharpMask(1.0, 50, 2)).save(OUT2 + n + '.png')
+# футон со спящей Аой — под размер футона в комнате (в координатах 960-ширины: 760..915 × 455..690 → ×2/3)
+kk, _ = G.key_bg(Image.open(glob.glob(V2 + 'ni0ovyni*.jpg')[0]).convert('RGB')); fs = G.trim(kk)
+fit(fs, h=round((690 - 455) * 2 / 3) + 4).save(OUT2 + 'top_futon_sleep.png')
+print('top room ok', Image.open(OUT2 + 'top_futon_sleep.png').size)

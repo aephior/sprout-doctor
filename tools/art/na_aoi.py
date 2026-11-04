@@ -69,7 +69,7 @@ for i, d in enumerate(['down', 'up', 'left', 'right']):
     for j, f in enumerate(cs[d]): cat.alpha_composite(f, (i * 16, j * 14))
 cat.alpha_composite(cimg(CAT_D + ['..owo...owo.....', '..oo....oo......']), (0, 28))   # сидит
 cat.alpha_composite(cimg(CAT_SLEEP), (16, 28))                                          # спит
-cat.save(OUT + 'mochi.png')
+# mochi.png теперь рисует tools/art/na_mochi.py
 print('ok')
 # ---- Фуку 12×14: бумажный фонарик-дрон, 2 кадра (пропеллер), + кадр «скан» ----
 FP = {'o': (2, 2, 2), 'p': (246, 226, 180), 'P': (214, 182, 128), 'r': (150, 104, 60), 'T': (63, 208, 201), 't': (30, 140, 150),

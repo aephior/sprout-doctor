@@ -33,22 +33,18 @@ export class Boot extends Phaser.Scene {
     this.load.image('closeup-wet', asset('art/naw/closeup_wet.png'));
     // лавка Огавы (tools/art/shop_import.py): слои сцены и товары
     for (const p of ['idle', 'talk', 'happy', 'coins']) this.load.image(`shop-og-${p}`, asset(`art/shop/ogawa_${p}.png`));
-    this.load.image('shop-counter', asset('art/shop/counter_body.png'));
-    this.load.image('shop-room-day', asset('art/shop/room_day.png'));
+    for (const n of ['day', 'night']) {
+      this.load.image(`shop-scene-${n}`, asset(`art/shop/scene_${n}.png`));
+      this.load.image(`shop-front-${n}`, asset(`art/shop/front_${n}.png`));
+      this.load.image(`shop-drawer-${n}`, asset(`art/shop/drawer_${n}.png`));
+    }
     // дом бабушки Хару (tools/art/house_import.py)
-    this.load.image('home-room-day', asset('art/home/room_day.png'));
-    this.load.image('home-room-night', asset('art/home/room_night.png'));
-    for (const f of ['day', 'eve', 'sleep']) this.load.image(`home-futon-${f}`, asset(`art/home/futon_${f}.png`));
-    this.load.spritesheet('home-aoi-idle', asset('art/home/aoi_idle.png'), { frameWidth: 130, frameHeight: 251 });
-    this.load.spritesheet('home-aoi-yawn', asset('art/home/aoi_yawn.png'), { frameWidth: 138, frameHeight: 251 });
-    this.load.spritesheet('home-aoi-stretch', asset('art/home/aoi_stretch.png'), { frameWidth: 155, frameHeight: 251 });
-    this.load.spritesheet('home-fuku', asset('art/home/fuku_charge.png'), { frameWidth: 57, frameHeight: 70 });
+    for (const n of ['day', 'night']) this.load.image(`home-top-${n}`, asset(`art/home/top_${n}.png`));   // дом сверху (tools/art/house_import.py)
+    this.load.image('home-top-futon-sleep', asset('art/home/top_futon_sleep.png'));
     this.load.image('greenhouse', asset('art/world/greenhouse.png'));
     for (const h of ['idle', 'rage', 'defeated']) this.load.image(`haikabi-${h}`, asset(`art/world/haikabi_${h}.png`));
     this.load.image('boss-aoi', asset('art/world/boss_aoi.png'));
     this.load.image('boss-fuku', asset('art/world/boss_fuku.png'));
-    this.load.image('shop-room-night', asset('art/shop/room_night.png'));
-    this.load.image('shop-drawer', asset('art/shop/drawer.png'));
     this.load.image('shop-tag', asset('art/shop/tag.png'));
     for (const m of ['0', '1']) this.load.image(`shop-mochi${m}`, asset(`art/shop/mochi${m}.png`));
     for (const it of ['harvest', 'fungicide', 'seeds', 'fertilizer', 'lens']) {

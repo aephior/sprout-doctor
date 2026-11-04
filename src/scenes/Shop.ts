@@ -1,6 +1,7 @@
 // Лавка господина Огавы в духе магазина из Cuphead: Огава крупно за прилавком, перед ним выдвигается ящик
 // с товарами на бархате; выбранный товар приподнимается и показывается на витрине-карточке с ценником.
-// Слои (все на сетке фона ×2): комната → Огава → прилавок → ящик с товарами → Моти → свет → интерфейс.
+// Сцена — одна картинка (комната и прилавок в одной перспективе), разрезанная на слои:
+// фон → Огава → передний план (прилавок ниже кромки) → ящик с товарами → Моти → свет → интерфейс.
 import { game } from '../state/game';
 import { events } from '../state/events';
 import { text, HEX, C, paperPanel } from '../ui/ui';
@@ -8,14 +9,13 @@ import { sound } from '../audio/sound';
 import { makeGlow } from '../art/interiors';
 import { hourNow } from '../world/life';
 
-const K = 2;                                   // единица раскладки (координаты заданы в «полупикселях» ×2)
-// все слои лавки нарисованы в полном экранном разрешении и показываются ×1 (tools/art/shop_import.py)
-const CX = 150, CY = 262;                      // прилавок 330×149 → 660×298, левый верх
-const DR_X = CX + 95 * K, DR_Y = CY + 73 * K;  // ящик в открытом положении
-const DR_SHUT = 29 * K;                        // насколько ящик «задвинут» в закрытом положении
-const SLOT_X = [20, 44.5, 69, 93, 118].map((x) => x * K);   // центры ячеек (от левого края ящика)
-const SLOT_Y = 30 * K;                         // низ товара в ячейке
-const OG = { x: 378, y: 300 };                 // Огава: низ — задний край прилавка
+const K = 2;                                   // шаг «пикселя» для мелких сдвигов (дыхание, подпрыгивание)
+// все слои — в экранном разрешении 960×540 ×1 (tools/art/shop_import.py)
+const DR_X = 276, DR_Y = 436;                  // ящик в открытом положении (левый верх)
+const DR_SHUT = 46;                            // насколько ящик «задвинут» в закрытом положении
+const SLOT_X = [338, 410, 480, 550, 620].map((x) => x - DR_X);   // центры ячеек (от левого края ящика)
+const SLOT_Y = 44;                             // низ товара в ячейке
+const OG = { x: 300, y: 378 };                 // Огава: низ — задняя кромка прилавка (y ≈ 363)
 const POSE = { idle: 'shop-og-idle', talk: 'shop-og-talk', happy: 'shop-og-happy', coins: 'shop-og-coins' } as const;
 type Pose = keyof typeof POSE;
 
@@ -45,35 +45,35 @@ export class Shop extends Phaser.Scene {
     sound.setMood('evening'); makeGlow(this);
     this.leaving = false; this.sel = 0; this.icons = []; this.badges = []; this.pose = 'idle'; this.hold = 0;
     const day = hourNow() < 17;
-    this.add.image(0, 0, day ? 'shop-room-day' : 'shop-room-night').setOrigin(0);
+    this.add.image(0, 0, day ? 'shop-scene-day' : 'shop-scene-night').setOrigin(0);
     // настольная лампа у манэки-нэко — мягкий тёплый свет
-    this.add.image(588, 292, 'glow').setScale(1.2).setAlpha(day ? 0.15 : 0.35).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffc070);
+    this.add.image(592, 292, 'glow').setScale(1.2).setAlpha(day ? 0.15 : 0.35).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffc070);
     // тёплый свет красного фонаря
-    const glow = this.add.image(481, 110, 'glow').setScale(3.4).setAlpha(day ? 0.18 : 0.5).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffb070);
+    const glow = this.add.image(478, 108, 'glow').setScale(3.4).setAlpha(day ? 0.18 : 0.5).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffb070);
     this.tweens.add({ targets: glow, alpha: day ? 0.12 : 0.36, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
     // Огава: дышит (шаг в 1 пиксель сетки), говорит, радуется, считает монеты
     this.ogawa = this.add.image(OG.x, OG.y, POSE.idle).setOrigin(0.5, 1);
     this.tweens.add({ targets: this.ogawa, y: OG.y - K, duration: 1700, yoyo: true, repeat: -1, ease: 'Stepped' });
 
-    // прилавок (в нём ниша под ящик) и колокольчик — по нему можно позвонить
-    this.add.image(CX, CY, 'shop-counter').setOrigin(0);
-    this.add.zone(CX + 20 * K, CY + 26 * K, 30 * K, 24 * K).setOrigin(0).setInteractive({ useHandCursor: true })
+    // прилавок — передний план той же сцены (в нём ниша под ящик); колокольчик — по нему можно позвонить
+    this.add.image(0, 0, day ? 'shop-front-day' : 'shop-front-night').setOrigin(0);
+    this.add.zone(100, 350, 66, 52).setOrigin(0).setInteractive({ useHandCursor: true })
       .on('pointerdown', () => { sound.play('bell'); this.speak(['Да-да, я здесь! Не так громко — Моти спит.', 'Иду-иду! Колокольчик ещё дедушкин.'][Math.floor(Math.random() * 2)]); });
     // пар над чаем
-    this.add.particles(CX + 260 * K, CY + 18 * K, 'pixel', {
+    this.add.particles(786, 352, 'pixel', {
       speedY: { min: -16, max: -9 }, speedX: { min: -3, max: 3 }, lifespan: 1700, frequency: 240, scale: { start: 3, end: 1 },
       alpha: { start: 0.45, end: 0 }, tint: 0xffffff, quantity: 1,
     });
 
     // ящик с товарами: выезжает из прилавка; виден только ниже кромки столешницы
     this.tray = this.add.container(DR_X, DR_Y - DR_SHUT);
-    this.tray.add(this.add.image(0, 0, 'shop-drawer').setOrigin(0));
-    const mask = this.make.graphics({}, false); mask.fillStyle(0xffffff).fillRect(CX, DR_Y, 700, 200);
+    this.tray.add(this.add.image(0, 0, day ? 'shop-drawer-day' : 'shop-drawer-night').setOrigin(0));
+    const mask = this.make.graphics({}, false); mask.fillStyle(0xffffff).fillRect(0, DR_Y, 960, 200);
     this.tray.setMask(mask.createGeometryMask());
 
     // Моти дремлет на подушке на прилавке; иногда приоткрывает глаз; её можно погладить
-    this.mochi = this.add.image(CX + 218 * K, CY + 56 * K, 'shop-mochi0').setOrigin(0.5, 1).setInteractive({ useHandCursor: true });
+    this.mochi = this.add.image(676, 404, 'shop-mochi0').setOrigin(0.5, 1).setInteractive({ useHandCursor: true });
     this.mochi.on('pointerdown', () => this.petMochi());
     const doze = () => {
       if (!this.scene.isActive()) return;
