@@ -6,7 +6,7 @@ import { LAYOUT } from '../world/layout';
 
 /** Картинки из генератора (обработаны: фон вырезан, приведены к пиксельной сетке). */
 /** Персонажи фермы 16×20: столбцы — вниз/вверх/влево/вправо, строки — кадры шага. */
-export const CHARS = ['aoi-na', 'ogawa-na', 'fisher-na', 'villager2-na', 'villager16-na', 'villager25-na', 'villager12-na'];
+export const CHARS = ['aoi-na', 'ogawa-na', 'fisher-na', 'villager4-na', 'villager13-na', 'villager6-na', 'villager12-na'];
 
 export const GEN = ['title', 'evening', 'diary_book', 'aoi_sheet', 'aoi_chibi', 'haru_photo', 'fisher', 'mochi_sit', 'mochi_walk', 'mochi_sleep', 'aphid_idle', 'aphid_dash', 'fuku_happy', 'fuku_alert', 'fuku_damaged'];
 
@@ -39,8 +39,8 @@ export class Boot extends Phaser.Scene {
       this.load.image(`shop-drawer-${n}`, asset(`art/shop/drawer_${n}.png`));
     }
     // дом бабушки Хару (tools/art/house_import.py)
-    for (const n of ['day', 'night']) this.load.image(`home-top-${n}`, asset(`art/home/top_${n}.png`));   // дом сверху (tools/art/house_import.py)
-    this.load.image('home-top-futon-sleep', asset('art/home/top_futon_sleep.png'));
+    for (const n of ['day', 'night']) { this.load.image(`home-px-${n}`, asset(`art/home/px_${n}.png`)); this.load.image(`home-px-kot-${n}`, asset(`art/home/px_kotatsu_${n}.png`)); }   // дом попиксельно (tools/art/home_px.py)
+    this.load.image('home-px-sleep', asset('art/home/px_futon_sleep.png'));
     this.load.image('greenhouse', asset('art/world/greenhouse.png'));
     for (const h of ['idle', 'rage', 'defeated']) this.load.image(`haikabi-${h}`, asset(`art/world/haikabi_${h}.png`));
     this.load.image('boss-aoi', asset('art/world/boss_aoi.png'));

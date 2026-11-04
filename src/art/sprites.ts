@@ -28,7 +28,7 @@ export function registerSprites(scene: Phaser.Scene) {
   const a = scene.anims;
   a.create({ key: 'fuku-idle', frames: a.generateFrameNumbers('fuku', { frames: [0, 1] }), frameRate: 4, repeat: -1 });
   // персонажи фермы (16×20): кадр = строка*4 + столбец; столбцы: вниз, вверх, влево, вправо
-  for (const k of ['aoi-na', 'ogawa-na', 'fisher-na', 'villager2-na', 'villager16-na', 'villager25-na', 'villager12-na']) {
+  for (const k of ['aoi-na', 'ogawa-na', 'fisher-na', 'villager4-na', 'villager13-na', 'villager6-na', 'villager12-na']) {
     if (!scene.textures.exists(k)) continue;
     (['down', 'up', 'left', 'right'] as const).forEach((d, c) =>
       a.create({ key: `${k}-${d}`, frames: a.generateFrameNumbers(k, { frames: [4 + c, 8 + c, 12 + c, c] }), frameRate: 8, repeat: -1 }));

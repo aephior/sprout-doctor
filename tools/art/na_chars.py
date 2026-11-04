@@ -84,6 +84,6 @@ og = recolor(og9, {(224, 31, 76): (52, 64, 120), (146, 30, 101): (36, 44, 90), (
 og = add_hat(frames(og), CAP, 1); og = glasses(og, (200, 200, 210)); og.save(OUT + 'ogawa.png')
 # ---- рыбак (14), жители ----
 frames(load(14)).save(OUT + 'fisher.png')
-for n in (2, 16, 25, 12):
+for n in (4, 13, 6, 12):
     frames(load(n)).save(OUT + f'villager{n}.png')
 print('ok')

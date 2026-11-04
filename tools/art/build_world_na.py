@@ -56,7 +56,7 @@ A[grim] = [56, 125, 45, 255]
 bg = Image.fromarray(A, 'RGBA')
 PATHMASK = mask
 GRASS = (14, 15, 17, 15, 16, 17)
-plateaus = [(0, 0, MW, 4), (8, 15, 13, 18), (23, 16, 28, 19)]
+plateaus = [(0, 0, MW, 4)]   # только лес-уступ сверху: маленькие «холмы» выглядели неестественно
 for (x0, y0, x1, y1) in plateaus:
     def nine_(x0, y0, x1, y1):
         for y in range(y0, y1):
@@ -107,9 +107,9 @@ objs = []
 def save(key, im): im.save(OUT + key + '.png'); return im
 def solid_auto(im, x, y, kind):
     a = np.asarray(im)[:, :, 3] > 0; ys, xs = np.where(a); w, h = im.size
-    if kind == 'tree':  return [x + w * 0.3, y + h * 0.78, w * 0.4, h * 0.18]
+    if kind == 'tree':  return [x + w * 0.1, y + h * 0.62, w * 0.8, h * 0.3]    # кроны-кластеры: почти во всю ширину
     if kind == 'none':  return None
-    return [x + 1, y + h * 0.55, w - 2, h * 0.4]     # нижняя часть предмета
+    return [x + 1, y + h * 0.4, w - 2, h * 0.55]     # нижняя половина предмета
 def obj(key, im, x, y, kind='box', depth=None):
     save(key, im); w, h = im.size
     objs.append(dict(key=key, x=x, y=y, depth=depth if depth is not None else y + h, solid=solid_auto(im, x, y, kind), hidden=False))
@@ -152,33 +152,36 @@ for x in range(GARDEN[0], GARDEN[2]):
 # лавка: прилавок с овощами, корзины, бочки
 for i, (tx, ty) in enumerate([(16, 13), (17, 13), (18, 13)]):
     obj(f'basket{i}', trim(t(tx, ty, 1, 1, TH)), 25 * 16 + i * 14, 5 * 16 + 4)
-obj('barrel', trim(t(16, 15, 1, 1, TH)), 19 * 16 + 4, 4 * 16 + 4); obj('barrel2', trim(t(17, 15, 1, 1, TH)), 20 * 16, 5 * 16)
-obj('crate', trim(t(20, 14, 1, 1, TH)), 9 * 16, 5 * 16 + 4); obj('sack', trim(t(19, 14, 1, 1, TH)), 10 * 16, 6 * 16)
+obj('barrel', trim(t(16, 14, 1, 2, TH)), 19 * 16 + 2, 4 * 16); obj('barrel2', trim(t(18, 14, 1, 2, TH)), 20 * 16 + 2, 4 * 16 + 8)   # бочки целиком (2 тайла)
+obj('crate', trim(t(20, 14, 1, 1, TH)), 130, 84); obj('sack', trim(t(19, 14, 1, 1, TH)), 146, 92)   # припасы у стены дома
 # цветы, кусты, камни
 bush, flowers, stone = C('T', [0, 20, 3, 2], 1), C('T', [0, 20, 3, 2], 2), C('T', [0, 5, 3, 4], 6)
-for (x, y) in [(56, 120), (140, 110), (220, 70), (380, 290), (190, 220), (470, 172), (20, 252), (300, 236)]: obj('bush', bush, x, y)
+for (x, y) in [(220, 70), (380, 290), (190, 220), (470, 172), (20, 252), (300, 236), (160, 250)]: obj('bush', bush, x, y)
 for (x, y) in [(96, 70), (40, 140), (330, 60), (276, 82), (60, 220), (60, 252), (334, 268), (470, 204), (204, 268), (120, 250)]: obj('flowers', flowers, x, y, 'none', depth=y)
 for (x, y) in [(150, 230), (350, 300), (470, 140)]: obj('stone', stone, x, y)
 # ---- жизнь деревни: бельё, колодец, почтовый ящик, указатель, тележка, мостки, лодка, дзидзо, пеньки, лавочка ----
 P = lambda x, y, w=1, h=1: trim(t(x, y, w, h))
-obj('laundry', P(8, 4, 2, 2), 178, 94)
+# бельё на раме со столбами (рама 5..7,4..5 + бельё 8..9,4..5), слева от дома; рядом колодец
+frame = trim(t(5, 4, 3, 2)); cl = trim(t(8, 4, 2, 2))
+fa = np.asarray(frame)[..., 3] > 0; rail = int(np.argmax(fa.sum(1) > frame.width * 0.6))
+lnd = frame.copy(); lnd.alpha_composite(cl, ((frame.width - cl.width) // 2, rail + 1))
+obj('laundry', lnd, 10, 72)
+objs[-1]['solid'] = [10, 72 + lnd.height - 6, 4, 5]; objs.append(dict(key='laundry_post', x=0, y=0, depth=0, solid=[10 + lnd.width - 5, 72 + lnd.height - 6, 4, 5], hidden=True))
 obj('well', P(4, 7), 30, 146)
-obj('mailbox', P(10, 4, 1, 2), 128, 100)
+obj('mailbox', P(10, 4, 1, 2), 166, 100)
 obj('signpost', P(8, 7), 222, 116)
 obj('cart', P(5, 8, 2, 2), 266, 66)
-obj('pier', P(24, 8, 3, 1), 104, 170, 'none', depth=10 * 16 + 4)
-obj('boat', P(26, 10, 2, 1), 82, 198, 'none', depth=12 * 16)
+obj('pier', P(24, 8, 2, 1), 120, 172, 'none', depth=10 * 16 + 4)   # короткие мостки: рыбак на краю, удочка над водой
 jizo = P(27, 6, 1, 2)
 obj('jizo', jizo, 186, 248); obj('jizo', jizo, 316, 250)
 obj('stump', P(9, 8), 40, 296); obj('stump', P(9, 8), 492, 232)
-obj('tanuki', P(10, 8), 496, 296)
-obj('bench', P(7, 3, 2, 1), 88, 230)
+obj('bench', Image.open('/home/claude/sprout-doctor/public/art/world/busstop.png').crop((16, 20, 46, 34)), 88, 232)   # деревянная скамейка (tools/art/pixel_props.py)
 pot = P(1, 6)
 obj('pot', pot, 74, 106); obj('pot', pot, 112, 106)
 layout = dict(MW=MW, MH=MH, scale=1, objs=objs, doorHouse=DOOR_HOUSE, doorShop=DOOR_SHOP,
               garden=list(GARDEN), pond=[POND[0] * 16 + 6, POND[1] * 16 + 6, (POND[2] - POND[0]) * 16 - 12, (POND[3] - POND[1]) * 16 - 12],
-              bedOffset=[GARDEN[0] + 2 - 9, GARDEN[1] + 1 - 9], vending=[26 * 16 + 8, 17 * 16 + 10], busstop=[28 * 16 + 4, 18 * 16 + 2],
-              lamp=[20 * 16, 18 * 16], road=20 * 16 + 8, fisher=[POND[2] * 16 + 2, 10 * 16 + 18],
+              bedOffset=[GARDEN[0] + 2 - 9, GARDEN[1] + 1 - 9], vending=[452, 58], busstop=[28 * 16 + 4, 18 * 16 + 2],
+              lamp=[20 * 16, 18 * 16], road=20 * 16 + 8, fisher=[128, 184],
               blocks=[[x0 * 16, y0 * 16, (x1 - x0) * 16, (y1 - y0) * 16 - 6] for (x0, y0, x1, y1) in plateaus])
 ts = '// Сгенерировано tools/art/build_world_na.py — раскладка фермы (1 ед. мира = 1 px арта, тайл 16).\nexport const LAYOUT = ' + json.dumps(layout, indent=1) + ';\n'
 open('/home/claude/sprout-doctor/src/world/layout.ts', 'w').write(ts)

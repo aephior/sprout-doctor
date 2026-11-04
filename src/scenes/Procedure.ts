@@ -133,7 +133,7 @@ export class Procedure extends Phaser.Scene {
     if (i?.landmarks) {
       // крупный полупрозрачный призрак поверх сцены и маленький — на превью
       drawHand(this.ghost, i.landmarks, 160, 40, 640, 480, C.teal, 0.28, 5);
-      drawHand(this.ghost, i.landmarks, 248, 136, 120, 90, C.teal, 0.95, 2);
+      drawHand(this.ghost, i.landmarks, 32, 136, 120, 90, C.teal, 0.95, 2);
       const w = i.landmarks[0], cx = 160 + (1 - w.x) * 640, cy = 40 + w.y * 480;
       const col = i.hold >= 1 ? C.teal : C.orange;
       this.ghost.lineStyle(5, col, 0.85).beginPath();
@@ -458,9 +458,9 @@ export class Procedure extends Phaser.Scene {
     this.button(556, 432, 160, 'Esc', 'На ферму', 'back');
 
     if (this.gestureOn) {
-      const pv = this.add.graphics().setDepth(30); pv.fillStyle(C.ink, 1).fillRect(244, 132, 128, 98).lineStyle(2, C.teal, 1).strokeRect(245, 133, 126, 96);
+      const pv = this.add.graphics().setDepth(30); pv.fillStyle(C.ink, 1).fillRect(28, 132, 128, 98).lineStyle(2, C.teal, 1).strokeRect(29, 133, 126, 96);
       add(pv);
-      if (this.textures.exists('cam-proc')) add(this.add.image(248, 136, 'cam-proc').setOrigin(0).setDepth(31));
+      if (this.textures.exists('cam-proc')) add(this.add.image(32, 136, 'cam-proc').setOrigin(0).setDepth(31));
       add(text(this, 724, 434, 'G1 скан · G2 полив · G3 спрей\nG4 обрезка · G5 подтвердить', 11, '#b9b7d9', { lineSpacing: 0 }));
     } else add(text(this, 724, 434, gestures.possible ? 'Клавиши: оценка «Хорошо» ×0,7\nЖесты — меню «Ритуалы рук»' : 'Веб-версия: клавиши и мышь\nЖесты — в версии для ПК', 11, '#8a88b0', { lineSpacing: 0 }));
   }

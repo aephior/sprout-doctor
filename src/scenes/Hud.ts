@@ -16,7 +16,7 @@ const PLACE_HINT: Record<string, string> = {
 };
 
 const SPEAKERS: [RegExp, string, number][] = [
-  [/^Рыбак/, 'fisher-na', 0], [/^Юки/, 'villager16-na', 0], [/^Кэндзи/, 'villager2-na', 0], [/^Хина/, 'villager25-na', 0],
+  [/^Рыбак/, 'fisher-na', 0], [/^Юки/, 'villager4-na', 0], [/^Кэндзи/, 'villager13-na', 0], [/^Хина/, 'villager6-na', 0],
   [/^Моти/, 'mochi-na', 8], [/^Огава/, 'ogawa-na', 0],
 ];
 
@@ -176,7 +176,9 @@ export class Hud extends Phaser.Scene {
     } else if (kind === 'house') {
       if (hourNow() >= 18) this.night(); else this.enterInterior('Home', { early: true });
     } else if (kind === 'vending') {
-      this.say('Торговый автомат гудит в сумерках. Холодный чай — 5 монет… может, в другой раз.');
+      const d = game.data;
+      if (d.coins < 5) this.say('Холодный чай — 5 монет. В кошельке пусто… может, после продажи урожая.');
+      else { d.coins -= 5; game.save(); this.drawStats(); events.emit('drink'); }
     } else if (kind === 'busstop') {
       this.say('Расписание выцвело. Следующий автобус — вечером. Тихо и спокойно.');
     }

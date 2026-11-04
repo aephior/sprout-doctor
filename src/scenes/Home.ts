@@ -1,6 +1,6 @@
-// Дом бабушки Хару — комната сверху, как ферма: Аой ходит (WASD/стрелки) и осматривает вещи (E).
-// Футон — сон и итоги ночи; полка — дневник Хару; зарядка — Фуку; лежанка — Моти; фото, окно, чайник,
-// котацу; дверь внизу — во двор. Комната 640×540 по центру экрана (tools/art/house_import.py), по бокам — поля.
+// Дом бабушки Хару — комната сверху, нарисованная попиксельно в стиле фермы (tools/art/home_px.py, 320×176 ×3).
+// Аой ходит (WASD/стрелки) и осматривает вещи (E): футон — сон и итоги ночи; полка — дневник; зарядка — Фуку;
+// лежанка — Моти; фото, окно, кухня, котацу; дверь внизу — во двор.
 import { game } from '../state/game';
 import { events } from '../state/events';
 import { makeGlow } from '../art/interiors';
@@ -9,33 +9,29 @@ import { sound } from '../audio/sound';
 import { isHealthy, CROP_NAME } from '../data/diseases';
 import { hourNow } from '../world/life';
 
-const RX = 160, RS = 2 / 3;                     // комната: левый край на экране и масштаб «960-координат» картинки
-const P = (x: number, y: number) => ({ x: RX + x * RS, y: y * RS });
-const R = (x: number, y: number, w: number, h: number) => [RX + x * RS, y * RS, w * RS, h * RS] as const;
-const SOLIDS = [
-  R(0, 0, 960, 270), R(0, 0, 40, 811), R(920, 0, 40, 811), R(0, 760, 385, 60), R(575, 760, 385, 60),   // стены
-  R(40, 140, 190, 230), R(250, 250, 65, 70), R(615, 190, 115, 125), R(830, 190, 90, 180),           // полка, зарядка, комод, кухня
-  R(860, 330, 50, 110), R(760, 455, 155, 235), R(860, 645, 50, 115), R(390, 435, 185, 140),         // андон, футон, андон, котацу
-  R(45, 440, 110, 85), R(60, 545, 50, 40), R(40, 605, 170, 155),                                      // лежанка, миска, растения
+const S = 3, OY = 6;                                   // масштаб и отступ сверху (комната 960×528)
+const P = (x: number, y: number) => ({ x: x * S, y: y * S + OY });
+const SOLIDS: [number, number, number, number][] = [
+  [0, 0, 320, 52], [0, 0, 6, 176], [313, 0, 7, 176], [0, 167, 144, 9], [176, 167, 144, 9],   // стены (кромка верхней — по плинтусу)
+  [12, 22, 43, 42], [62, 50, 19, 9], [202, 34, 39, 28], [264, 28, 47, 38],                 // полка, зарядка, комод, кухня
+  [262, 90, 40, 62], [304, 84, 10, 17], [304, 150, 10, 17], [136, 96, 48, 22],             // футон, андоны, котацу
+  [14, 98, 35, 21], [22, 124, 15, 9], [8, 140, 42, 27],                                     // лежанка, миска, растения
 ];
 type Spot = { key: string; x: number; y: number; hint: string };
+const SP = (key: string, x: number, y: number, hint: string): Spot => ({ key, ...P(x, y), hint });
 const SPOTS: Spot[] = [
-  { key: 'futon', ...P(735, 575), hint: 'E — лечь спать' },
-  { key: 'diary', ...P(135, 385), hint: 'E — дневник бабушки Хару' },
-  { key: 'fuku', ...P(283, 360), hint: 'E — поговорить с Фуку' },
-  { key: 'photo', ...P(672, 345), hint: 'E — фотография' },
-  { key: 'window', ...P(480, 300), hint: 'E — посмотреть в окно' },
-  { key: 'tea', ...P(800, 330), hint: 'E — заварить чай' },
-  { key: 'kotatsu', ...P(480, 620), hint: 'E — посидеть у котацу' },
-  { key: 'mochi', ...P(175, 485), hint: 'E — погладить Моти' },
-  { key: 'door', ...P(480, 745), hint: 'E — выйти во двор' },
+  SP('futon', 254, 122, 'E — лечь спать'), SP('diary', 33, 72, 'E — дневник бабушки Хару'), SP('fuku', 72, 70, 'E — поговорить с Фуку'),
+  SP('photo', 221, 70, 'E — фотография'), SP('window', 144, 60, 'E — посмотреть в окно'), SP('tea', 286, 74, 'E — заварить чай'),
+  SP('kotatsu', 160, 130, 'E — посидеть у котацу'), SP('mochi', 56, 110, 'E — погладить Моти'), SP('door', 160, 160, 'E — выйти во двор'),
 ];
 
 export class Home extends Phaser.Scene {
   aoi!: Phaser.Physics.Arcade.Sprite;
+  shadow!: Phaser.GameObjects.Ellipse;
   fuku!: Phaser.GameObjects.Sprite;
   mochi!: Phaser.GameObjects.Sprite;
   roomNight!: Phaser.GameObjects.Image;
+  kotNight!: Phaser.GameObjects.Image;
   futonSleep!: Phaser.GameObjects.Image;
   lamps: Phaser.GameObjects.Image[] = [];
   shade!: Phaser.GameObjects.Rectangle;
@@ -52,6 +48,7 @@ export class Home extends Phaser.Scene {
   early = false;
   teaDay = -1;
   photoDay = -1;
+  leaving = false;
 
   constructor() { super('Home'); }
 
@@ -59,54 +56,49 @@ export class Home extends Phaser.Scene {
 
   create() {
     makeGlow(this);
-    this.state = 'walk'; this.notes = []; this.zs = []; this.lamps = []; this.near = null;
+    this.state = 'walk'; this.notes = []; this.zs = []; this.lamps = []; this.near = null; this.leaving = false;
     sound.setMood('evening');
     const night = !this.early;
-    // поля по бокам — тёмное дерево, комната по центру
-    this.add.rectangle(0, 0, 960, 540, 0x1c1418).setOrigin(0);
-    const side = this.add.graphics();
-    for (let i = 0; i < 8; i++) side.fillStyle(0x2a1d1c, 1).fillRect(0, i * 68, RX, 2).fillRect(RX + 640, i * 68 + 34, RX, 2);
-    this.add.image(RX, 0, 'home-top-day').setOrigin(0);
-    this.roomNight = this.add.image(RX, 0, 'home-top-night').setOrigin(0).setAlpha(night ? 1 : 0);
-    // свет: две лампы-андон у футона и тёплое пятно над котацу (вечером)
-    for (const [x, y, s] of [[885, 385, 1.4], [885, 700, 1.4], [480, 500, 3.2]] as [number, number, number][]) {
+    this.add.rectangle(0, 0, 960, 540, 0x1e1218).setOrigin(0);
+    this.add.image(0, OY, 'home-px-day').setOrigin(0).setScale(S);
+    this.roomNight = this.add.image(0, OY, 'home-px-night').setOrigin(0).setScale(S).setAlpha(night ? 1 : 0);
+    // свет вечером: две лампы-андон у футона, тёплое пятно над котацу, лунный свет из окна
+    for (const [x, y, s, c] of [[308, 92, 1.3, 0xffc878], [308, 158, 1.3, 0xffc878], [160, 104, 3.0, 0xffb060], [144, 40, 1.8, 0x9fb8ff]] as [number, number, number, number][]) {
       const p = P(x, y);
-      const g = this.add.image(p.x, p.y, 'glow').setScale(s).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffc878).setAlpha(night ? 0.4 : 0);
+      const g = this.add.image(p.x, p.y, 'glow').setScale(s).setBlendMode(Phaser.BlendModes.ADD).setTint(c).setAlpha(night ? 0.42 : 0);
       this.tweens.add({ targets: g, scale: s * 0.94, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
       this.lamps.push(g);
     }
-    // пар над чайником на котацу
-    const kp = P(480, 440);
-    this.add.particles(kp.x, kp.y, 'pixel', { speedY: { min: -12, max: -7 }, speedX: { min: -3, max: 3 }, lifespan: 1500, frequency: 300,
-      scale: { start: 3, end: 1 }, alpha: { start: 0.45, end: 0 }, tint: 0xffffff });
-    // футон со спящей Аой — появляется ночью поверх футона
-    const fp = P(760 + 155 / 2, 455 + 235 / 2);
-    this.futonSleep = this.add.image(fp.x, fp.y, 'home-top-futon-sleep').setAlpha(0);
+    // футон со спящей Аой — ночью поверх футона
+    const fp = P(262, 90);
+    this.futonSleep = this.add.image(fp.x, fp.y, 'home-px-sleep').setOrigin(0).setScale(S).setAlpha(0).setDepth(fp.y + 1);
+    // котацу — отдельным спрайтом: за ним можно пройти
+    const kp = P(132, 86);
+    this.add.image(kp.x, kp.y, 'home-px-kot-day').setOrigin(0).setScale(S).setDepth(kp.y + 34 * S);
+    this.kotNight = this.add.image(kp.x, kp.y, 'home-px-kot-night').setOrigin(0).setScale(S).setDepth(kp.y + 34 * S + 1).setAlpha(night ? 1 : 0);
+    const steam = P(160, 88);
+    this.add.particles(steam.x, steam.y, 'pixel', { speedY: { min: -14, max: -8 }, speedX: { min: -3, max: 3 }, lifespan: 1400, frequency: 280,
+      scale: { start: 3, end: 1 }, alpha: { start: 0.5, end: 0 }, tint: 0xffffff }).setDepth(kp.y + 200);
 
     // физика: стены и мебель
     const solids = this.physics.add.staticGroup();
-    for (const [x, y, w, h] of SOLIDS) solids.add(this.add.rectangle(x, y, w, h).setOrigin(0).setVisible(false));
-    // Фуку на зарядке и Моти на лежанке (спрайты фермы: Фуку ×3, Моти ×4)
-    const fk = P(283, 300);
-    this.fuku = this.add.sprite(fk.x, fk.y, 'fuku-na', 0).setScale(3).play('fukuna-idle');
-    this.tweens.add({ targets: this.fuku, y: fk.y - 3, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    const mp = P(100, 500);
-    this.mochi = this.add.sprite(mp.x, mp.y, 'mochi-na', 9).setOrigin(0.5, 1).setScale(4).setDepth(mp.y);
-    // Аой — спрайт фермы ×4
-    const start = this.auto ? P(700, 600) : P(480, 700);
-    this.aoi = this.physics.add.sprite(start.x, start.y, 'aoi-na', 1).setOrigin(0.5, 1).setScale(4);
+    for (const [x, y, w, h] of SOLIDS) { const p = P(x, y); solids.add(this.add.rectangle(p.x, p.y, w * S, h * S).setOrigin(0).setVisible(false)); }
+    // Фуку сидит на зарядке (подставка у полки), Моти спит на лежанке — спрайты фермы ×3
+    const fk = P(71, 54);
+    this.fuku = this.add.sprite(fk.x, fk.y, 'fuku-na', 0).setOrigin(0.5, 1).setScale(S).play('fukuna-idle').setDepth(fk.y);
+    const mp = P(31, 117);
+    this.mochi = this.add.sprite(mp.x, mp.y, 'mochi-na', 9).setOrigin(0.5, 1).setScale(S).setDepth(mp.y);
+    // Аой — спрайт фермы ×3
+    const start = this.auto ? P(250, 128) : P(160, 150);
+    this.aoi = this.physics.add.sprite(start.x, start.y, 'aoi-na', 1).setOrigin(0.5, 1).setScale(S);
     (this.aoi.body as Phaser.Physics.Arcade.Body).setSize(10, 4).setOffset(3, 16);
     this.physics.add.collider(this.aoi, solids);
-    this.add.ellipse(0, 0, 40, 10, 0x000000, 0.25).setName('shadow');
+    this.shadow = this.add.ellipse(0, 0, 30, 8, 0x000000, 0.25);
 
-    this.shade = this.add.rectangle(0, 0, 960, 540, 0x141432, 0).setOrigin(0).setDepth(900);
-    this.hintBg = this.add.graphics().setDepth(950);
-    this.hint = text(this, 480, 516, '', 17, HEX.paper, { stroke: HEX.ink, strokeThickness: 4 }).setOrigin(0.5).setDepth(951);
-    this.ui = this.add.container(0, 0).setDepth(1000);
-    const d = game.data;
-    const head = text(this, 16, 14, `Дом бабушки Хару\n${['', 'Весна', 'Лето', 'Осень'][d.season]}, день ${Math.min(d.day, 5)}`, 15, HEX.paper, { lineSpacing: 4 }).setDepth(950);
-    head.setAlpha(0.85);
-    text(this, 16, 500, 'WASD — ходить\nE — осмотреть\nEsc — во двор', 13, '#b9a99a', { lineSpacing: 3 }).setDepth(950);
+    this.shade = this.add.rectangle(0, 0, 960, 540, 0x141432, 0).setOrigin(0).setDepth(2000);
+    this.hintBg = this.add.graphics().setDepth(2050);
+    this.hint = text(this, 480, 516, '', 17, HEX.paper, { stroke: HEX.ink, strokeThickness: 4 }).setOrigin(0.5).setDepth(2051);
+    this.ui = this.add.container(0, 0).setDepth(3000);
 
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT') as Record<string, Phaser.Input.Keyboard.Key>;
@@ -121,49 +113,48 @@ export class Home extends Phaser.Scene {
   diaryClosed() { this.input.keyboard!.enabled = true; this.state = 'walk'; }
 
   key(e: KeyboardEvent) {
+    const isE = e.key === 'e' || e.key === 'E' || e.key === 'у' || e.key === 'У';
     if (this.state === 'walk') {
-      if (e.key === 'e' || e.key === 'E' || e.key === 'у' || e.key === 'У' || e.key === 'Enter') { if (this.near) this.use(this.near.key); }
+      if (isE || e.key === 'Enter') { if (this.near) this.use(this.near.key); }
       else if (e.key === 'Escape' && !this.auto) this.leave(false);
     } else if (this.state === 'menu') {
       if (e.key === '1' || e.key === 'Enter') this.sleep();
       else if (e.key === 'Escape' || e.key === '2') { this.ui.removeAll(true); this.state = 'walk'; }
-    } else if (this.state === 'morning' && (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape' || e.key === 'e' || e.key === 'E')) this.leave(true);
+    } else if (this.state === 'morning' && (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape' || isE)) this.leave(true);
   }
 
   update() {
-    const shadow = this.children.getByName('shadow') as Phaser.GameObjects.Ellipse;
-    shadow.setPosition(this.aoi.x, this.aoi.y - 2).setDepth(this.aoi.y - 1).setVisible(this.aoi.alpha > 0.5);
+    this.shadow.setPosition(this.aoi.x, this.aoi.y - 2).setDepth(this.aoi.y - 1).setVisible(this.aoi.alpha > 0.5);
     this.aoi.setDepth(this.aoi.y);
     if (this.state !== 'walk') { this.aoi.setVelocity(0); this.aoi.anims.stop(); this.setHint(''); return; }
     const k = this.keys;
     const vx = (k.A.isDown || k.LEFT.isDown ? -1 : 0) + (k.D.isDown || k.RIGHT.isDown ? 1 : 0);
     const vy = (k.W.isDown || k.UP.isDown ? -1 : 0) + (k.S.isDown || k.DOWN.isDown ? 1 : 0);
-    const sp = 170, n = vx && vy ? Math.SQRT1_2 : 1;
+    const sp = 200, n = vx && vy ? Math.SQRT1_2 : 1;
     this.aoi.setVelocity(vx * sp * n, vy * sp * n);
     if (vx || vy) {
       this.facing = vx ? (vx < 0 ? 'left' : 'right') : vy < 0 ? 'up' : 'down';
       this.aoi.anims.play('aoi-na-' + this.facing, true);
     } else { this.aoi.anims.stop(); this.aoi.setFrame({ down: 0, up: 1, left: 2, right: 3 }[this.facing]); }
-    // ближайшее место для осмотра
-    let best: Spot | null = null, bd = 46;
+    let best: Spot | null = null, bd = 52;
     for (const s of SPOTS) { const dd = Math.hypot(s.x - this.aoi.x, s.y - this.aoi.y); if (dd < bd) { bd = dd; best = s; } }
     this.near = best;
     this.setHint(best ? best.hint : '');
-    // дверь: дошла до порога — выходит сама
-    if (this.aoi.y > 520 && Math.abs(this.aoi.x - 480) < 60 && !this.auto) this.leave(false);
+    // дошла до порога — выходит во двор
+    if (this.aoi.y > OY + 170 * S && !this.auto) this.leave(false);
   }
 
   setHint(s: string) {
     if (this.hint.text === s) return;
     this.hint.setText(s); this.hintBg.clear();
-    if (s) { const w = this.hint.width + 28; this.hintBg.fillStyle(0x1e1b2e, 0.78).fillRoundedRect(480 - w / 2, 501, w, 30, 8); }
+    if (s) { const w = this.hint.width + 28; this.hintBg.fillStyle(0x1e1b2e, 0.8).fillRoundedRect(480 - w / 2, 501, w, 30, 8); }
   }
 
   /** Реплика в рамке сверху (исчезает сама). */
   toast(s: string, ms = 3600) {
     this.ui.removeAll(true);
-    const t = text(this, 480, 30, s, 15, HEX.ink, { wordWrap: { width: 520 }, align: 'center', lineSpacing: 3 }).setOrigin(0.5, 0);
-    this.ui.add([paperPanel(this, 480 - 280, 18, 560, t.height + 24), t]);
+    const t = text(this, 480, 30, s, 15, HEX.ink, { wordWrap: { width: 560 }, align: 'center', lineSpacing: 3 }).setOrigin(0.5, 0);
+    this.ui.add([paperPanel(this, 480 - 300, 18, 600, t.height + 24), t]);
     this.ui.setAlpha(0); this.tweens.add({ targets: this.ui, alpha: 1, duration: 200 });
     this.time.delayedCall(ms, () => { if (this.state === 'walk') this.tweens.add({ targets: this.ui, alpha: 0, duration: 300 }); });
   }
@@ -173,18 +164,17 @@ export class Home extends Phaser.Scene {
     if (key === 'futon') {
       this.state = 'menu';
       this.ui.removeAll(true);
-      const lines = this.early ? 'Ещё светло. Вздремнуть до утра? День закончится.' : 'Футон пахнет солнцем. Лечь спать?';
-      const t = text(this, 480, 34, lines, 16, HEX.ink, { align: 'center' }).setOrigin(0.5, 0);
+      const t = text(this, 480, 34, this.early ? 'Ещё светло. Вздремнуть до утра? День закончится.' : 'Футон пахнет солнцем. Лечь спать?', 16, HEX.ink, { align: 'center' }).setOrigin(0.5, 0);
       const o1 = text(this, 400, 66, '[1] Спать', 17, '#c8323c').setOrigin(0.5, 0).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.sleep());
       const o2 = text(this, 560, 66, '[Esc] Не сейчас', 17, '#c8323c').setOrigin(0.5, 0).setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.ui.removeAll(true); this.state = 'walk'; });
-      this.ui.add([paperPanel(this, 220, 20, 520, 82), t, o1, o2]);
+      this.ui.add([paperPanel(this, 200, 20, 560, 82), t, o1, o2]);
     } else if (key === 'diary') {
       this.state = 'menu'; this.ui.removeAll(true);
       this.input.keyboard!.enabled = false;
       this.scene.launch('Diary', { returnTo: 'Home' });
     } else if (key === 'fuku') {
       const first = d.beds.find((b) => b.crop && !b.dead && !isHealthy(game.cls(b)));
-      this.fuku.anims.stop(); this.fuku.setFrame(2); this.time.delayedCall(1200, () => this.fuku.play('fukuna-idle'));
+      this.tweens.add({ targets: this.fuku, y: this.fuku.y - 9, duration: 160, yoyo: true });
       this.toast(first ? `Фуку: «Заряд ${d.fukuCharge}/${d.fukuMax}. Завтра начнём с грядки ${first.id + 1} (${CROP_NAME[first.crop!]}) — там споры».` : `Фуку: «Заряд ${d.fukuCharge}/${d.fukuMax}. Все грядки здоровы — можно отдохнуть!»`);
     } else if (key === 'photo') {
       if (this.photoDay !== d.totalDays) { this.photoDay = d.totalDays; d.reputation = Math.min(100, d.reputation + 1); }
@@ -200,7 +190,7 @@ export class Home extends Phaser.Scene {
     } else if (key === 'mochi') {
       sound.play('meow');
       this.mochi.setFrame(8);
-      const h = this.add.image(this.mochi.x, this.mochi.y - 46, 'heart-px').setScale(3).setDepth(950);
+      const h = this.add.image(this.mochi.x, this.mochi.y - 50, 'heart-px').setScale(3).setDepth(2050);
       this.tweens.add({ targets: h, y: h.y - 24, alpha: 0, duration: 1000, onComplete: () => h.destroy() });
       this.time.delayedCall(2200, () => this.mochi.setFrame(9));
       this.toast('Моти мурчит и тычется лбом в ладонь.');
@@ -212,32 +202,25 @@ export class Home extends Phaser.Scene {
     this.state = 'sleeping';
     this.ui.removeAll(true); this.setHint('');
     sound.play('night');
-    // Аой ложится: её спрайт гаснет, на футоне — спящая Аой
     this.tweens.add({ targets: this.aoi, alpha: 0, duration: 450 });
     this.tweens.add({ targets: this.futonSleep, alpha: 1, duration: 700, delay: 250 });
-    // свет гаснет, комната синеет, Моти засыпает
     this.time.delayedCall(700, () => {
-      this.tweens.add({ targets: this.roomNight, alpha: 1, duration: 1400 });
+      this.tweens.add({ targets: [this.roomNight, this.kotNight], alpha: 1, duration: 1400 });
       this.lamps.forEach((l) => { this.tweens.killTweensOf(l); this.tweens.add({ targets: l, alpha: 0, duration: 1600 }); });
-      this.tweens.add({ targets: this.shade, fillAlpha: 0.5, duration: 1800 });
-      this.mochi.setFrame(9);
+      this.tweens.add({ targets: this.shade, fillAlpha: 0.45, duration: 1800 });
+      this.mochi.setFrame(9); this.fuku.anims.stop(); this.fuku.setFrame(0);
     });
-    // «z» над подушкой
-    const zp = P(838, 470);
+    const zp = P(282, 92);
     this.time.delayedCall(1800, () => {
       for (let i = 0; i < 6; i++) this.time.delayedCall(i * 650, () => {
         if (this.state !== 'sleeping') return;
-        const z = text(this, zp.x - 10 + (i % 3) * 7, zp.y, 'z', 16 + (i % 3) * 5, HEX.paper, { stroke: HEX.ink, strokeThickness: 3 }).setDepth(905);
+        const z = text(this, zp.x - 8 + (i % 3) * 7, zp.y, 'z', 16 + (i % 3) * 5, HEX.paper, { stroke: HEX.ink, strokeThickness: 3 }).setDepth(2010);
         this.zs.push(z);
         this.tweens.add({ targets: z, y: z.y - 70, x: z.x + 22, alpha: 0, duration: 2200 });
       });
       sound.setMood('off');
     });
-    this.time.delayedCall(5600, () => {
-      this.notes = game.endDay();
-      events.emit('refresh-beds');
-      this.morning();
-    });
+    this.time.delayedCall(5600, () => { this.notes = game.endDay(); events.emit('refresh-beds'); this.morning(); });
   }
 
   morning() {
@@ -245,17 +228,16 @@ export class Home extends Phaser.Scene {
     this.zs.forEach((z) => z.active && this.tweens.add({ targets: z, alpha: 0, duration: 300, onComplete: () => z.destroy() })); this.zs = [];
     const d = game.data;
     this.tweens.add({ targets: this.shade, fillAlpha: 0, duration: 1600 });
-    this.tweens.add({ targets: this.roomNight, alpha: 0, duration: 1600 });
-    const sun = this.add.rectangle(0, 0, 960, 540, 0xfff0c0, 0).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(901);
+    this.tweens.add({ targets: [this.roomNight, this.kotNight], alpha: 0, duration: 1600 });
+    const sun = this.add.rectangle(0, 0, 960, 540, 0xfff0c0, 0).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(2001);
     this.tweens.add({ targets: sun, fillAlpha: 0.2, duration: 900, yoyo: true, onComplete: () => sun.destroy() });
     sound.setMood('day'); sound.play('ok');
-    // Аой встаёт рядом с футоном
     this.time.delayedCall(900, () => {
-      const p = P(720, 610);
+      const p = P(252, 128);
       this.tweens.add({ targets: this.futonSleep, alpha: 0, duration: 600 });
       this.aoi.setPosition(p.x, p.y).setFrame(0); this.facing = 'down';
       this.tweens.add({ targets: this.aoi, alpha: 1, duration: 500 });
-      this.mochi.setFrame(8);
+      this.mochi.setFrame(8); this.fuku.play('fukuna-idle');
     });
     const sick = d.beds.filter((b) => b.crop && !b.dead && !isHealthy(game.cls(b))).length;
     const lines = [`Утро. ${['', 'Весна', 'Лето', 'Осень'][d.season]}, день ${Math.min(d.day, 5)}.`];
@@ -274,11 +256,10 @@ export class Home extends Phaser.Scene {
   }
 
   leave(slept: boolean) {
-    if ((this as any)._leaving) return; (this as any)._leaving = true;
+    if (this.leaving) return; this.leaving = true;
     this.state = 'menu';
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
-      (this as any)._leaving = false;
       this.scene.stop();
       this.scene.wake('World'); this.scene.setVisible(true, 'Hud');
       events.emit('lock', false); events.emit('stats');

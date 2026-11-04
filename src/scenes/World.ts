@@ -6,6 +6,7 @@ import { events, uiBlocks } from '../state/events';
 import { FarmLife } from '../world/life';
 import { LAYOUT } from '../world/layout';
 import { SEASONAL } from './Boot';
+import { registerTools } from '../art/plants';
 
 const T = 16, MW = LAYOUT.MW, MH = LAYOUT.MH;
 const CROP_ROW: Record<string, number> = { tomato: 0, potato: 1, pepper: 2 };
@@ -35,6 +36,11 @@ export class World extends Phaser.Scene {
 
   create() {
     this.seasonal = [];
+    registerTools(this);   // искорки и др. мелкие текстуры
+    if (!this.textures.exists('tea-can')) {   // баночка холодного чая 4×6
+      const cv = this.textures.createCanvas('tea-can', 4, 6)!; const c = cv.getContext();
+      c.fillStyle = '#18121c'; c.fillRect(0, 0, 4, 6); c.fillStyle = '#3fd0c9'; c.fillRect(1, 1, 2, 4); c.fillStyle = '#f6e7c1'; c.fillRect(1, 2, 2, 1); c.fillStyle = '#c0c8d0'; c.fillRect(1, 0, 2, 1); cv.refresh();
+    }
     sound.setMood('day');
     this.cameras.main.fadeIn(400);
     this.solids = this.physics.add.staticGroup();
@@ -70,12 +76,34 @@ export class World extends Phaser.Scene {
     events.on('refresh-beds', this.refreshBeds, this);
     events.on('season', this.refreshBeds, this);
     events.on('boss', this.startBoss, this);
+    events.on('drink', this.drink, this);
     this.events.once('shutdown', () => {
       events.off('lock', this.lockHandler, this); events.off('refresh-beds', this.refreshBeds, this);
-      events.off('season', this.refreshBeds, this); events.off('boss', this.startBoss, this);
+      events.off('season', this.refreshBeds, this); events.off('boss', this.startBoss, this); events.off('drink', this.drink, this);
     });
     this.events.on('wake', () => { this.refreshBeds(); this.life.apply(); this.locked = false; });
     this.refreshBeds();
+  }
+
+  /** Холодный чай из автомата: Аой поворачивается, пьёт из баночки, бодрость — шаг быстрее на час. */
+  boostUntil = 0;
+  drink() {
+    this.locked = true; this.aoi.setVelocity(0); this.aoi.anims.stop(); this.aoi.setFrame(0); this.facing = 'down';
+    const can = this.add.image(this.aoi.x + 5, this.aoi.y - 7, 'tea-can').setDepth(this.aoi.depth + 1);
+    sound.play('coin');
+    this.tweens.add({ targets: can, x: this.aoi.x + 2, y: this.aoi.y - 12, angle: -70, duration: 350, delay: 300, ease: 'Quad.out' });
+    this.time.delayedCall(700, () => { sound.play('water'); this.tweens.add({ targets: this.aoi, y: this.aoi.y - 1, duration: 120, yoyo: true, repeat: 3 }); });
+    this.time.delayedCall(1500, () => {
+      can.destroy();
+      for (let i = 0; i < 6; i++) {
+        const p = this.add.image(this.aoi.x + (Math.random() - 0.5) * 14, this.aoi.y - 14 - Math.random() * 8, 'sparkle').setDepth(9600).setScale(0.6);
+        this.tweens.add({ targets: p, y: p.y - 10, alpha: 0, duration: 700, delay: i * 60, onComplete: () => p.destroy() });
+      }
+      this.boostUntil = game.data.totalDays * 1440 + game.data.minutes + 60;
+      this.locked = false;
+      events.emit('toast', 'Аой: «Ах, холодный улун!» Бодрость: шаг быстрее на час.');
+      events.emit('stats');
+    });
   }
 
   startBoss() {
@@ -125,8 +153,8 @@ export class World extends Phaser.Scene {
     this.add.image(vx - 1, vy - 1, 'vending-px').setOrigin(0).setDepth(vy + 29);
     this.solid(vx + 1, vy + 18, 15, 10);
     const [bx, by] = LAYOUT.busstop;
-    this.add.image(bx - 1, by - 1, 'busstop-px').setOrigin(0).setDepth(by + 33);
-    this.solid(bx + 3, by + 24, 24, 8);
+    this.add.image(bx, by + 2, 'busstop-px').setOrigin(0).setDepth(by + 36);   // знак на столбе и скамейка
+    this.solid(bx + 4, by + 31, 6, 5); this.solid(bx + 16, by + 26, 30, 9);
     // грядки
     for (const b of game.data.beds) {
       const { x, y } = bedXY(b);
@@ -170,11 +198,11 @@ export class World extends Phaser.Scene {
     if (best) return { kind: 'bed', bed: best };
     const near = (x: number, y: number, rad = 18) => Math.hypot(x - this.aoi.x, y - this.aoi.y) < rad;
     if (this.life.nearMochi(this.aoi.x, this.aoi.y)) return { kind: 'mochi' };
-    if (this.life.fisher.visible && near(this.life.fisher.x, this.life.fisher.y, 30)) return { kind: 'fisher' };
+    if (this.life.fisher.visible && near(this.life.fisher.x, this.life.fisher.y, 40)) return { kind: 'fisher' };
     if (near(LAYOUT.doorHouse[0], LAYOUT.doorHouse[1] + 6, 20)) return { kind: 'house' };
     if (near(LAYOUT.doorShop[0], LAYOUT.doorShop[1] + 6, 20)) return { kind: 'shop' };
     if (near(LAYOUT.vending[0] + 8, LAYOUT.vending[1] + 34, 14)) return { kind: 'vending' };
-    if (near(LAYOUT.busstop[0] + 16, LAYOUT.busstop[1] + 38, 22)) return { kind: 'busstop' };
+    if (near(LAYOUT.busstop[0] + 20, LAYOUT.busstop[1] + 42, 22)) return { kind: 'busstop' };
     const v = this.life.nearVillager(this.aoi.x, this.aoi.y);
     if (v) return { kind: 'villager', who: v };
     return null;
@@ -209,7 +237,8 @@ export class World extends Phaser.Scene {
     const k = this.keys;
     const vx = (k.A.isDown || k.LEFT.isDown ? -1 : 0) + (k.D.isDown || k.RIGHT.isDown ? 1 : 0);
     const vy = (k.W.isDown || k.UP.isDown ? -1 : 0) + (k.S.isDown || k.DOWN.isDown ? 1 : 0);
-    const sp = 72, n = vx && vy ? Math.SQRT1_2 : 1;
+    const boosted = game.data.totalDays * 1440 + game.data.minutes < this.boostUntil;
+    const sp = boosted ? 90 : 72, n = vx && vy ? Math.SQRT1_2 : 1;
     let mvx = vx * sp * n, mvy = vy * sp * n;
     // люди — препятствия: шаг навстречу соседу ближе 10 px гасится
     for (const b of this.life.blockers()) {

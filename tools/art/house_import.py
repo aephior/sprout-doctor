@@ -7,7 +7,7 @@ from PIL import Image, ImageFilter
 import numpy as np, scipy.ndimage as nd
 SRC = '/home/claude/sprout-doctor/art_src/house/Gemini_Generated_Image_'
 OUT = '/home/claude/sprout-doctor/art_src/house/out_v1/'   # v1 (вид спереди) — больше не в игре
-OUT2 = '/home/claude/sprout-doctor/public/art/home/'
+OUT2 = "/home/claude/sprout-doctor/art_src/house/out_v2/"   # v2 (картинка сверху) — заменена попиксельной комнатой (home_px.py)
 import os; os.makedirs(OUT, exist_ok=True); os.makedirs('/home/claude/sprout-doctor/public/art/home/', exist_ok=True)
 def src(k): return Image.open(glob.glob(SRC + k + '*.jpg')[0]).convert('RGB')
 def keyed(k, fill_holes=True):

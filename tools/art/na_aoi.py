@@ -4,15 +4,15 @@ OUT = '/home/claude/sprout-doctor/public/art/na/'
 P = {'o': (2, 2, 2), 'L': (247, 214, 128), 'M': (214, 166, 74), 'D': (150, 104, 48), 'B': (52, 64, 120), 'T': (63, 208, 201),
      'R': (214, 52, 62), 'G': (96, 178, 72), 'h': (156, 94, 52), 'H': (104, 58, 34), 's': (252, 196, 150), 'S': (220, 142, 104),
      'e': (2, 2, 2), 'g': (128, 82, 40), 'p': (244, 134, 130), 'y': (244, 192, 64), 'Y': (196, 136, 40), 'w': (246, 240, 226),
-     'v': (104, 166, 84), 'V': (62, 112, 58), 'r': (214, 72, 60), 'q': (150, 40, 40), 'W': (255, 255, 255), 'F': (232, 140, 60), 'k': (200, 190, 180)}
+     'v': (104, 166, 84), 'V': (62, 112, 58), 'r': (214, 72, 60), 'q': (150, 40, 40), 'W': (255, 255, 255), 'F': (232, 140, 60), 'k': (200, 190, 180), 'Q': (74, 50, 44)}
 HAT_F = ['.....oooooo.....', '....oLLLLLMo..G.', '...oLLLLLLLMoGo.', '...oBTTBBTTBRo..', '.ooLLLLLLLLLLMoo', 'oMMMMMMMMMMMMMMo', '.ooDDDDDDDDDDoo.']
 HAT_B = ['.....oooooo.....', '.G..oLLLLLMo....', '.oGoLLLLLLLMo...', '..oRBBBBBBBBBo..', '.ooLLLLLLLLLLMoo', 'oMMMMMMMMMMMMMMo', '.ooDDDDDDDDDDoo.']
 HAT_L = ['....oooooo......', '...oLLLLLMo..G..', '..oLLLLLLLMoGo..', '..oTTBBBBBBRo...', 'ooLLLLLLLLLLMoo.', 'oMMMMMMMMMMMMMo.', '.ooDDDDDDDDDoo..']
-DOWN = HAT_F + ['..ohHhhhhhhHho..', '..ohsssssssssho.', '.ohsgegssgegsho.', '.ohspssssssspho.', '.oHhssssSssshHo.', '..ooSssssssSoHo.',
+DOWN = HAT_F + ['..ohHhhhhhhHho..', '..ohsssssssssho.', '.ohsQeQssQeQsho.', '.ohspssssssspho.', '.oHhssssSssshHo.', '..ooSssssssSoHo.',   # глаза в круглых очках (тёмная оправа)
                 '.oyyyvwwwwvyyyHo', '.oyYvvvvvvvvYyRo', '.oyYvvvvvvvvYyo.', '..osvvvvvvvvso..', '...oVVVVVVVVo...']
 UP = HAT_B + ['..ohhhhhhhhhhho.', '..ohhhhhhhhhhho.', '.ohhhhhhhhhhhho.', '.ohhhHhhhhHhhho.', '.oHhhhhHHhhhhHo.', '..oHHhhHHhhHHo..',
               '.oyyyyyHHyyyyyo.', '.oyYyvyHHyvyYyo.', '.oyYvvvRRvvvYyo.', '..osvvvvvvvvso..', '...oVVVVVVVVo...']
-LEFT = HAT_L + ['..ohhhhhhhhho...', '.ohhhhhhhhhhho..', '.oshhhhhhhhhHo..', '.osgegshhhhHHo..', '.ospsssShhhHHo..', '..oosssshhHHo...',
+LEFT = HAT_L + ['..ohhhhhhhhho...', '.ohhhhhhhhhhho..', '.oshhhhhhhhhHo..', '.oQeQsshhhhHHo..', '.ospsssShhhHHo..', '..oosssshhHHo...',
                 '...oyyyyyyHHo...', '...osyyvyyHRo...', '...oyvvvvyyo....', '....ovvvvvo.....', '....oVVVVVo.....']
 FEET = {'f_stand': ['...orro..orro...', '...oooo..oooo...'], 'f_a': ['...orro..oooo...', '...oooo.........'], 'f_b': ['...oooo..orro...', '.........oooo...']}
 SIDEFEET = {'f_stand': ['....orrrro......', '....oooooo......'], 'f_a': ['...orro.orro....', '...oooo.oooo....'], 'f_b': ['....orrrro......', '....oooooo......']}
