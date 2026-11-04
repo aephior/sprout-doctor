@@ -13,16 +13,16 @@ const S = 3, OY = 6;                                   // масштаб и от
 const P = (x: number, y: number) => ({ x: x * S, y: y * S + OY });
 const SOLIDS: [number, number, number, number][] = [
   [0, 0, 320, 52], [0, 0, 6, 176], [313, 0, 7, 176], [0, 167, 144, 9], [176, 167, 144, 9],   // стены (кромка верхней — по плинтусу)
-  [12, 22, 43, 42], [62, 50, 19, 9], [202, 34, 39, 28], [264, 28, 47, 38],                 // полка, зарядка, комод, кухня
-  [262, 90, 40, 62], [304, 84, 10, 17], [304, 150, 10, 17], [136, 96, 48, 22],             // футон, андоны, котацу
-  [14, 98, 35, 21], [22, 124, 15, 9], [8, 140, 42, 27],                                     // лежанка, миска, растения
+  [10, 40, 72, 17], [198, 36, 42, 21], [244, 40, 70, 18],                                  // шкафы/стол/док, комод с алтарём, кухня
+  [262, 90, 40, 62], [301, 88, 11, 15], [301, 145, 11, 15], [136, 93, 48, 15],             // футон, андоны, столик
+  [14, 98, 35, 21], [22, 124, 15, 9], [16, 152, 35, 15], [294, 152, 16, 15],                // лежанка, миска, горшки, бонсай
 ];
 type Spot = { key: string; x: number; y: number; hint: string };
 const SP = (key: string, x: number, y: number, hint: string): Spot => ({ key, ...P(x, y), hint });
 const SPOTS: Spot[] = [
-  SP('futon', 254, 122, 'E — лечь спать'), SP('diary', 33, 72, 'E — дневник бабушки Хару'), SP('fuku', 72, 70, 'E — поговорить с Фуку'),
-  SP('photo', 221, 70, 'E — фотография'), SP('window', 144, 60, 'E — посмотреть в окно'), SP('tea', 286, 74, 'E — заварить чай'),
-  SP('kotatsu', 160, 130, 'E — посидеть у котацу'), SP('mochi', 56, 110, 'E — погладить Моти'), SP('door', 160, 160, 'E — выйти во двор'),
+  SP('futon', 254, 122, 'E — лечь спать'), SP('diary', 57, 70, 'E — дневник бабушки Хару'), SP('fuku', 72, 70, 'E — поговорить с Фуку'),
+  SP('photo', 214, 70, 'E — фотография'), SP('window', 144, 60, 'E — посмотреть в окно'), SP('tea', 278, 72, 'E — заварить чай'),
+  SP('kotatsu', 160, 124, 'E — посидеть у котацу'), SP('mochi', 56, 110, 'E — погладить Моти'), SP('door', 160, 160, 'E — выйти во двор'),
 ];
 
 export class Home extends Phaser.Scene {
@@ -63,7 +63,7 @@ export class Home extends Phaser.Scene {
     this.add.image(0, OY, 'home-px-day').setOrigin(0).setScale(S);
     this.roomNight = this.add.image(0, OY, 'home-px-night').setOrigin(0).setScale(S).setAlpha(night ? 1 : 0);
     // свет вечером: две лампы-андон у футона, тёплое пятно над котацу, лунный свет из окна
-    for (const [x, y, s, c] of [[308, 92, 1.3, 0xffc878], [308, 158, 1.3, 0xffc878], [160, 104, 3.0, 0xffb060], [144, 40, 1.8, 0x9fb8ff]] as [number, number, number, number][]) {
+    for (const [x, y, s, c] of [[306, 94, 1.3, 0xffc878], [306, 150, 1.3, 0xffc878], [160, 104, 3.0, 0xffb060], [144, 40, 1.8, 0x9fb8ff]] as [number, number, number, number][]) {
       const p = P(x, y);
       const g = this.add.image(p.x, p.y, 'glow').setScale(s).setBlendMode(Phaser.BlendModes.ADD).setTint(c).setAlpha(night ? 0.42 : 0);
       this.tweens.add({ targets: g, scale: s * 0.94, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
@@ -73,10 +73,10 @@ export class Home extends Phaser.Scene {
     const fp = P(262, 90);
     this.futonSleep = this.add.image(fp.x, fp.y, 'home-px-sleep').setOrigin(0).setScale(S).setAlpha(0).setDepth(fp.y + 1);
     // котацу — отдельным спрайтом: за ним можно пройти
-    const kp = P(132, 86);
-    this.add.image(kp.x, kp.y, 'home-px-kot-day').setOrigin(0).setScale(S).setDepth(kp.y + 34 * S);
-    this.kotNight = this.add.image(kp.x, kp.y, 'home-px-kot-night').setOrigin(0).setScale(S).setDepth(kp.y + 34 * S + 1).setAlpha(night ? 1 : 0);
-    const steam = P(160, 88);
+    const kp = P(136, 92);
+    this.add.image(kp.x, kp.y, 'home-px-kot-day').setOrigin(0).setScale(S).setDepth(kp.y + 16 * S);
+    this.kotNight = this.add.image(kp.x, kp.y, 'home-px-kot-night').setOrigin(0).setScale(S).setDepth(kp.y + 16 * S + 1).setAlpha(night ? 1 : 0);
+    const steam = P(160, 94);
     this.add.particles(steam.x, steam.y, 'pixel', { speedY: { min: -14, max: -8 }, speedX: { min: -3, max: 3 }, lifespan: 1400, frequency: 280,
       scale: { start: 3, end: 1 }, alpha: { start: 0.5, end: 0 }, tint: 0xffffff }).setDepth(kp.y + 200);
 

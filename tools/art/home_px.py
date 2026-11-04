@@ -17,7 +17,7 @@ GR, GD = (96, 160, 72), (58, 110, 56)
 def box(d, x0, y0, x1, y1, fill, outline=K):
     d.rectangle((x0, y0, x1, y1), fill=outline); d.rectangle((x0 + 1, y0 + 1, x1 - 1, y1 - 1), fill=fill)
 
-def room(night):
+def room(night, bare=False):
     im = Image.new('RGB', (W, H), K); d = ImageDraw.Draw(im)
     # ---- пол: татами (маты 16×32 и 32×16 вперемешку, как в японской комнате) ----
     FX0, FY0, FX1, FY1 = 6, 50, 313, 167
@@ -69,51 +69,57 @@ def room(night):
     for y in (21, 24, 27):
         for x in range(214, 227, 3): d.point((x, y), fill=(200, 80, 80) if (x + y) % 7 == 0 else (120, 110, 100))
     # ---- книжная полка с дневником (левый верхний угол) ----
-    box(d, 12, 22, 54, 62, WM)
-    for y in (32, 44, 54): d.line((13, y, 53, y), fill=WD)
-    cols = [(150, 60, 60), (70, 110, 80), (70, 90, 140), (180, 150, 80), (120, 80, 120)]
-    for row, y0 in enumerate((24, 34, 46)):
-        x = 14
-        while x < 50:
-            w = R.choice([2, 3, 3, 4]); c = R.choice(cols)
-            d.rectangle((x, y0 + R.randrange(0, 2), x + w - 1, y0 + 7), fill=c); x += w + (1 if R.random() < 0.3 else 0)
-    box(d, 16, 14, 30, 24, (190, 50, 60)); d.line((18, 16, 28, 16), fill=(230, 160, 120)); d.point((29, 19), fill=(240, 200, 90))   # дневник Хару
-    box(d, 34, 15, 41, 24, (96, 140, 80)); box(d, 43, 13, 50, 24, (210, 196, 150))                                              # чайные банки
+    if not bare:
+        box(d, 12, 22, 54, 62, WM)
+        for y in (32, 44, 54): d.line((13, y, 53, y), fill=WD)
+        cols = [(150, 60, 60), (70, 110, 80), (70, 90, 140), (180, 150, 80), (120, 80, 120)]
+        for row, y0 in enumerate((24, 34, 46)):
+            x = 14
+            while x < 50:
+                w = R.choice([2, 3, 3, 4]); c = R.choice(cols)
+                d.rectangle((x, y0 + R.randrange(0, 2), x + w - 1, y0 + 7), fill=c); x += w + (1 if R.random() < 0.3 else 0)
+        box(d, 16, 14, 30, 24, (190, 50, 60)); d.line((18, 16, 28, 16), fill=(230, 160, 120)); d.point((29, 19), fill=(240, 200, 90))   # дневник Хару
+        box(d, 34, 15, 41, 24, (96, 140, 80)); box(d, 43, 13, 50, 24, (210, 196, 150))                                              # чайные банки
     # ---- зарядка Фуку: деревянная подставка и провод от розетки ----
-    box(d, 62, 52, 80, 58, WM); d.line((63, 53, 79, 53), fill=WL)
-    d.rectangle((84, 38, 88, 42), fill=WH); d.point((86, 40), fill=K)                                                           # розетка
-    d.line((86, 42, 86, 48), fill=(60, 60, 70)); d.line((86, 48, 80, 55), fill=(60, 60, 70))
+    if not bare:
+        box(d, 62, 52, 80, 58, WM); d.line((63, 53, 79, 53), fill=WL)
+        d.rectangle((84, 38, 88, 42), fill=WH); d.point((86, 40), fill=K)                                                           # розетка
+        d.line((86, 42, 86, 48), fill=(60, 60, 70)); d.line((86, 48, 80, 55), fill=(60, 60, 70))
     # ---- комод с фото бабушки и дедушки ----
-    box(d, 202, 34, 240, 60, WM); d.line((203, 47, 239, 47), fill=WD); d.rectangle((219, 39, 222, 41), fill=WL); d.rectangle((219, 51, 222, 53), fill=WL)
-    box(d, 210, 22, 228, 36, (210, 170, 90)); d.rectangle((212, 24, 226, 34), fill=(200, 200, 190))
-    d.rectangle((214, 27, 218, 34), fill=(90, 70, 70)); d.rectangle((220, 27, 224, 34), fill=(130, 90, 110)); d.rectangle((215, 25, 217, 28), fill=(220, 220, 220)); d.rectangle((221, 25, 223, 28), fill=(220, 220, 220))
-    box(d, 232, 24, 238, 34, (120, 160, 100)); d.point((235, 22), fill=PK)   # благовония/цветок
+    if not bare:
+        box(d, 202, 34, 240, 60, WM); d.line((203, 47, 239, 47), fill=WD); d.rectangle((219, 39, 222, 41), fill=WL); d.rectangle((219, 51, 222, 53), fill=WL)
+        box(d, 210, 22, 228, 36, (210, 170, 90)); d.rectangle((212, 24, 226, 34), fill=(200, 200, 190))
+        d.rectangle((214, 27, 218, 34), fill=(90, 70, 70)); d.rectangle((220, 27, 224, 34), fill=(130, 90, 110)); d.rectangle((215, 25, 217, 28), fill=(220, 220, 220)); d.rectangle((221, 25, 223, 28), fill=(220, 220, 220))
+        box(d, 232, 24, 238, 34, (120, 160, 100)); d.point((235, 22), fill=PK)   # благовония/цветок
     # ---- кухонный уголок: стол-тумба, плитка, чайник ----
-    box(d, 264, 28, 310, 64, WM); d.line((265, 40, 309, 40), fill=WL); d.line((265, 52, 309, 52), fill=WD)
-    box(d, 270, 18, 290, 30, (110, 110, 120)); d.ellipse((274, 20, 286, 28), fill=(60, 60, 70))
-    box(d, 274, 10, 286, 22, (200, 200, 205)); d.line((276, 12, 284, 12), fill=WH); d.rectangle((286, 14, 289, 16), fill=K)        # чайник
-    box(d, 294, 24, 306, 36, (232, 226, 210)); d.line((296, 28, 304, 28), fill=(180, 170, 150))                                       # посуда
+    if not bare:
+        box(d, 264, 28, 310, 64, WM); d.line((265, 40, 309, 40), fill=WL); d.line((265, 52, 309, 52), fill=WD)
+        box(d, 270, 18, 290, 30, (110, 110, 120)); d.ellipse((274, 20, 286, 28), fill=(60, 60, 70))
+        box(d, 274, 10, 286, 22, (200, 200, 205)); d.line((276, 12, 284, 12), fill=WH); d.rectangle((286, 14, 289, 16), fill=K)        # чайник
+        box(d, 294, 24, 306, 36, (232, 226, 210)); d.line((296, 28, 304, 28), fill=(180, 170, 150))                                       # посуда
     # ---- футон у правой стены, лампы-андон ----
     box(d, 262, 90, 300, 150, WH)
     box(d, 264, 104, 298, 148, BM); d.line((265, 105, 297, 105), fill=BL)
     for (x, y) in [(270, 112), (286, 118), (276, 128), (292, 134), (268, 140), (284, 142)]:
         d.rectangle((x - 1, y, x + 1, y), fill=PK); d.rectangle((x, y - 1, x, y + 1), fill=PK); d.point((x, y), fill=WH)
     box(d, 268, 92, 294, 102, WH); d.line((270, 94, 292, 94), fill=(226, 222, 214))                                                  # подушка
-    for (x, y) in [(304, 84), (304, 150)]:
+    for (x, y) in ([] if bare else [(304, 84), (304, 150)]):
         box(d, x, y, x + 9, y + 15, (250, 226, 160) if night else (236, 220, 180)); d.line((x + 1, y + 5, x + 8, y + 5), fill=WM); d.line((x + 1, y + 10, x + 8, y + 10), fill=WM)
     # ---- лежанка Моти и миска ----
     d.ellipse((14, 96, 48, 120), fill=K); d.ellipse((15, 97, 47, 119), fill=(196, 140, 82)); d.ellipse((19, 101, 43, 115), fill=(236, 214, 190))
     d.ellipse((22, 124, 36, 132), fill=K); d.ellipse((23, 125, 35, 131), fill=WH); d.rectangle((26, 126, 32, 128), fill=(150, 90, 60))
     # ---- растения в углах ----
-    for (cx, by, s) in [(18, 164, 1.0), (40, 166, 0.8)]:
-        pw = int(10 * s); box(d, cx - pw // 2, by - int(10 * s), cx + pw // 2, by, (170, 96, 64))
-        for i in range(7):
-            ang = -2.6 + i * 0.36; ln = int(14 * s)
-            x2, y2 = cx + int(np.cos(ang) * ln), by - int(10 * s) + int(np.sin(ang) * ln)
-            d.line((cx, by - int(10 * s), x2, y2), fill=GD); d.ellipse((x2 - 3, y2 - 2, x2 + 3, y2 + 2), fill=GR if i % 2 else GD)
+    if not bare:
+        for (cx, by, s) in [(18, 164, 1.0), (40, 166, 0.8)]:
+            pw = int(10 * s); box(d, cx - pw // 2, by - int(10 * s), cx + pw // 2, by, (170, 96, 64))
+            for i in range(7):
+                ang = -2.6 + i * 0.36; ln = int(14 * s)
+                x2, y2 = cx + int(np.cos(ang) * ln), by - int(10 * s) + int(np.sin(ang) * ln)
+                d.line((cx, by - int(10 * s), x2, y2), fill=GD); d.ellipse((x2 - 3, y2 - 2, x2 + 3, y2 + 2), fill=GR if i % 2 else GD)
     # дзабутоны вокруг котацу (низкие, можно наступать)
-    for (x, y) in [(124, 102), (190, 102), (156, 128)]:
-        box(d, x, y, x + 12, y + 10, (214, 120, 70)); d.point((x + 6, y + 5), fill=(160, 70, 40))
+    if not bare:
+        for (x, y) in [(124, 102), (190, 102), (156, 128)]:
+            box(d, x, y, x + 12, y + 10, (214, 120, 70)); d.point((x + 6, y + 5), fill=(160, 70, 40))
     a = np.asarray(im).astype(float)
     if night:
         a *= np.array([0.46, 0.44, 0.66]); a[10:39, 114:175] = np.asarray(im)[10:39, 114:175] * np.array([0.8, 0.8, 1.0])   # окно чуть светлее
@@ -142,8 +148,47 @@ def sleeper():
     d.rectangle((6, 15, 34, 22), fill=BL); d.line((6, 15, 34, 15), fill=K)                 # одеяло подтянуто
     d.ellipse((8, 18, 32, 34), fill=BL)                                                     # бугорок под одеялом
     return base
+TS = Image.open('/home/claude/assets_src/packs/sp/ninja-adventure/background-elements/tileset.png').convert('RGBA')
+WS = Image.open('/home/claude/assets_src/na_extra/tileset_wall_simple.png').convert('RGBA')
+def tl(x, y, w=1, h=1, src=TS):
+    t = src.crop((x * 16, y * 16, (x + w) * 16, (y + h) * 16)); bb = t.getbbox(); return t.crop(bb) if bb else t
+def room2(night):
+    """Комната из ассетов Ninja Adventure: стены-рамка (tileset_wall_simple), мебель и утварь (tileset), + татами, окно и футон."""
+    im = room(False, bare=True).convert('RGBA'); d = ImageDraw.Draw(im)
+    for x in (96, 178): im.alpha_composite(tl(11, 3), (x, 10))      # бумажные сёдзи по бокам окна
+    # ---- мебель NA ----
+    P = lambda t, x, y: im.alpha_composite(t, (x, y - t.height))       # (x, низ)
+    P(tl(12, 4), 12, 54); P(tl(11, 5), 30, 54)                          # шкаф и комод-тансу (левый угол)
+    P(tl(8, 6), 50, 56)                                                  # письменный столик с бумагами — тут дневник
+    P(tl(15, 3), 66, 56)                                                 # ящичек-док: зарядка Фуку
+    P(tl(11, 4), 202, 54); P(tl(10, 5), 204, 40)                         # сундук + домашний алтарь с фото
+    P(tl(12, 5), 222, 54)
+    P(tl(12, 6), 262, 56); P(tl(9, 6), 280, 56); P(tl(13, 3), 298, 58)   # кухня: кадка риса, умывальник, ведро
+    P(tl(12, 3), 248, 58)
+    P(tl(16, 7), 284, 40)                                                # лоток с яйцами на полке
+    for (x, y) in [(18, 166), (296, 166)]: P(tl(1, 6), x, y)            # горшки
+    P(tl(13, 4), 36, 166)                                                # бонсай
+    P(tl(10, 6), 302, 102); P(tl(10, 6), 302, 158)                       # стойки-андон у футона
+    P(tl(12, 7), 116, 112); P(tl(12, 7), 188, 112); P(tl(13, 7), 152, 128)   # дзабутоны вокруг столика
+    # провод от розетки к доку Фуку
+    d.rectangle((84, 38, 88, 42), fill=WH); d.point((86, 40), fill=K); d.line((86, 42, 86, 47), fill=(60, 60, 70)); d.line((86, 47, 78, 52), fill=(60, 60, 70))
+    # стены-рамка NA (коричневые): левая/правая/нижняя кромка
+    out = im.convert('RGB')
+    a = np.asarray(out).astype(float)
+    if night:
+        a *= np.array([0.46, 0.44, 0.66]); a[10:39, 114:175] = np.asarray(out)[10:39, 114:175] * np.array([0.8, 0.8, 1.0])
+    return Image.fromarray(a.clip(0, 255).astype(np.uint8))
+def table2(night):
+    """Низкий столик-тябудай (NA) с чайником и чашками — отдельным спрайтом."""
+    t = tl(14, 6, 3, 1).copy(); d = ImageDraw.Draw(t)
+    w = t.width
+    box(d, w // 2 - 5, 0, w // 2 + 5, 7, (200, 200, 205)); d.line((w // 2 - 3, 2, w // 2 + 3, 2), fill=WH); d.rectangle((w // 2 + 5, 3, w // 2 + 7, 4), fill=K)
+    for x in (8, w - 14): box(d, x, 2, x + 6, 7, (232, 226, 210)); d.rectangle((x + 2, 3, x + 4, 4), fill=(110, 160, 90))
+    if night:
+        a = np.asarray(t).astype(float); a[..., :3] *= np.array([0.62, 0.56, 0.62]); t = Image.fromarray(a.clip(0, 255).astype(np.uint8))
+    return t
 for n in (False, True):
     tag = 'night' if n else 'day'
-    room(n).save(OUT + f'px_{tag}.png'); kotatsu(n).save(OUT + f'px_kotatsu_{tag}.png')
+    room2(n).save(OUT + f'px_{tag}.png'); table2(n).save(OUT + f'px_kotatsu_{tag}.png')
 sleeper().save(OUT + 'px_futon_sleep.png')
 print('home px ok')
