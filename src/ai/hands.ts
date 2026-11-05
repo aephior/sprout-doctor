@@ -60,8 +60,7 @@ export class HandTracker {
       } finally { window.alert = alert0; }
       if (failed) { try { this.hands.close(); } catch { /* ignore */ } this.hands = null; throw new Error(WEBGL_MSG); }
     }
-    this.stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
-    this.video.srcObject = this.stream;
+    await this.openCamera();
     this.video.muted = true; this.video.playsInline = true;
     await this.video.play();
     this.running = true; this.paused = false; this.busySince = 0;
@@ -84,6 +83,54 @@ export class HandTracker {
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
+  }
+
+  /** Список камер (названия видны только после первого разрешения на доступ). */
+  cameras: { id: string; label: string }[] = [];
+  camLabel = '';
+
+  /** Открывает камеру: сохранённую, иначе — встроенную/реальную, а не виртуальную (OBS и т.п.). */
+  private async openCamera(want?: string) {
+    const saved = want ?? lsGet(CAM_KEY);
+    this.stream = await getCam(saved || undefined);
+    await this.refreshCameras();
+    if (!want && !saved) {
+      const cur = this.stream.getVideoTracks()[0]?.getSettings().deviceId;
+      const best = pickReal(this.cameras);
+      if (best && best.id !== cur) {
+        this.stream.getTracks().forEach((t) => t.stop());
+        try { this.stream = await getCam(best.id); } catch { this.stream = await getCam(cur); }
+      }
+    }
+    const tr = this.stream.getVideoTracks()[0];
+    const id = tr?.getSettings().deviceId ?? '';
+    this.camLabel = this.cameras.find((c) => c.id === id)?.label || tr?.label || 'камера';
+    this.video.srcObject = this.stream;
+  }
+
+  private async refreshCameras() {
+    try {
+      const ds = await navigator.mediaDevices.enumerateDevices();
+      this.cameras = ds.filter((d) => d.kind === 'videoinput').map((d, i) => ({ id: d.deviceId, label: d.label || `Камера ${i + 1}` }));
+    } catch { this.cameras = []; }
+  }
+
+  /** Переключение на следующую камеру из списка; выбор запоминается. */
+  async nextCamera(): Promise<void> {
+    await this.refreshCameras();
+    if (this.cameras.length < 2 || !this.stream) return;
+    const cur = this.stream.getVideoTracks()[0]?.getSettings().deviceId;
+    const k = this.cameras.findIndex((c) => c.id === cur);
+    const next = this.cameras[(k + 1) % this.cameras.length];
+    this.stream.getTracks().forEach((t) => t.stop());
+    try {
+      await this.openCamera(next.id);
+      lsSet(CAM_KEY, next.id);
+    } catch (e) {
+      await this.openCamera(cur);          // не открылась — возвращаемся к прежней
+      throw e;
+    }
+    await this.video.play();
   }
 
   private onResults(r: any) {
@@ -123,6 +170,26 @@ export class HandTracker {
   }
 
   get active() { return this.running && !this.paused; }
+}
+
+const CAM_KEY = 'sd-camera';
+const VIRTUAL = /obs|virtual|droidcam|manycam|xsplit|snap ?camera|nvidia broadcast|iriun|epoccam|camo|streamlabs|vcam/i;
+function lsGet(k: string) { try { return localStorage.getItem(k); } catch { return null; } }
+function lsSet(k: string, v: string) { try { localStorage.setItem(k, v); } catch { /* приватный режим */ } }
+/** Встроенная или обычная USB-камера предпочтительнее виртуальных. */
+function pickReal(cams: { id: string; label: string }[]) {
+  const real = cams.filter((c) => !VIRTUAL.test(c.label));
+  return real.find((c) => /integrated|built-?in|встро|facetime|webcam|hd|usb/i.test(c.label)) ?? real[0];
+}
+async function getCam(deviceId?: string): Promise<MediaStream> {
+  const base = { width: { ideal: 640 }, height: { ideal: 480 } };
+  try {
+    return await navigator.mediaDevices.getUserMedia({ video: deviceId ? { ...base, deviceId: { exact: deviceId } } : { ...base, facingMode: 'user' }, audio: false });
+  } catch (e) {
+    const n = (e as Error).name;
+    if (deviceId && (n === 'OverconstrainedError' || n === 'NotFoundError')) return getCam();   // сохранённой камеры больше нет
+    throw e;
+  }
 }
 
 const WEBGL_MSG = 'Трекинг рук не запустился: браузер не дал WebGL. Включите «Аппаратное ускорение» в настройках браузера (Chrome: Настройки › Система) и перезапустите его. Играть можно клавишами.';

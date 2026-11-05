@@ -1,5 +1,5 @@
 // «Ритуалы рук»: включение камеры, калибровка (запись образцов поз для kNN) и проверка жестов с оценкой Q.
-import { gestures } from '../ai/gestureCtl';
+import { gestures, camError } from '../ai/gestureCtl';
 import { tracker } from '../ai/hands';
 import { POSES, POSE_NAME, Pose, GESTURE_INFO, GestureId, FrameInfo, GestureEvent } from '../ai/gestures';
 import { text, HEX, C, neonPanel, paperPanel, bar } from '../ui/ui';
@@ -53,6 +53,13 @@ export class GestureSetup extends Phaser.Scene {
     this.redraw();
   }
 
+  async switchCam() {
+    this.status = 'Переключаю камеру…'; this.redraw();
+    try { await tracker.nextCamera(); this.status = ''; }
+    catch (e) { this.status = camError(e); }
+    this.redraw();
+  }
+
   disable() { gestures.wanted = false; gestures.stop(); this.updateCam = undefined; this.redraw(); }
 
   startRecord(p: Pose) {
@@ -94,6 +101,12 @@ export class GestureSetup extends Phaser.Scene {
     // превью камеры
     add(neonPanel(this, 24, 70, 400, 300, gestures.active ? C.teal : 0x55536e));
     if (gestures.active && this.textures.exists('cam-setup')) add(this.add.image(24, 70, 'cam-setup').setOrigin(0));
+    if (gestures.active) {
+      const name = tracker.camLabel.replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)\s*$/i, '');
+      add(text(this, 24, 50, `Камера: ${name.length > 30 ? name.slice(0, 29) + '…' : name}`, 14, '#b9b7d9'));
+      if (tracker.cameras.length > 1) add(text(this, 424, 50, '[ сменить камеру ▸ ]', 14, '#ff4f9a').setOrigin(1, 0)
+        .setInteractive({ useHandCursor: true }).on('pointerdown', () => void this.switchCam()));
+    }
     else if (!this.status) add(text(this, 224, 200, gestures.possible ? 'Камера выключена' : 'Камера недоступна\nв веб-версии', 18, '#8a88b0', { align: 'center' }).setOrigin(0.5));
 
     // распознавание

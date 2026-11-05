@@ -35,7 +35,7 @@ class GestureController {
       this.error = '';
       return true;
     } catch (e) {
-      const msg = (e as Error).name === 'NotAllowedError' ? 'Доступ к камере запрещён. Разрешите его в настройках браузера.' : (e as Error).message;
+      const msg = camError(e);
       this.error = msg;
       return false;
     }
@@ -70,3 +70,12 @@ class GestureController {
 }
 
 export const gestures = new GestureController();
+
+/** Понятное объяснение ошибки камеры. */
+export function camError(e: unknown): string {
+  const n = (e as Error)?.name;
+  if (n === 'NotAllowedError') return 'Доступ к камере запрещён. Разрешите его в браузере (значок камеры в адресной строке) и в Windows: Параметры › Конфиденциальность › Камера.';
+  if (n === 'NotReadableError' || n === 'AbortError') return 'Камера занята другой программой (Zoom, Teams, OBS…) или выключена. Закройте её и попробуйте снова.';
+  if (n === 'NotFoundError') return 'Камера не найдена. Проверьте, что она подключена и включена (на ноутбуках бывает клавиша F8/F10 или шторка).';
+  return (e as Error)?.message || String(e);
+}
